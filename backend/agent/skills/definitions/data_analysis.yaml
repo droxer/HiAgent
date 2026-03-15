@@ -1,0 +1,24 @@
+name: data_analysis
+description: Load, analyze, and visualize data
+version: "1.0"
+tags: [data, analysis]
+triggers: [analyze data, data analysis, visualize, chart]
+steps:
+  - tool: file_read
+    description: Read the data file
+    input_template:
+      path: "{data_path}"
+  - tool: code_run
+    description: Analyze the data
+    input_template:
+      code: "{analysis_code}"
+      language: python
+  - tool: code_run
+    description: Generate visualization
+    input_template:
+      code: "{visualization_code}"
+      language: python
+  - tool: message_user
+    description: Share analysis results
+    input_template:
+      message: "{analysis_summary}"

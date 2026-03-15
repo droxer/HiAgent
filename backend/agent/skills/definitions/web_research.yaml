@@ -1,0 +1,19 @@
+name: web_research
+description: Multi-step web research pattern
+version: "1.0"
+tags: [research, web]
+triggers: [research, investigate, find out, look up]
+steps:
+  - tool: web_search
+    description: Search for information
+    input_template:
+      query: "{query}"
+      max_results: 5
+  - tool: web_fetch
+    description: Fetch top result for details
+    input_template:
+      url: "{top_result_url}"
+  - tool: message_user
+    description: Deliver research findings
+    input_template:
+      message: "{summary}"
