@@ -67,6 +67,7 @@ Required in `backend/.env` (see `.env.example`):
 - `ANTHROPIC_API_KEY` — Required
 - `TAVILY_API_KEY` — Required
 - `REDIS_URL` — Optional, for state persistence
+- `LITE_MODEL` — Optional, model for simple/quick sub-tasks (default: `claude-haiku-4-5-20251001`)
 
 Python 3.12+, Node.js with npm, `uv` package manager for backend.
 

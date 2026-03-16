@@ -44,3 +44,6 @@ uv.lock
 
 # Logs
 *.log
+
+# Artifacts (generated images, etc.)
+backend/artifacts/

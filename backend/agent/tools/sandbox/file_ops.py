@@ -36,9 +36,11 @@ class FileRead(SandboxTool):
         )
 
     async def execute(self, session: Any, **kwargs: Any) -> ToolResult:
-        path: str = kwargs.get("path", "")
+        path: str = kwargs.get("path") or kwargs.get("file_path") or kwargs.get("filepath") or ""
         if not path.strip():
-            return ToolResult.fail("Path must not be empty")
+            return ToolResult.fail(
+                f"path must not be empty (received keys: {[k for k in kwargs if k not in ('session', 'event_emitter')]})"
+            )
 
         try:
             content = await session.read_file(path)
@@ -74,11 +76,14 @@ class FileWrite(SandboxTool):
         )
 
     async def execute(self, session: Any, **kwargs: Any) -> ToolResult:
-        path: str = kwargs.get("path", "")
-        content: str = kwargs.get("content", "")
+        # Accept common alternative parameter names from LLMs
+        path: str = kwargs.get("path") or kwargs.get("file_path") or kwargs.get("filepath") or ""
+        content: str = kwargs.get("content") or kwargs.get("text") or ""
 
         if not path.strip():
-            return ToolResult.fail("Path must not be empty")
+            return ToolResult.fail(
+                f"path must not be empty (received keys: {[k for k in kwargs if k not in ('session', 'event_emitter')]})"
+            )
 
         try:
             await session.write_file(path, content)
@@ -87,7 +92,11 @@ class FileWrite(SandboxTool):
 
         return ToolResult.ok(
             f"Successfully wrote {len(content)} bytes to {path}",
-            metadata={"path": path, "bytes_written": len(content)},
+            metadata={
+                "path": path,
+                "bytes_written": len(content),
+                "artifact_paths": [path],
+            },
         )
 
 
@@ -124,12 +133,14 @@ class FileEdit(SandboxTool):
         )
 
     async def execute(self, session: Any, **kwargs: Any) -> ToolResult:
-        path: str = kwargs.get("path", "")
+        path: str = kwargs.get("path") or kwargs.get("file_path") or kwargs.get("filepath") or ""
         old_text: str = kwargs.get("old_text", "")
         new_text: str = kwargs.get("new_text", "")
 
         if not path.strip():
-            return ToolResult.fail("Path must not be empty")
+            return ToolResult.fail(
+                f"path must not be empty (received keys: {[k for k in kwargs if k not in ('session', 'event_emitter')]})"
+            )
         if not old_text:
             return ToolResult.fail("old_text must not be empty")
 

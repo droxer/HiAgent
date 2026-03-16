@@ -6,9 +6,10 @@ import { cn } from "@/shared/lib/utils";
 
 interface ChatInputProps {
   readonly onSendMessage: (message: string) => void;
+  readonly disabled?: boolean;
 }
 
-export function ChatInput({ onSendMessage }: ChatInputProps) {
+export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
   const [input, setInput] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -26,6 +27,7 @@ export function ChatInput({ onSendMessage }: ChatInputProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (disabled) return;
     const trimmed = input.trim();
     if (!trimmed) return;
     onSendMessage(trimmed);
@@ -59,9 +61,13 @@ export function ChatInput({ onSendMessage }: ChatInputProps) {
             onKeyDown={handleKeyDown}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            placeholder="Send a message..."
+            placeholder={disabled ? "Agent is working..." : "Send a message..."}
+            disabled={disabled}
             rows={1}
-            className="w-full resize-none bg-transparent px-4 pt-3.5 pb-10 text-sm leading-relaxed text-foreground placeholder:text-placeholder outline-none"
+            className={cn(
+              "w-full resize-none bg-transparent px-4 pt-3.5 pb-10 text-sm leading-relaxed text-foreground placeholder:text-placeholder outline-none",
+              disabled && "opacity-50 cursor-not-allowed",
+            )}
           />
 
           {/* Bottom bar: hint + send */}
@@ -79,7 +85,7 @@ export function ChatInput({ onSendMessage }: ChatInputProps) {
 
             <button
               type="submit"
-              disabled={!hasContent}
+              disabled={disabled || !hasContent}
               className={cn(
                 "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-all duration-150",
                 hasContent

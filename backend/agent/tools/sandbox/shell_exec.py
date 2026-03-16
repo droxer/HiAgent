@@ -60,6 +60,16 @@ class ShellExec(SandboxTool):
                         "type": "string",
                         "description": "Working directory for the command.",
                     },
+                    "output_files": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": (
+                            "Absolute paths of files created or modified by "
+                            "this command that should be saved as downloadable "
+                            "artifacts. Only include files the user would want "
+                            "to view or download."
+                        ),
+                    },
                 },
                 "required": ["command"],
             },
@@ -71,6 +81,7 @@ class ShellExec(SandboxTool):
         command: str = kwargs.get("command", "")
         timeout: int = kwargs.get("timeout", 30)
         workdir: str | None = kwargs.get("workdir")
+        output_files: list[str] = kwargs.get("output_files") or []
         event_emitter: Any | None = kwargs.get("event_emitter")
 
         if not command.strip():
@@ -104,7 +115,8 @@ class ShellExec(SandboxTool):
                 f"{combined}\n[stderr]\n{result.stderr}" if combined else result.stderr
             )
 
-        return ToolResult.ok(
-            combined,
-            metadata={"exit_code": result.exit_code},
-        )
+        metadata: dict[str, Any] = {"exit_code": result.exit_code}
+        if output_files:
+            metadata["artifact_paths"] = list(output_files)
+
+        return ToolResult.ok(combined, metadata=metadata)

@@ -19,17 +19,29 @@ class Settings(BaseSettings):
     ANTHROPIC_BASE_URL: str = "https://api.anthropic.com"
     TAVILY_API_KEY: str
     REDIS_URL: str = "redis://localhost:6379"
+    DATABASE_URL: str = "postgresql+asyncpg://ha:ha@localhost:5432/hiagent"
     PLANNING_MODEL: str = "claude-sonnet-4-20250514"
     TASK_MODEL: str = "claude-sonnet-4-20250514"
+    LITE_MODEL: str = "claude-haiku-4-5-20251001"
     MAX_ITERATIONS: int = 50
-    MAX_TOKENS: int = 8192
     LOG_LEVEL: str = "INFO"
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
     SANDBOX_PROVIDER: str = "boxlite"  # "boxlite" or "e2b"
     E2B_API_KEY: str = ""
+    MINIMAX_API_KEY: str = ""
+    MINIMAX_API_HOST: str = "https://api.minimaxi.com"  # or https://api.minimax.io
     API_KEY: str = ""  # Optional API key for authentication; empty = allow all
+    STORAGE_PROVIDER: str = "local"  # "local" or "r2"
+    STORAGE_DIR: str = "./artifacts"  # Local storage directory
+    # Cloudflare R2 (required when STORAGE_PROVIDER=r2)
+    R2_ACCOUNT_ID: str = ""
+    R2_ACCESS_KEY_ID: str = ""
+    R2_SECRET_ACCESS_KEY: str = ""
+    R2_BUCKET_NAME: str = ""
+    R2_PUBLIC_URL: str = ""  # Optional: public bucket URL for direct access
+    ENVIRONMENT: str = "development"  # "development" or "production"
     RATE_LIMIT_PER_MINUTE: int = 30
     DEFAULT_SYSTEM_PROMPT: str = (
         "You are a helpful AI assistant with access to a sandboxed coding environment. "

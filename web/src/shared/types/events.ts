@@ -19,7 +19,9 @@ export type EventType =
   | "thinking"
   | "sandbox_stdout"
   | "sandbox_stderr"
-  | "code_result";
+  | "code_result"
+  | "artifact_created"
+  | "conversation_title";
 
 export interface AgentEvent {
   type: EventType;
@@ -42,7 +44,16 @@ export interface ToolCallInfo {
   input: Record<string, unknown>;
   output?: string;
   success?: boolean;
+  contentType?: string;
+  artifactIds?: string[];
   timestamp: number;
+}
+
+export interface ArtifactInfo {
+  readonly id: string;
+  readonly name: string;
+  readonly contentType: string;
+  readonly size: number;
 }
 
 export interface AgentStatus {
@@ -50,3 +61,9 @@ export interface AgentStatus {
   description: string;
   status: "running" | "complete" | "error";
 }
+
+export type AssistantPhase =
+  | { readonly phase: "idle" }
+  | { readonly phase: "thinking" }
+  | { readonly phase: "writing" }
+  | { readonly phase: "using_tool"; readonly toolName: string };

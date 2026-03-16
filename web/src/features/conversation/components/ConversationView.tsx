@@ -12,14 +12,18 @@ export function ConversationView() {
     allMessages,
     toolCalls,
     agentStatuses,
+    artifacts,
     taskState,
     thinkingContent,
+    isStreaming,
+    assistantPhase,
     reasoningSteps,
     currentIteration,
     isConnected,
     handleSendMessage,
     handleCreateConversation,
     handleNewConversation,
+    isWaitingForAgent,
   } = useConversationContext();
 
   const isActive = conversationId !== null;
@@ -44,17 +48,22 @@ export function ConversationView() {
           transition={{ duration: 0.3, delay: 0.1 }}
         >
           <ConversationWorkspace
+            conversationId={conversationId}
             events={events}
             messages={allMessages}
             toolCalls={toolCalls}
             agentStatuses={agentStatuses}
+            artifacts={artifacts}
             taskState={taskState}
             thinkingContent={thinkingContent}
+            isStreaming={isStreaming}
+            assistantPhase={assistantPhase}
             reasoningSteps={reasoningSteps}
             currentIteration={currentIteration}
             isConnected={isConnected}
             onSendMessage={handleSendMessage}
             onNavigateHome={handleNewConversation}
+            isWaitingForAgent={isWaitingForAgent}
           />
         </motion.div>
       )}

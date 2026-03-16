@@ -117,6 +117,10 @@ async def process_tool_calls(
             "success": result.success,
             "output": output,
         }
+        # Forward artifact_ids and content_type from tool metadata
+        if result.metadata:
+            if "artifact_ids" in result.metadata:
+                result_data["artifact_ids"] = list(result.metadata["artifact_ids"])
         if agent_id is not None:
             result_data["agent_id"] = agent_id
 

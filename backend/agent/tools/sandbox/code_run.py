@@ -58,6 +58,14 @@ class CodeRun(SandboxTool):
                         "type": "string",
                         "description": "Optional filename for the script.",
                     },
+                    "output_files": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": (
+                            "Absolute paths of files created by this code that "
+                            "should be saved as downloadable artifacts."
+                        ),
+                    },
                 },
                 "required": ["code"],
             },
@@ -69,6 +77,7 @@ class CodeRun(SandboxTool):
         code: str = kwargs.get("code", "")
         language: str = kwargs.get("language", "python").lower()
         filename: str | None = kwargs.get("filename")
+        output_files: list[str] = kwargs.get("output_files") or []
         event_emitter: Any | None = kwargs.get("event_emitter")
 
         if not code.strip():
@@ -117,7 +126,8 @@ class CodeRun(SandboxTool):
                 f"{combined}\n[stderr]\n{result.stderr}" if combined else result.stderr
             )
 
-        return ToolResult.ok(
-            combined,
-            metadata={"exit_code": result.exit_code, "language": language},
-        )
+        metadata: dict[str, Any] = {"exit_code": result.exit_code, "language": language}
+        if output_files:
+            metadata["artifact_paths"] = list(output_files)
+
+        return ToolResult.ok(combined, metadata=metadata)

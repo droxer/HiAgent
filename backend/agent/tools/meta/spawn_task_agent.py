@@ -50,6 +50,11 @@ class SpawnTaskAgent(LocalTool):
                         "description": "Agent IDs that must complete before this agent starts.",
                         "default": [],
                     },
+                    "use_lite_model": {
+                        "type": "boolean",
+                        "description": "Use the lite (faster/cheaper) model for this task. Good for simple, focused tasks.",
+                        "default": False,
+                    },
                 },
                 "required": ["task_description"],
             },
@@ -62,18 +67,23 @@ class SpawnTaskAgent(LocalTool):
         context: str = kwargs.get("context", "")
         sandbox_template: str = kwargs.get("sandbox_template", "default")
         depends_on: list[str] = kwargs.get("depends_on", [])
+        use_lite_model: bool = kwargs.get("use_lite_model", False)
 
         if not task_description.strip():
             return ToolResult.fail("task_description must not be empty")
 
         try:
             from agent.loop.task_runner import TaskAgentConfig
+            from config.settings import get_settings
+
+            model = get_settings().LITE_MODEL if use_lite_model else None
 
             config = TaskAgentConfig(
                 task_description=task_description,
                 context=context,
                 sandbox_template=sandbox_template,
                 depends_on=tuple(depends_on),
+                model=model,
             )
             agent_id = await self._manager.spawn(config)
         except Exception as exc:

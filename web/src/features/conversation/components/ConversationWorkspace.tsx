@@ -1,45 +1,64 @@
 "use client";
 
-import { useRef, useEffect, useState, useCallback } from "react";
-import { motion } from "framer-motion";
+import { useRef, useEffect, useState, useCallback, useMemo } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { TopBar, MarkdownRenderer } from "@/shared/components";
-import { VirtualComputerCard, VirtualComputerPanel } from "@/features/agent-computer";
-import { TypingIndicator, TaskCompleteBanner, ChatInput } from "@/features/conversation";
+import { AgentProgressCard, AgentComputerPanel } from "@/features/agent-computer";
+import { NON_ARTIFACT_TOOLS } from "@/features/agent-computer/lib/tool-constants";
+import { ChatInput } from "@/features/conversation";
+import { AssistantLoadingSkeleton } from "./AssistantLoadingSkeleton";
+import { StreamingCursor } from "./StreamingCursor";
 import { cn } from "@/shared/lib/utils";
 import type {
   AgentEvent,
+  ArtifactInfo,
+  AssistantPhase,
   TaskState,
   ChatMessage,
   ToolCallInfo,
   AgentStatus,
 } from "@/shared/types";
 
+function formatTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
 interface ConversationWorkspaceProps {
+  conversationId: string | null;
   events: AgentEvent[];
   messages: ChatMessage[];
   toolCalls: ToolCallInfo[];
   agentStatuses: AgentStatus[];
+  artifacts: ArtifactInfo[];
   taskState: TaskState;
   thinkingContent: string;
+  isStreaming: boolean;
+  assistantPhase: AssistantPhase;
   reasoningSteps: string[];
   currentIteration: number;
   isConnected: boolean;
   onSendMessage: (message: string) => void;
   onNavigateHome?: () => void;
+  isWaitingForAgent?: boolean;
 }
 
 export function ConversationWorkspace({
+  conversationId,
   events,
   messages,
   toolCalls,
   agentStatuses,
+  artifacts,
   taskState,
   thinkingContent,
+  isStreaming,
+  assistantPhase,
   reasoningSteps,
   currentIteration,
   isConnected,
   onSendMessage,
   onNavigateHome,
+  isWaitingForAgent = false,
 }: ConversationWorkspaceProps) {
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -52,8 +71,21 @@ export function ConversationWorkspace({
     });
   }, [messages, events, toolCalls]);
 
-  // Auto-open panel when artifacts appear (tool results with output)
-  const hasArtifacts = toolCalls.some((tc) => tc.output !== undefined);
+  // Collect artifact image URLs from tool calls that have artifact IDs
+  const inlineImageUrls = useMemo(() => {
+    if (!conversationId) return [];
+    return toolCalls
+      .filter((tc) => tc.artifactIds && tc.artifactIds.length > 0)
+      .flatMap((tc) =>
+        tc.artifactIds!.map((aid) => `/api/conversations/${conversationId}/artifacts/${aid}`)
+      );
+  }, [toolCalls, conversationId]);
+
+  // Auto-open panel when real artifacts appear (sandbox tool results, not web_search etc.)
+  const hasArtifacts = useMemo(
+    () => toolCalls.some((tc) => tc.output !== undefined && !NON_ARTIFACT_TOOLS.has(tc.name)),
+    [toolCalls],
+  );
   useEffect(() => {
     if (hasArtifacts && !autoOpenedRef.current) {
       autoOpenedRef.current = true;
@@ -65,10 +97,13 @@ export function ConversationWorkspace({
     setPanelOpen((prev) => !prev);
   }, []);
 
-  const showTyping =
-    (taskState === "executing" || taskState === "planning") &&
-    messages.length > 0 &&
-    messages[messages.length - 1].role === "user";
+  const showLoadingSkeleton =
+    (isWaitingForAgent || (assistantPhase.phase !== "idle" && !isStreaming)) &&
+    messages.length > 0;
+
+  const effectivePhase: AssistantPhase = isWaitingForAgent && assistantPhase.phase === "idle"
+    ? { phase: "thinking" }
+    : assistantPhase;
 
   return (
     <div className="flex h-screen flex-col">
@@ -99,26 +134,66 @@ export function ConversationWorkspace({
                   transition={{ duration: 0.15, ease: "easeOut" }}
                 >
                   {msg.role === "user" ? (
-                    <div className="max-w-[80%] rounded-2xl rounded-br-md bg-foreground px-4 py-3 text-sm leading-relaxed text-background">
-                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                    <div className={cn("max-w-[80%]", msg.content.length < 60 && "max-w-fit")}>
+                      <motion.div
+                        className="rounded-2xl rounded-br-md border border-border-strong bg-secondary px-4 py-3.5 text-sm font-medium leading-relaxed tracking-[-0.01em] text-foreground"
+                        style={{
+                          boxShadow: "0 1px 3px rgba(28,25,23,0.04), 0 1px 2px rgba(28,25,23,0.02)",
+                        }}
+                        whileHover={{
+                          boxShadow: "0 4px 12px rgba(28,25,23,0.06), 0 1px 3px rgba(28,25,23,0.04)",
+                        }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <p className="whitespace-pre-wrap">
+                          {msg.content}
+                          {msg.timestamp && (
+                            <span className="ml-3 inline-block align-baseline text-[10px] font-normal tracking-normal text-muted-foreground/50 tabular-nums select-none">
+                              {formatTime(msg.timestamp)}
+                            </span>
+                          )}
+                        </p>
+                      </motion.div>
                     </div>
                   ) : (
                     <div className="text-sm leading-relaxed text-foreground">
                       <MarkdownRenderer content={msg.content} />
+                      <AnimatePresence>
+                        {isStreaming && i === messages.length - 1 && (
+                          <StreamingCursor />
+                        )}
+                      </AnimatePresence>
+                      {/* Render generated images inline after the last assistant message */}
+                      {i === messages.length - 1 && inlineImageUrls.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-3">
+                          {inlineImageUrls.map((url) => (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              key={url}
+                              src={url}
+                              alt="Generated image"
+                              className="max-h-72 rounded-lg border border-border object-contain shadow-sm"
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </motion.div>
               ))}
 
-              {showTyping && <TypingIndicator />}
+              <AnimatePresence mode="wait">
+                {showLoadingSkeleton && (
+                  <AssistantLoadingSkeleton phase={effectivePhase} />
+                )}
+              </AnimatePresence>
             </div>
 
-            {taskState === "complete" && <TaskCompleteBanner />}
           </div>
 
-          {taskState !== "idle" && (
+          {events.length > 0 && (
             <div className={cn("border-t border-border px-6 py-3", !panelOpen && "mx-auto w-full max-w-3xl")}>
-              <VirtualComputerCard
+              <AgentProgressCard
                 events={events}
                 toolCalls={toolCalls}
                 agentStatuses={agentStatuses}
@@ -131,7 +206,10 @@ export function ConversationWorkspace({
           )}
 
           <div className={cn("mx-auto w-full", !panelOpen && "max-w-3xl")}>
-            <ChatInput onSendMessage={onSendMessage} />
+            <ChatInput
+              onSendMessage={onSendMessage}
+              disabled={isWaitingForAgent || taskState === "executing"}
+            />
           </div>
         </div>
 
@@ -143,12 +221,12 @@ export function ConversationWorkspace({
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
-            <VirtualComputerPanel
-              reasoningSteps={reasoningSteps}
+            <AgentComputerPanel
+              conversationId={conversationId}
               thinkingContent={thinkingContent}
               toolCalls={toolCalls}
               agentStatuses={agentStatuses}
-              currentIteration={currentIteration}
+              artifacts={artifacts}
               taskState={taskState}
               onClose={() => setPanelOpen(false)}
             />

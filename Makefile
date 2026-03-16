@@ -1,4 +1,4 @@
-.PHONY: backend web dev install install-backend install-web build-web build-sandbox push-sandbox clean
+.PHONY: backend web dev install install-backend install-web build-web build-sandbox push-sandbox migrate clean
 
 # Start both backend and web concurrently
 dev: install
@@ -21,6 +21,10 @@ install-backend:
 
 install-web:
 	cd web && npm install
+
+# Database migrations
+migrate:
+	cd backend && uv run alembic upgrade head
 
 # Production build
 build-web:

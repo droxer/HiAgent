@@ -3,6 +3,8 @@
 import { useMemo } from "react";
 import type {
   AgentEvent,
+  ArtifactInfo,
+  AssistantPhase,
   ChatMessage,
   ToolCallInfo,
   TaskState,
@@ -29,7 +31,7 @@ export function useAgentState(events: AgentEvent[]) {
         // Reset streaming buffer — this response covers the accumulated deltas
         streamingText = "";
         streamingTimestamp = 0;
-        if (text && toolCallCount === 0) {
+        if (text) {
           msgs.push({
             role: "assistant",
             content: text,
@@ -76,39 +78,86 @@ export function useAgentState(events: AgentEvent[]) {
       });
     }
 
+    // Diagnostic logging — remove after verifying the fix
+    if (events.length > 0) {
+      console.log("[useAgentState] events:", events.map((e) => e.type));
+      console.log("[useAgentState] messages:", msgs.map((m) => ({ role: m.role, len: m.content.length })));
+      const completionEvents = events.filter(
+        (e) => e.type === "turn_complete" || e.type === "task_complete",
+      );
+      if (completionEvents.length > 0) {
+        console.log("[useAgentState] completion events:", completionEvents.map((e) => ({
+          type: e.type,
+          resultLen: String(e.data.result ?? "").length,
+        })));
+      }
+    }
+
     return msgs;
   }, [events]);
 
   const toolCalls = useMemo<ToolCallInfo[]>(() => {
-    const calls: ToolCallInfo[] = [];
-    const callMap = new Map<string, number>();
+    const callMap = new Map<string, ToolCallInfo>();
+    const insertOrder: string[] = [];
 
     for (const e of events) {
       if (e.type === "tool_call") {
         const toolId = String(e.data.tool_id ?? e.data.id ?? crypto.randomUUID());
-        const idx = calls.length;
-        callMap.set(toolId, idx);
-        calls.push({
+        const entry: ToolCallInfo = {
           id: toolId,
           name: String(e.data.name ?? e.data.tool_name ?? "unknown"),
           input: (e.data.input ?? e.data.arguments ?? {}) as Record<string, unknown>,
           timestamp: e.timestamp,
-        });
+        };
+        callMap.set(toolId, entry);
+        insertOrder.push(toolId);
       }
       if (e.type === "tool_result") {
         const toolId = String(e.data.tool_id ?? e.data.id ?? "");
-        const idx = callMap.get(toolId);
-        if (idx !== undefined) {
-          calls[idx] = {
-            ...calls[idx],
+        const existing = callMap.get(toolId);
+        if (existing) {
+          callMap.set(toolId, {
+            ...existing,
             output: String(e.data.output ?? e.data.result ?? ""),
             success: e.data.success !== false,
-          };
+            contentType: e.data.content_type
+              ? String(e.data.content_type)
+              : undefined,
+            artifactIds: Array.isArray(e.data.artifact_ids)
+              ? (e.data.artifact_ids as string[])
+              : undefined,
+          });
+        }
+      }
+      if (e.type === "code_result") {
+        // Associate code_result with the most recent code tool call that has no output yet
+        const codeToolNames = new Set(["code_run", "code_interpret", "shell_exec"]);
+        let targetId: string | undefined;
+        for (let i = insertOrder.length - 1; i >= 0; i--) {
+          const id = insertOrder[i];
+          const call = callMap.get(id);
+          if (call && codeToolNames.has(call.name) && call.output === undefined) {
+            targetId = id;
+            break;
+          }
+        }
+        if (targetId) {
+          const existing = callMap.get(targetId)!;
+          callMap.set(targetId, {
+            ...existing,
+            output: String(e.data.output ?? e.data.result ?? ""),
+            success: e.data.success !== false,
+            contentType: e.data.content_type
+              ? String(e.data.content_type)
+              : "text/plain",
+          });
         }
       }
     }
 
-    return calls;
+    return insertOrder
+      .map((id) => callMap.get(id))
+      .filter((c): c is ToolCallInfo => c !== undefined);
   }, [events]);
 
   const taskState = useMemo<TaskState>(() => {
@@ -177,6 +226,69 @@ export function useAgentState(events: AgentEvent[]) {
       .join("\n");
   }, [events]);
 
+  const isStreaming = useMemo<boolean>(() => {
+    let hasUnfinalizedDeltas = false;
+    for (const e of events) {
+      if (e.type === "text_delta") {
+        hasUnfinalizedDeltas = true;
+      } else if (
+        e.type === "llm_response" ||
+        e.type === "turn_complete" ||
+        e.type === "task_complete" ||
+        e.type === "task_error"
+      ) {
+        hasUnfinalizedDeltas = false;
+      }
+    }
+    return hasUnfinalizedDeltas;
+  }, [events]);
+
+  const assistantPhase = useMemo<AssistantPhase>(() => {
+    let phase: AssistantPhase = { phase: "idle" };
+    const pendingToolIds = new Set<string>();
+
+    for (const e of events) {
+      if (e.type === "thinking") {
+        phase = { phase: "thinking" };
+      } else if (e.type === "text_delta") {
+        phase = { phase: "writing" };
+      } else if (e.type === "llm_response") {
+        phase = { phase: "idle" };
+      } else if (e.type === "tool_call") {
+        const toolId = String(e.data.tool_id ?? e.data.id ?? "");
+        const toolName = String(e.data.name ?? e.data.tool_name ?? "tool");
+        pendingToolIds.add(toolId);
+        phase = { phase: "using_tool", toolName };
+      } else if (e.type === "tool_result") {
+        const toolId = String(e.data.tool_id ?? e.data.id ?? "");
+        pendingToolIds.delete(toolId);
+        if (pendingToolIds.size === 0) {
+          phase = { phase: "idle" };
+        }
+      } else if (
+        e.type === "task_complete" ||
+        e.type === "turn_complete" ||
+        e.type === "task_error"
+      ) {
+        phase = { phase: "idle" };
+        pendingToolIds.clear();
+      }
+    }
+
+    return phase;
+  }, [events]);
+
+  const artifacts = useMemo<ArtifactInfo[]>(() => {
+    return events
+      .filter((e) => e.type === "artifact_created")
+      .map((e) => ({
+        id: String(e.data.artifact_id ?? crypto.randomUUID()),
+        name: String(e.data.name ?? ""),
+        contentType: String(e.data.content_type ?? "application/octet-stream"),
+        size: Number(e.data.size ?? 0),
+      }));
+  }, [events]);
+
   return {
     messages,
     toolCalls,
@@ -185,5 +297,8 @@ export function useAgentState(events: AgentEvent[]) {
     currentIteration,
     reasoningSteps,
     thinkingContent,
+    isStreaming,
+    assistantPhase,
+    artifacts,
   };
 }

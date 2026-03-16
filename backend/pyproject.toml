@@ -16,6 +16,10 @@ dependencies = [
     "boxlite",
     "pyyaml",
     "e2b-code-interpreter",
+    "boto3",
+    "sqlalchemy[asyncio]>=2.0",
+    "asyncpg>=0.29",
+    "alembic>=1.13",
 ]
 
 [build-system]
@@ -32,3 +36,6 @@ dev = [
     "pytest-cov",
     "ruff",
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

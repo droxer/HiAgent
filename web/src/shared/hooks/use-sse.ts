@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { AgentEvent, EventType } from "@/shared/types";
-import { MAX_RETRIES, BASE_DELAY_MS, MAX_DELAY_MS } from "@/shared/constants";
+import { API_BASE, MAX_RETRIES, BASE_DELAY_MS, MAX_DELAY_MS } from "@/shared/constants";
 
 const SSE_EVENT_NAMES: readonly string[] = [
   "task_start",
@@ -23,6 +23,11 @@ const SSE_EVENT_NAMES: readonly string[] = [
   "agent_spawn",
   "agent_complete",
   "thinking",
+  "sandbox_stdout",
+  "sandbox_stderr",
+  "code_result",
+  "artifact_created",
+  "conversation_title",
   "done",
 ] as const;
 
@@ -33,7 +38,7 @@ function normalizeTimestamp(ts: unknown): number {
   return Date.now();
 }
 
-export function useSSE(conversationId: string | null) {
+export function useSSE(conversationId: string | null, isLive = true) {
   const [events, setEvents] = useState<AgentEvent[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -64,8 +69,7 @@ export function useSSE(conversationId: string | null) {
     (id: string) => {
       cleanup();
 
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
-      const url = `${baseUrl}/conversations/${id}/events`;
+      const url = `${API_BASE}/conversations/${id}/events`;
       const es = new EventSource(url);
       eventSourceRef.current = es;
       const listeners: Array<{ name: string; handler: (e: MessageEvent) => void }> = [];
@@ -116,12 +120,12 @@ export function useSSE(conversationId: string | null) {
               timestamp: normalizeTimestamp(parsed.timestamp),
               iteration: parsed.iteration ?? null,
             };
-            setEvents((prev) => [...prev, agentEvent]);
 
-            // Terminal events — stop retrying on reconnect
-            if (eventType === "task_complete" || eventType === "task_error") {
-              stoppedRef.current = true;
+            if (eventType === "ask_user") {
+              console.log("[SSE] ask_user event received:", JSON.stringify(agentEvent.data));
             }
+
+            setEvents((prev) => [...prev, agentEvent]);
           } catch {
             // Skip malformed events
           }
@@ -136,7 +140,7 @@ export function useSSE(conversationId: string | null) {
   );
 
   useEffect(() => {
-    if (!conversationId) {
+    if (!conversationId || !isLive) {
       cleanup();
       setEvents([]);
       return;
@@ -148,7 +152,7 @@ export function useSSE(conversationId: string | null) {
     connect(conversationId);
 
     return cleanup;
-  }, [conversationId, cleanup, connect]);
+  }, [conversationId, isLive, cleanup, connect]);
 
   return { events, isConnected };
 }

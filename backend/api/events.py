@@ -40,6 +40,10 @@ class EventType(StrEnum):
     SANDBOX_STDERR = "sandbox_stderr"
     CODE_RESULT = "code_result"
 
+    ARTIFACT_CREATED = "artifact_created"
+
+    CONVERSATION_TITLE = "conversation_title"
+
 
 @dataclass(frozen=True)
 class AgentEvent:

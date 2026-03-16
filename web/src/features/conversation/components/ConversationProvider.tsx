@@ -5,9 +5,12 @@ import { useSSE } from "@/shared/hooks";
 import { useAppStore } from "@/shared/stores";
 import { useAgentState } from "@/features/agent-computer";
 import { useConversation } from "../hooks/use-conversation";
+import { useConversationHistory } from "../hooks/use-conversation-history";
 import { usePendingAsk } from "../hooks/use-pending-ask";
 import type {
   AgentEvent,
+  ArtifactInfo,
+  AssistantPhase,
   ChatMessage,
   ToolCallInfo,
   TaskState,
@@ -25,13 +28,15 @@ export interface ConversationContextValue {
   readonly currentIteration: number;
   readonly reasoningSteps: string[];
   readonly thinkingContent: string;
+  readonly isStreaming: boolean;
+  readonly assistantPhase: AssistantPhase;
+  readonly artifacts: ArtifactInfo[];
   readonly allMessages: ChatMessage[];
-  readonly conversationHistory: ReturnType<typeof useConversation>["conversationHistory"];
-  readonly sidebarCollapsed: boolean;
+  readonly isWaitingForAgent: boolean;
   readonly handleSendMessage: (message: string) => void;
   readonly handleCreateConversation: (message: string) => void;
+  readonly handleSwitchConversation: (conversationId: string) => void;
   readonly handleNewConversation: () => void;
-  readonly toggleSidebar: () => void;
   readonly pendingAsk: ReturnType<typeof usePendingAsk>["pendingAsk"];
   readonly handlePromptSubmit: (response: string) => Promise<void>;
   readonly respondError: string | null;
@@ -46,9 +51,16 @@ interface ConversationProviderProps {
 
 export function ConversationProvider({ children }: ConversationProviderProps) {
   const conversationId = useAppStore((s) => s.conversationId);
-  const toggleSidebar = useAppStore((s) => s.toggleSidebar);
+  const isLive = useAppStore((s) => s.isLiveConversation);
 
-  const { events, isConnected } = useSSE(conversationId);
+  const { events, isConnected } = useSSE(conversationId, isLive);
+  const { historyMessages, historyEvents } = useConversationHistory(
+    conversationId,
+    isLive,
+  );
+
+  const effectiveEvents = isLive ? events : historyEvents;
+
   const {
     messages,
     toolCalls,
@@ -57,40 +69,53 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
     currentIteration,
     reasoningSteps,
     thinkingContent,
-  } = useAgentState(events);
+    isStreaming,
+    assistantPhase,
+    artifacts,
+  } = useAgentState(effectiveEvents);
+
+  const effectiveTaskState: TaskState = isLive ? taskState : "complete";
+  // When live with history (resumed conversation), merge history as base + live messages
+  const effectiveMessages = isLive
+    ? historyMessages.length > 0
+      ? [...historyMessages, ...messages]
+      : messages
+    : historyMessages;
 
   const {
-    conversationHistory,
-    sidebarCollapsed,
     allMessages,
+    isWaitingForAgent,
     handleSendMessage,
     handleCreateConversation,
+    handleSwitchConversation,
     handleNewConversation,
-  } = useConversation(messages, taskState);
+  } = useConversation(effectiveMessages, effectiveTaskState, effectiveEvents, assistantPhase);
 
   const { pendingAsk, handlePromptSubmit, respondError } = usePendingAsk(
-    events,
+    effectiveEvents,
     conversationId,
   );
 
   const value: ConversationContextValue = {
     conversationId,
-    events,
+    events: effectiveEvents,
     isConnected,
-    messages,
+    messages: effectiveMessages,
     toolCalls,
-    taskState,
+    taskState: effectiveTaskState,
     agentStatuses,
     currentIteration,
     reasoningSteps,
     thinkingContent,
+    isStreaming: isLive ? isStreaming : false,
+    assistantPhase,
+    artifacts,
     allMessages,
-    conversationHistory,
-    sidebarCollapsed,
+    isWaitingForAgent: isLive ? isWaitingForAgent : false,
     handleSendMessage,
     handleCreateConversation,
+    handleSwitchConversation,
     handleNewConversation,
-    toggleSidebar,
     pendingAsk,
     handlePromptSubmit,
     respondError,

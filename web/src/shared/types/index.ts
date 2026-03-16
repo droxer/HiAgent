@@ -4,5 +4,7 @@ export type {
   TaskState,
   ChatMessage,
   ToolCallInfo,
+  ArtifactInfo,
   AgentStatus,
+  AssistantPhase,
 } from "./events";

@@ -66,6 +66,7 @@ class AgentOrchestrator:
         system_prompt: str,
         max_iterations: int = 50,
         observer: Observer | None = None,
+        initial_messages: tuple[dict[str, Any], ...] = (),
     ) -> None:
         if not system_prompt:
             raise ValueError("system_prompt must not be empty")
@@ -77,7 +78,7 @@ class AgentOrchestrator:
         self._max_iterations = max_iterations
         self._observer = observer or Observer()
         self._task_complete_summary: str | None = None
-        self._state = AgentState()
+        self._state = AgentState(messages=initial_messages)
 
     async def on_task_complete(self, summary: str) -> None:
         """Callback for the task_complete tool."""

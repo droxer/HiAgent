@@ -29,6 +29,7 @@ class TaskAgentConfig:
     sandbox_template: str = "default"
     priority: int = 0
     depends_on: tuple[str, ...] = ()
+    model: str | None = None
 
 
 @dataclass(frozen=True)
@@ -191,7 +192,7 @@ class TaskAgentRunner:
                 system=self._system_prompt,
                 messages=list(state.messages),
                 tools=tools if tools else None,
-                model=settings.TASK_MODEL,
+                model=self._config.model or settings.TASK_MODEL,
                 on_text_delta=_on_text_delta,
             )
         except Exception as exc:

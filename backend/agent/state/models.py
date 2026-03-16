@@ -1,71 +1,145 @@
-"""SQLite-backed task history data models.
+"""SQLAlchemy ORM models for PostgreSQL persistence.
 
-Frozen dataclasses representing records stored in the SQLite
-database. These are pure data containers with no behavior —
-all persistence logic lives in ``repository.py``.
+These models are strictly internal to the repository layer.
+All public APIs return frozen DTOs from ``schemas.py``.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import uuid
+from datetime import datetime, timezone
+
+from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Uuid,
+)
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
-@dataclass(frozen=True)
-class TaskRecord:
-    """Immutable record of a submitted task.
-
-    Attributes:
-        id: Unique task identifier.
-        message: The original user message / task description.
-        status: Current status (e.g. "pending", "running", "completed", "failed").
-        result: Final result text, if available.
-        created_at: Unix timestamp when the task was created.
-        completed_at: Unix timestamp when the task finished, if applicable.
-    """
-
-    id: str
-    message: str
-    status: str
-    result: str | None
-    created_at: float
-    completed_at: float | None
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
-@dataclass(frozen=True)
-class AgentRunRecord:
-    """Immutable record of a single agent run within a task.
+class Base(DeclarativeBase):
+    """Shared declarative base for all ORM models."""
 
-    Attributes:
-        id: Unique run identifier.
-        task_id: ID of the parent task.
-        config_json: Serialized agent configuration.
-        status: Current run status.
-        result_json: Serialized result data, if available.
-        created_at: Unix timestamp when the run started.
-    """
-
-    id: str
-    task_id: str
-    config_json: str
-    status: str
-    result_json: str | None
-    created_at: float
+    pass
 
 
-@dataclass(frozen=True)
-class EventRecord:
-    """Immutable record of an event emitted during task execution.
+class ConversationModel(Base):
+    __tablename__ = "conversations"
 
-    Attributes:
-        id: Auto-incremented event identifier.
-        task_id: ID of the parent task.
-        event_type: Type of event (matches ``EventType`` values).
-        data_json: Serialized event payload.
-        timestamp: Unix timestamp when the event was emitted.
-    """
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    title: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
 
-    id: int
-    task_id: str
-    event_type: str
-    data_json: str
-    timestamp: float
+    messages: Mapped[list[MessageModel]] = relationship(
+        back_populates="conversation", cascade="all, delete-orphan"
+    )
+    events: Mapped[list[EventModel]] = relationship(
+        back_populates="conversation", cascade="all, delete-orphan"
+    )
+    artifacts: Mapped[list[ArtifactModel]] = relationship(
+        back_populates="conversation", cascade="all, delete-orphan"
+    )
+    agent_runs: Mapped[list[AgentRunModel]] = relationship(
+        back_populates="conversation", cascade="all, delete-orphan"
+    )
+
+
+class MessageModel(Base):
+    __tablename__ = "messages"
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('user', 'assistant', 'tool')",
+            name="ck_messages_role",
+        ),
+        Index("ix_messages_conversation_created", "conversation_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False
+    )
+    role: Mapped[str] = mapped_column(String(20), nullable=False)
+    content: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    iteration: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    conversation: Mapped[ConversationModel] = relationship(back_populates="messages")
+
+
+class EventModel(Base):
+    __tablename__ = "events"
+    __table_args__ = (
+        Index("ix_events_conversation_timestamp", "conversation_id", "timestamp"),
+        Index("ix_events_conversation_type", "conversation_id", "event_type"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False
+    )
+    event_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    data: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    iteration: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    conversation: Mapped[ConversationModel] = relationship(back_populates="events")
+
+
+class ArtifactModel(Base):
+    __tablename__ = "artifacts"
+    __table_args__ = (
+        Index("ix_artifacts_conversation", "conversation_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False
+    )
+    storage_key: Mapped[str] = mapped_column(String(300), nullable=False)
+    original_name: Mapped[str] = mapped_column(String(300), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    size: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    conversation: Mapped[ConversationModel] = relationship(back_populates="artifacts")
+
+
+class AgentRunModel(Base):
+    __tablename__ = "agent_runs"
+    __table_args__ = (
+        Index("ix_agent_runs_conversation", "conversation_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False
+    )
+    config: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    conversation: Mapped[ConversationModel] = relationship(back_populates="agent_runs")
