@@ -33,10 +33,17 @@ export interface AgentEvent {
 
 export type TaskState = "idle" | "planning" | "executing" | "complete" | "error";
 
+export interface AttachedFile {
+  file: File;
+  id: string;
+  previewUrl?: string;
+}
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: number;
+  attachments?: Array<{ name: string; size: number; type: string }>;
 }
 
 export interface ToolCallInfo {

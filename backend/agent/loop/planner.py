@@ -110,7 +110,7 @@ class PlannerOrchestrator:
         """Callback for the task_complete tool."""
         self._task_complete_summary = summary
 
-    async def run(self, user_message: str) -> str:
+    async def run(self, user_message: str, attachments: tuple = ()) -> str:
         """Execute the planner loop and return the final synthesized response.
 
         Emits lifecycle events throughout execution and cleans up

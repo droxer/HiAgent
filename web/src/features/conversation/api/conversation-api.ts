@@ -2,12 +2,26 @@ import { API_BASE } from "@/shared/constants";
 
 export async function createConversation(
   message: string,
+  files?: File[],
 ): Promise<{ conversation_id: string }> {
-  const res = await fetch(`${API_BASE}/conversations`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message }),
-  });
+  let res: Response;
+  if (files && files.length > 0) {
+    const formData = new FormData();
+    formData.append("message", message);
+    for (const file of files) {
+      formData.append("files", file);
+    }
+    res = await fetch(`${API_BASE}/conversations`, {
+      method: "POST",
+      body: formData,
+    });
+  } else {
+    res = await fetch(`${API_BASE}/conversations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message }),
+    });
+  }
 
   if (!res.ok) {
     throw new Error(`Failed to create conversation: ${res.status}`);
@@ -19,15 +33,32 @@ export async function createConversation(
 export async function sendFollowUpMessage(
   conversationId: string,
   message: string,
+  files?: File[],
 ): Promise<void> {
-  const res = await fetch(
-    `${API_BASE}/conversations/${conversationId}/messages`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message }),
-    },
-  );
+  let res: Response;
+  if (files && files.length > 0) {
+    const formData = new FormData();
+    formData.append("message", message);
+    for (const file of files) {
+      formData.append("files", file);
+    }
+    res = await fetch(
+      `${API_BASE}/conversations/${conversationId}/messages`,
+      {
+        method: "POST",
+        body: formData,
+      },
+    );
+  } else {
+    res = await fetch(
+      `${API_BASE}/conversations/${conversationId}/messages`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+      },
+    );
+  }
 
   if (!res.ok) {
     throw new Error(`Failed to send message: ${res.status}`);

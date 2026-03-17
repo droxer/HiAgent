@@ -90,16 +90,17 @@ export function useConversation(
   }, [userMessages, transcriptMessages]);
 
   const handleCreateConversation = useCallback(
-    async (message: string) => {
+    async (message: string, files?: File[]) => {
       eventCountAtSendRef.current = events.length;
       setIsWaitingForAgent(true);
       setUserCancelled(false);
+      const attachmentMeta = files?.map(f => ({ name: f.name, size: f.size, type: f.type }));
       setUserMessages([
-        { role: "user", content: message, timestamp: Date.now() },
+        { role: "user", content: message, timestamp: Date.now(), ...(attachmentMeta?.length ? { attachments: attachmentMeta } : {}) },
       ]);
 
       try {
-        const data = await createConversation(message);
+        const data = await createConversation(message, files);
         startConversation(data.conversation_id, message);
       } catch (err) {
         console.error("Failed to create conversation:", err);
@@ -118,19 +119,20 @@ export function useConversation(
   );
 
   const handleSendFollowUp = useCallback(
-    async (message: string) => {
+    async (message: string, files?: File[]) => {
       if (!conversationId) return;
 
       eventCountAtSendRef.current = events.length;
       setIsWaitingForAgent(true);
       setUserCancelled(false);
+      const attachmentMeta = files?.map(f => ({ name: f.name, size: f.size, type: f.type }));
       setUserMessages((prev) => [
         ...prev,
-        { role: "user", content: message, timestamp: Date.now() },
+        { role: "user", content: message, timestamp: Date.now(), ...(attachmentMeta?.length ? { attachments: attachmentMeta } : {}) },
       ]);
 
       try {
-        await sendFollowUpMessage(conversationId, message);
+        await sendFollowUpMessage(conversationId, message, files);
       } catch (err) {
         console.error("Failed to send message:", err);
         setIsWaitingForAgent(false);
@@ -148,19 +150,20 @@ export function useConversation(
   );
 
   const handleResumeConversation = useCallback(
-    async (message: string) => {
+    async (message: string, files?: File[]) => {
       if (!conversationId) return;
 
       eventCountAtSendRef.current = events.length;
       setIsWaitingForAgent(true);
       setUserCancelled(false);
+      const attachmentMeta = files?.map(f => ({ name: f.name, size: f.size, type: f.type }));
       setUserMessages((prev) => [
         ...prev,
-        { role: "user", content: message, timestamp: Date.now() },
+        { role: "user", content: message, timestamp: Date.now(), ...(attachmentMeta?.length ? { attachments: attachmentMeta } : {}) },
       ]);
 
       try {
-        await sendFollowUpMessage(conversationId, message);
+        await sendFollowUpMessage(conversationId, message, files);
         resumeConversation();
       } catch (err) {
         console.error("Failed to resume conversation:", err);
@@ -179,13 +182,13 @@ export function useConversation(
   );
 
   const handleSendMessage = useCallback(
-    (message: string) => {
+    (message: string, files?: File[]) => {
       if (!conversationId) {
-        handleCreateConversation(message);
+        handleCreateConversation(message, files);
       } else if (!isLiveConversation) {
-        handleResumeConversation(message);
+        handleResumeConversation(message, files);
       } else {
-        handleSendFollowUp(message);
+        handleSendFollowUp(message, files);
       }
     },
     [conversationId, isLiveConversation, handleCreateConversation, handleResumeConversation, handleSendFollowUp],

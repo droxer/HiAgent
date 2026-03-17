@@ -34,8 +34,8 @@ export interface ConversationContextValue {
   readonly allMessages: ChatMessage[];
   readonly isWaitingForAgent: boolean;
   readonly userCancelled: boolean;
-  readonly handleSendMessage: (message: string) => void;
-  readonly handleCreateConversation: (message: string) => void;
+  readonly handleSendMessage: (message: string, files?: File[]) => void;
+  readonly handleCreateConversation: (message: string, files?: File[]) => void;
   readonly handleSwitchConversation: (conversationId: string) => void;
   readonly handleNewConversation: () => void;
   readonly handleCancel: () => void;
@@ -59,7 +59,9 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
   const { events, isConnected, clearLastTurn } = useSSE(conversationId, isLive);
   const { historyMessages, historyEvents } = useConversationHistory(conversationId);
 
-  const effectiveEvents = isLive ? events : historyEvents;
+  // Merge history events with live SSE events so the progress card shows
+  // persisted activity even after a page refresh (SSE stream starts empty).
+  const effectiveEvents = isLive ? [...historyEvents, ...events] : historyEvents;
 
   const {
     messages,

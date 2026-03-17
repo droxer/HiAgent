@@ -27,11 +27,29 @@ _CONVERSATION_TTL_SECONDS = 3600
 # Default port for sandbox preview proxy
 _DEFAULT_PREVIEW_PORT = 8080
 
+# File upload constraints
+MAX_FILE_SIZE_MB = 25
+MAX_FILES_PER_MESSAGE = 10
+VISION_MIME_TYPES = frozenset({
+    "image/png", "image/jpeg", "image/gif", "image/webp",
+    "application/pdf",
+})
+
+
+@dataclass(frozen=True)
+class FileAttachment:
+    """Immutable representation of an uploaded file."""
+
+    filename: str
+    content_type: str
+    data: bytes
+    size: int
+
 
 class Runnable(Protocol):
     """Protocol for orchestrators that can run a turn."""
 
-    async def run(self, user_message: str) -> str: ...
+    async def run(self, user_message: str, attachments: tuple[FileAttachment, ...] = ()) -> str: ...
 
 
 class Cancellable(Protocol):

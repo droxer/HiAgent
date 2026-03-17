@@ -3,6 +3,7 @@ export type {
   AgentEvent,
   TaskState,
   ChatMessage,
+  AttachedFile,
   ToolCallInfo,
   ArtifactInfo,
   AgentStatus,

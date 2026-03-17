@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { RotateCcw, Copy, Check } from "lucide-react";
+import { RotateCcw, Copy, Check, Paperclip } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/shared/components/ui/tooltip";
 import { TopBar, MarkdownRenderer } from "@/shared/components";
 import { AgentProgressCard, AgentComputerPanel } from "@/features/agent-computer";
@@ -39,7 +39,7 @@ interface ConversationWorkspaceProps {
   reasoningSteps: string[];
   currentIteration: number;
   isConnected: boolean;
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string, files?: File[]) => void;
   onNavigateHome?: () => void;
   isWaitingForAgent?: boolean;
   userCancelled?: boolean;
@@ -165,6 +165,19 @@ export function ConversationWorkspace({
                             <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
                               {msg.content}
                             </p>
+                            {msg.attachments && msg.attachments.length > 0 && (
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                {msg.attachments.map((att, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="inline-flex items-center gap-1 rounded-md bg-[var(--color-user-accent)]/10 px-2 py-0.5 text-xs text-foreground/70"
+                                  >
+                                    <Paperclip className="h-3 w-3" />
+                                    {att.name}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                           {/* Timestamp below, right-aligned */}
                           {msg.timestamp && (

@@ -11,7 +11,6 @@ from agent.tools.sandbox.doc_gen import (
     DocCreatePPTX,
     DocCreateXLSX,
     _PDF_SCRIPT_TEMPLATE,
-    _CONTENT_PATH,
     _TEMPLATE_DIR,
     _validate_output_path,
     _validate_pdf_params,
@@ -86,7 +85,7 @@ class TestPdfScriptGeneration:
 
     def _make_script(self, **overrides: str) -> str:
         defaults = {
-            "content_path": _CONTENT_PATH,
+            "content_path": "/tmp/_doc_test_content.md",
             "template_dir": _TEMPLATE_DIR,
             "output_path": "/workspace/out.pdf",
             "style": "default",

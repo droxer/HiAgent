@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import base64
+import logging
 import re
 import shlex
+import uuid
 from pathlib import PurePosixPath
-from typing import Any
 
+from agent.sandbox.base import SandboxSession
 from agent.tools.base import (
     ExecutionContext,
     SandboxTool,
@@ -15,9 +17,15 @@ from agent.tools.base import (
     ToolResult,
 )
 
-_SCRIPT_PATH = "/tmp/_doc_gen_script.py"
-_CONTENT_PATH = "/tmp/_doc_content.md"
+logger = logging.getLogger(__name__)
 _TEMPLATE_DIR = "/opt/doc_templates"
+
+
+def _tmp_path(suffix: str) -> str:
+    """Generate a unique temp file path to avoid race conditions."""
+    return f"/tmp/_doc_{uuid.uuid4().hex[:8]}_{suffix}"
+
+
 _VALID_STYLES = frozenset({"default", "report", "article", "minimal"})
 _VALID_PAGE_SIZES = frozenset({"A4", "letter", "legal"})
 _VALID_ORIENTATIONS = frozenset({"portrait", "landscape"})
@@ -34,66 +42,73 @@ def _validate_output_path(output_path: str) -> str | None:
     return None
 
 
-async def _write_script_to_sandbox(session: Any, script: str) -> bool:
+async def _write_script_to_sandbox(
+    session: SandboxSession, script: str, script_path: str
+) -> bool:
     """Write the generation script into the sandbox, returning True on success.
 
     Tries ``write_file`` first, then falls back to base64-encoded ``exec``
     if the file does not appear in the sandbox.
     """
     try:
-        await session.write_file(_SCRIPT_PATH, script)
+        await session.write_file(script_path, script)
     except OSError:
-        pass  # fall through to verification
+        logger.debug(
+            "write_file failed for %s, trying base64 fallback",
+            script_path,
+            exc_info=True,
+        )
 
-    check = await session.exec(f"test -f {shlex.quote(_SCRIPT_PATH)}")
+    check = await session.exec(f"test -f {shlex.quote(script_path)}")
     if check.success:
         return True
 
     # Fallback: write the script via base64-decoded exec (avoids copy_in)
     encoded = base64.b64encode(script.encode("utf-8")).decode("ascii")
     write_result = await session.exec(
-        f"echo {shlex.quote(encoded)} | base64 -d > {shlex.quote(_SCRIPT_PATH)}"
+        f"echo {shlex.quote(encoded)} | base64 -d > {shlex.quote(script_path)}"
     )
     return write_result.success
 
 
 async def _run_doc_script(
-    session: Any, script: str, output_path: str
+    session: SandboxSession, script: str, output_path: str, script_path: str
 ) -> ToolResult:
     """Write and execute a document generation script, returning the result."""
-    if not await _write_script_to_sandbox(session, script):
-        return ToolResult.fail(
-            "Failed to write generation script to sandbox"
-        )
+    if not await _write_script_to_sandbox(session, script, script_path):
+        return ToolResult.fail("Failed to write generation script to sandbox")
 
-    result = await session.exec(
-        f"python3 {shlex.quote(_SCRIPT_PATH)}", timeout=120
-    )
+    result = await session.exec(f"python3 {shlex.quote(script_path)}", timeout=120)
 
     if result.exit_code != 0:
         error = result.stderr or result.stdout or "Unknown error"
         return ToolResult.fail(f"Document generation failed: {error}")
 
     # Verify file was created — shell-quote the path to prevent injection
+    # Use `wc -c` instead of `stat -c %s` for portability (Linux + macOS)
     quoted = shlex.quote(output_path)
-    check = await session.exec(f"test -f {quoted} && stat -c %s {quoted}")
+    check = await session.exec(f"test -f {quoted} && wc -c < {quoted}")
     if check.exit_code != 0:
         return ToolResult.fail(f"Output file not created at {output_path}")
 
-    size = check.stdout.strip()
+    raw_size = check.stdout.strip()
+    try:
+        size = int(raw_size)
+    except ValueError:
+        logger.warning("Unexpected output from wc -c: %r", raw_size)
+        size = 0
+
     return ToolResult.ok(
         f"Document created at {output_path} ({size} bytes)",
         metadata={
             "artifact_paths": [output_path],
             "path": output_path,
-            "size": int(size) if size.isdigit() else 0,
+            "size": size,
         },
     )
 
 
-def _validate_pdf_params(
-    style: str, page_size: str, orientation: str
-) -> str | None:
+def _validate_pdf_params(style: str, page_size: str, orientation: str) -> str | None:
     """Return an error message if any parameter is invalid, or None if all OK."""
     if style not in _VALID_STYLES:
         return f"Invalid style '{style}'. Must be one of: {', '.join(sorted(_VALID_STYLES))}"
@@ -244,14 +259,14 @@ class DocCreatePDF(SandboxTool):
             tags=("document", "pdf", "sandbox"),
         )
 
-    async def execute(self, session: Any, **kwargs: Any) -> ToolResult:
-        content: str = kwargs.get("content", "")
-        output_path: str = kwargs.get("output_path", "/workspace/output.pdf")
-        title: str = kwargs.get("title", "")
-        style: str = kwargs.get("style", "default")
-        custom_css: str = kwargs.get("custom_css", "")
-        page_size: str = kwargs.get("page_size", "A4")
-        orientation: str = kwargs.get("orientation", "portrait")
+    async def execute(self, session: SandboxSession, **kwargs: object) -> ToolResult:
+        content: str = kwargs.get("content", "")  # type: ignore[assignment]
+        output_path: str = kwargs.get("output_path", "/workspace/output.pdf")  # type: ignore[assignment]
+        title: str = kwargs.get("title", "")  # type: ignore[assignment]
+        style: str = kwargs.get("style", "default")  # type: ignore[assignment]
+        custom_css: str = kwargs.get("custom_css", "")  # type: ignore[assignment]
+        page_size: str = kwargs.get("page_size", "A4")  # type: ignore[assignment]
+        orientation: str = kwargs.get("orientation", "portrait")  # type: ignore[assignment]
 
         if not content.strip():
             return ToolResult.fail("Content must not be empty")
@@ -264,11 +279,15 @@ class DocCreatePDF(SandboxTool):
         if validation_error is not None:
             return ToolResult.fail(validation_error)
 
+        # Per-execution unique paths to avoid race conditions
+        content_path = _tmp_path("content.md")
+        custom_css_path = _tmp_path("custom.css")
+        script_path = _tmp_path("script.py")
+
         # Write content as a separate file — avoids all string escaping issues
-        await session.write_file(_CONTENT_PATH, content)
+        await session.write_file(content_path, content)
 
         # Write custom CSS as a separate file too — avoids triple-quote escaping
-        custom_css_path = "/tmp/_doc_custom.css"
         await session.write_file(custom_css_path, custom_css)
 
         # Title: escape for double-quoted Python string literal, strip newlines
@@ -280,7 +299,7 @@ class DocCreatePDF(SandboxTool):
         )
 
         script = _PDF_SCRIPT_TEMPLATE.format(
-            content_path=_CONTENT_PATH,
+            content_path=content_path,
             template_dir=_TEMPLATE_DIR,
             output_path=output_path,
             style=style,
@@ -290,11 +309,42 @@ class DocCreatePDF(SandboxTool):
             custom_css_path=custom_css_path,
         )
 
-        return await _run_doc_script(session, script, output_path)
+        return await _run_doc_script(session, script, output_path, script_path)
+
+
+_DOCX_SCRIPT_TEMPLATE = """\
+import subprocess
+import sys
+import pathlib
+
+try:
+    from docx import Document
+    from docx.shared import Pt
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "python-docx", "-q"])
+    from docx import Document
+    from docx.shared import Pt
+
+content = pathlib.Path("{content_file}").read_text(encoding="utf-8")
+title = pathlib.Path("{title_file}").read_text(encoding="utf-8")
+
+doc = Document()
+if title:
+    doc.add_heading(title, level=0)
+
+for para in content.split("\\n\\n"):
+    para = para.strip()
+    if para:
+        p = doc.add_paragraph(para)
+        p.style.font.size = Pt(11)
+
+doc.save("{output_path}")
+print("DOCX created: {output_path}")
+"""
 
 
 class DocCreateDOCX(SandboxTool):
-    """Create a DOCX document."""
+    """Create a Word DOCX document from text content with paragraphs separated by blank lines."""
 
     def definition(self) -> ToolDefinition:
         return ToolDefinition(
@@ -327,10 +377,10 @@ class DocCreateDOCX(SandboxTool):
             tags=("document", "docx", "sandbox"),
         )
 
-    async def execute(self, session: Any, **kwargs: Any) -> ToolResult:
-        content: str = kwargs.get("content", "")
-        output_path: str = kwargs.get("output_path", "/workspace/output.docx")
-        title: str = kwargs.get("title", "")
+    async def execute(self, session: SandboxSession, **kwargs: object) -> ToolResult:
+        content: str = kwargs.get("content", "")  # type: ignore[assignment]
+        output_path: str = kwargs.get("output_path", "/workspace/output.docx")  # type: ignore[assignment]
+        title: str = kwargs.get("title", "")  # type: ignore[assignment]
 
         if not content.strip():
             return ToolResult.fail("Content must not be empty")
@@ -339,101 +389,21 @@ class DocCreateDOCX(SandboxTool):
         if path_error is not None:
             return ToolResult.fail(path_error)
 
-        # Write content and title as separate files
-        content_file = "/tmp/_docx_content.txt"
-        title_file = "/tmp/_docx_title.txt"
+        content_file = _tmp_path("docx_content.txt")
+        title_file = _tmp_path("docx_title.txt")
+        script_path = _tmp_path("script.py")
         await session.write_file(content_file, content)
         await session.write_file(title_file, title)
 
-        script = f'''\
-import subprocess
-import sys
-import pathlib
-
-try:
-    from docx import Document
-    from docx.shared import Pt
-except ImportError:
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "python-docx", "-q"])
-    from docx import Document
-    from docx.shared import Pt
-
-content = pathlib.Path("{content_file}").read_text(encoding="utf-8")
-title = pathlib.Path("{title_file}").read_text(encoding="utf-8")
-
-doc = Document()
-if title:
-    doc.add_heading(title, level=0)
-
-for para in content.split("\\n\\n"):
-    para = para.strip()
-    if para:
-        p = doc.add_paragraph(para)
-        p.style.font.size = Pt(11)
-
-doc.save("{output_path}")
-print(f"DOCX created: {output_path}")
-'''
-        return await _run_doc_script(session, script, output_path)
-
-
-class DocCreateXLSX(SandboxTool):
-    """Create an Excel XLSX spreadsheet."""
-
-    def definition(self) -> ToolDefinition:
-        return ToolDefinition(
-            name="document_create_xlsx",
-            description=(
-                "Create an Excel XLSX spreadsheet. Provide data as a JSON array of arrays "
-                "(rows), or as CSV-formatted text. First row is treated as headers."
-            ),
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "data": {
-                        "type": "string",
-                        "description": (
-                            "Data as JSON array of arrays, e.g. "
-                            '\'[["Name","Age"],["Alice",30]]\', '
-                            "or as CSV text."
-                        ),
-                    },
-                    "output_path": {
-                        "type": "string",
-                        "description": "Output file path in the sandbox.",
-                        "default": "/workspace/output.xlsx",
-                    },
-                    "sheet_name": {
-                        "type": "string",
-                        "description": "Name of the worksheet.",
-                        "default": "Sheet1",
-                    },
-                },
-                "required": ["data"],
-            },
-            execution_context=ExecutionContext.SANDBOX,
-            tags=("document", "xlsx", "sandbox"),
+        script = _DOCX_SCRIPT_TEMPLATE.format(
+            content_file=content_file,
+            title_file=title_file,
+            output_path=output_path,
         )
+        return await _run_doc_script(session, script, output_path, script_path)
 
-    async def execute(self, session: Any, **kwargs: Any) -> ToolResult:
-        data: str = kwargs.get("data", "")
-        output_path: str = kwargs.get("output_path", "/workspace/output.xlsx")
-        sheet_name: str = kwargs.get("sheet_name", "Sheet1")
 
-        if not data.strip():
-            return ToolResult.fail("Data must not be empty")
-
-        path_error = _validate_output_path(output_path)
-        if path_error is not None:
-            return ToolResult.fail(path_error)
-
-        # Write data and sheet name as separate files
-        data_file = "/tmp/_xlsx_data.txt"
-        sheet_file = "/tmp/_xlsx_sheet.txt"
-        await session.write_file(data_file, data)
-        await session.write_file(sheet_file, sheet_name)
-
-        script = f'''\
+_XLSX_SCRIPT_TEMPLATE = """\
 import subprocess
 import sys
 import json
@@ -470,61 +440,75 @@ for row_idx, row in enumerate(rows, 1):
             cell.font = Font(bold=True)
 
 wb.save("{output_path}")
-print(f"XLSX created: {output_path} ({{len(rows)}} rows)")
-'''
-        return await _run_doc_script(session, script, output_path)
+print(f"XLSX created: {{output_path}} ({{len(rows)}} rows)")
+"""
 
 
-class DocCreatePPTX(SandboxTool):
-    """Create a PowerPoint PPTX presentation."""
+class DocCreateXLSX(SandboxTool):
+    """Create an Excel XLSX spreadsheet from JSON array or CSV data."""
 
     def definition(self) -> ToolDefinition:
         return ToolDefinition(
-            name="document_create_pptx",
+            name="document_create_xlsx",
             description=(
-                "Create a PowerPoint PPTX presentation. Provide slides as a JSON array "
-                "of objects with 'title' and 'content' fields, or as text with slides "
-                "separated by '---'."
+                "Create an Excel XLSX spreadsheet. Provide data as a JSON array of arrays "
+                "(rows), or as CSV-formatted text. First row is treated as headers."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "slides": {
+                    "data": {
                         "type": "string",
                         "description": (
-                            "Slides as JSON array, e.g. "
-                            '\'[{"title":"Intro","content":"Hello world"}]\', '
-                            "or as text with slides separated by '---'."
+                            "Data as JSON array of arrays, e.g. "
+                            '\'[["Name","Age"],["Alice",30]]\', '
+                            "or as CSV text."
                         ),
                     },
                     "output_path": {
                         "type": "string",
                         "description": "Output file path in the sandbox.",
-                        "default": "/workspace/output.pptx",
+                        "default": "/workspace/output.xlsx",
+                    },
+                    "sheet_name": {
+                        "type": "string",
+                        "description": "Name of the worksheet.",
+                        "default": "Sheet1",
                     },
                 },
-                "required": ["slides"],
+                "required": ["data"],
             },
             execution_context=ExecutionContext.SANDBOX,
-            tags=("document", "pptx", "sandbox"),
+            tags=("document", "xlsx", "sandbox"),
         )
 
-    async def execute(self, session: Any, **kwargs: Any) -> ToolResult:
-        slides_input: str = kwargs.get("slides", "")
-        output_path: str = kwargs.get("output_path", "/workspace/output.pptx")
+    async def execute(self, session: SandboxSession, **kwargs: object) -> ToolResult:
+        data: str = kwargs.get("data", "")  # type: ignore[assignment]
+        output_path: str = kwargs.get("output_path", "/workspace/output.xlsx")  # type: ignore[assignment]
+        sheet_name: str = kwargs.get("sheet_name", "Sheet1")  # type: ignore[assignment]
 
-        if not slides_input.strip():
-            return ToolResult.fail("Slides data must not be empty")
+        if not data.strip():
+            return ToolResult.fail("Data must not be empty")
 
         path_error = _validate_output_path(output_path)
         if path_error is not None:
             return ToolResult.fail(path_error)
 
-        # Write slides data as a separate file
-        slides_file = "/tmp/_pptx_slides.txt"
-        await session.write_file(slides_file, slides_input)
+        data_file = _tmp_path("xlsx_data.txt")
+        sheet_file = _tmp_path("xlsx_sheet.txt")
+        script_path = _tmp_path("script.py")
+        await session.write_file(data_file, data)
+        await session.write_file(sheet_file, sheet_name)
 
-        script = f'''\
+        script = _XLSX_SCRIPT_TEMPLATE.format(
+            data_file=data_file,
+            sheet_file=sheet_file,
+            output_path=output_path,
+        )
+        return await _run_doc_script(session, script, output_path, script_path)
+
+
+_PPTX_SCRIPT_TEMPLATE = """\
 import subprocess
 import sys
 import json
@@ -566,6 +550,61 @@ for slide_info in slides_data:
         slide.placeholders[1].text = content
 
 prs.save("{output_path}")
-print(f"PPTX created: {output_path} ({{len(slides_data)}} slides)")
-'''
-        return await _run_doc_script(session, script, output_path)
+print(f"PPTX created: {{output_path}} ({{len(slides_data)}} slides)")
+"""
+
+
+class DocCreatePPTX(SandboxTool):
+    """Create a PowerPoint PPTX presentation from JSON slide data or text separated by '---'."""
+
+    def definition(self) -> ToolDefinition:
+        return ToolDefinition(
+            name="document_create_pptx",
+            description=(
+                "Create a PowerPoint PPTX presentation. Provide slides as a JSON array "
+                "of objects with 'title' and 'content' fields, or as text with slides "
+                "separated by '---'."
+            ),
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "slides": {
+                        "type": "string",
+                        "description": (
+                            "Slides as JSON array, e.g. "
+                            '\'[{"title":"Intro","content":"Hello world"}]\', '
+                            "or as text with slides separated by '---'."
+                        ),
+                    },
+                    "output_path": {
+                        "type": "string",
+                        "description": "Output file path in the sandbox.",
+                        "default": "/workspace/output.pptx",
+                    },
+                },
+                "required": ["slides"],
+            },
+            execution_context=ExecutionContext.SANDBOX,
+            tags=("document", "pptx", "sandbox"),
+        )
+
+    async def execute(self, session: SandboxSession, **kwargs: object) -> ToolResult:
+        slides_input: str = kwargs.get("slides", "")  # type: ignore[assignment]
+        output_path: str = kwargs.get("output_path", "/workspace/output.pptx")  # type: ignore[assignment]
+
+        if not slides_input.strip():
+            return ToolResult.fail("Slides data must not be empty")
+
+        path_error = _validate_output_path(output_path)
+        if path_error is not None:
+            return ToolResult.fail(path_error)
+
+        slides_file = _tmp_path("pptx_slides.txt")
+        script_path = _tmp_path("script.py")
+        await session.write_file(slides_file, slides_input)
+
+        script = _PPTX_SCRIPT_TEMPLATE.format(
+            slides_file=slides_file,
+            output_path=output_path,
+        )
+        return await _run_doc_script(session, script, output_path, script_path)

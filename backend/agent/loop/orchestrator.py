@@ -99,17 +99,21 @@ class AgentOrchestrator:
     def get_last_user_message(self) -> str | None:
         """Return the content of the most recent user message, or None."""
         for msg in reversed(self._state.messages):
-            if msg.get("role") == "user" and isinstance(msg.get("content"), str):
-                return msg["content"]
+            if msg.get("role") == "user":
+                content = msg.get("content")
+                if isinstance(content, str):
+                    return content
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "text":
+                            return block.get("text", "")
         return None
 
     def rollback_to_before_last_user_message(self) -> None:
         """Remove the last user message and everything after it."""
         messages = list(self._state.messages)
         for i in range(len(messages) - 1, -1, -1):
-            if messages[i].get("role") == "user" and isinstance(
-                messages[i].get("content"), str
-            ):
+            if messages[i].get("role") == "user":
                 self._state = replace(
                     self._state,
                     messages=tuple(messages[:i]),
@@ -118,8 +122,56 @@ class AgentOrchestrator:
                 )
                 return
 
+    def _build_message_content(
+        self, user_message: str, attachments: tuple[Any, ...]
+    ) -> str | list[dict[str, Any]]:
+        """Build user message content, adding multimodal blocks for attachments."""
+        if not attachments:
+            return user_message
+
+        import base64
+
+        from api.models import VISION_MIME_TYPES
+
+        blocks: list[dict[str, Any]] = []
+        sandbox_files: list[str] = []
+
+        for att in attachments:
+            if att.content_type in VISION_MIME_TYPES:
+                encoded = base64.standard_b64encode(att.data).decode("ascii")
+                if att.content_type == "application/pdf":
+                    blocks.append({
+                        "type": "document",
+                        "source": {
+                            "type": "base64",
+                            "media_type": att.content_type,
+                            "data": encoded,
+                        },
+                    })
+                else:
+                    blocks.append({
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": att.content_type,
+                            "data": encoded,
+                        },
+                    })
+            sandbox_files.append(
+                f"/home/user/uploads/{att.filename} ({att.size // 1024}KB)"
+            )
+
+        # Add user text + file listing
+        text = user_message
+        if sandbox_files:
+            listing = "\n".join(f"  - {f}" for f in sandbox_files)
+            text += f"\n\n[Uploaded files in sandbox:\n{listing}]"
+
+        blocks.append({"type": "text", "text": text})
+        return blocks
+
     # NOTE: orchestrator is not re-entrant — do not call run() concurrently
-    async def run(self, user_message: str) -> str:
+    async def run(self, user_message: str, attachments: tuple[Any, ...] = ()) -> str:
         """Execute the agent loop and return the final text response."""
         if not user_message.strip():
             raise ValueError("user_message must not be empty")
@@ -131,9 +183,12 @@ class AgentOrchestrator:
             {"message": user_message},
         )
 
+        # Build message content - multimodal if attachments present
+        content = self._build_message_content(user_message, attachments)
+
         # Append user message to existing state (preserves conversation history)
         self._state = self._state.add_message(
-            {"role": "user", "content": user_message},
+            {"role": "user", "content": content},
         )
         # Reset completion flags for the new turn
         self._task_complete_summary = None

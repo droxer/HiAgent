@@ -2,12 +2,19 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Square } from "lucide-react";
+import { Square, Paperclip, X } from "lucide-react";
 import { SendButton } from "@/shared/components/SendButton";
 import { cn } from "@/shared/lib/utils";
+import type { AttachedFile } from "@/shared/types";
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
 
 interface ChatInputProps {
-  readonly onSendMessage: (message: string) => void;
+  readonly onSendMessage: (message: string, files?: File[]) => void;
   readonly disabled?: boolean;
   readonly onCancel?: () => void;
   readonly isAgentRunning?: boolean;
@@ -16,7 +23,10 @@ interface ChatInputProps {
 export function ChatInput({ onSendMessage, disabled = false, onCancel, isAgentRunning = false }: ChatInputProps) {
   const [input, setInput] = useState("");
   const [isFocused, setIsFocused] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resetHeight = useCallback(() => {
     const el = textareaRef.current;
@@ -29,13 +39,41 @@ export function ChatInput({ onSendMessage, disabled = false, onCancel, isAgentRu
     resetHeight();
   }, [input, resetHeight]);
 
+  const addFiles = useCallback((fileList: FileList | File[]) => {
+    const newFiles: AttachedFile[] = Array.from(fileList).map((file) => ({
+      file,
+      id: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`,
+      previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
+    }));
+    setAttachedFiles((prev) => [...prev, ...newFiles]);
+  }, []);
+
+  const removeFile = useCallback((id: string) => {
+    setAttachedFiles((prev) => {
+      const file = prev.find((f) => f.id === id);
+      if (file?.previewUrl) URL.revokeObjectURL(file.previewUrl);
+      return prev.filter((f) => f.id !== id);
+    });
+  }, []);
+
+  // Cleanup URLs on unmount
+  useEffect(() => {
+    return () => {
+      attachedFiles.forEach((f) => {
+        if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+      });
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (disabled) return;
     const trimmed = input.trim();
-    if (!trimmed) return;
-    onSendMessage(trimmed);
+    if (!trimmed && attachedFiles.length === 0) return;
+    const files = attachedFiles.length > 0 ? attachedFiles.map((f) => f.file) : undefined;
+    onSendMessage(trimmed || "See attached files", files);
     setInput("");
+    setAttachedFiles([]);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -45,19 +83,101 @@ export function ChatInput({ onSendMessage, disabled = false, onCancel, isAgentRu
     }
   };
 
-  const hasContent = input.trim().length > 0;
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files.length > 0) {
+      addFiles(e.dataTransfer.files);
+    }
+  }, [addFiles]);
+
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    const imageFiles: File[] = [];
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) imageFiles.push(file);
+      }
+    }
+    if (imageFiles.length > 0) {
+      addFiles(imageFiles);
+    }
+  }, [addFiles]);
+
+  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      addFiles(e.target.files);
+    }
+    // Reset so the same file can be selected again
+    e.target.value = "";
+  }, [addFiles]);
+
+  const hasContent = input.trim().length > 0 || attachedFiles.length > 0;
 
   return (
     <div className="shrink-0 px-4 pb-4 pt-2">
-      <form onSubmit={handleSubmit}>
+      <form
+        onSubmit={handleSubmit}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={handleFileInputChange}
+        />
+
         <div
           className={cn(
             "relative rounded-xl backdrop-blur-sm bg-card/80 transition-all duration-200",
             isFocused
               ? "shadow-[0_0_0_1px_var(--color-border-active),0_4px_12px_rgba(0,0,0,0.3),0_0_20px_var(--color-input-glow)]"
               : "shadow-[0_0_0_1px_var(--color-border),0_1px_3px_rgba(0,0,0,0.2)]",
+            isDragOver && "ring-2 ring-[var(--color-border-active)] bg-secondary/40",
           )}
         >
+          {/* File preview chips */}
+          {attachedFiles.length > 0 && (
+            <div className="flex flex-wrap gap-2 px-4 pt-3">
+              {attachedFiles.map((af) => (
+                <div
+                  key={af.id}
+                  className="flex items-center gap-2 rounded-lg bg-secondary/80 px-2.5 py-1.5 text-xs text-foreground"
+                >
+                  {af.previewUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={af.previewUrl} alt={af.file.name} className="h-8 w-8 rounded object-cover" />
+                  ) : (
+                    <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                  <span className="max-w-[120px] truncate">{af.file.name}</span>
+                  <span className="text-muted-foreground">{formatFileSize(af.file.size)}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeFile(af.id)}
+                    className="ml-0.5 rounded-full p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <textarea
             ref={textareaRef}
             value={input}
@@ -65,6 +185,7 @@ export function ChatInput({ onSendMessage, disabled = false, onCancel, isAgentRu
             onKeyDown={handleKeyDown}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
+            onPaste={handlePaste}
             placeholder={disabled ? "Agent is working..." : "Send a message..."}
             disabled={disabled}
             rows={1}
@@ -74,18 +195,31 @@ export function ChatInput({ onSendMessage, disabled = false, onCancel, isAgentRu
             )}
           />
 
-          {/* Bottom bar: hint + action button */}
+          {/* Bottom bar: paperclip + hint + action button */}
           <div className="absolute right-3 bottom-2.5 left-3 flex items-center justify-between">
-            <span
-              className={cn(
-                "text-xs text-placeholder select-none transition-opacity duration-150",
-                hasContent && !isAgentRunning ? "opacity-100" : "opacity-0",
-              )}
-            >
-              <kbd className="font-mono text-[10px]">Enter</kbd> to send
-              <span className="mx-1 text-border-strong">&middot;</span>
-              <kbd className="font-mono text-[10px]">Shift + Enter</kbd> for new line
-            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className={cn(
+                  "flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground/50",
+                  "transition-colors duration-150 hover:bg-secondary hover:text-muted-foreground",
+                  "focus-visible:ring-[3px] focus-visible:ring-ring/50 outline-none",
+                )}
+              >
+                <Paperclip className="h-4 w-4" strokeWidth={1.75} />
+              </button>
+              <span
+                className={cn(
+                  "text-xs text-placeholder select-none transition-opacity duration-150",
+                  hasContent && !isAgentRunning ? "opacity-100" : "opacity-0",
+                )}
+              >
+                <kbd className="font-mono text-[10px]">Enter</kbd> to send
+                <span className="mx-1 text-border-strong">&middot;</span>
+                <kbd className="font-mono text-[10px]">Shift + Enter</kbd> for new line
+              </span>
+            </div>
 
             <div className="relative flex h-8 w-8 items-center justify-center">
               <AnimatePresence mode="wait">

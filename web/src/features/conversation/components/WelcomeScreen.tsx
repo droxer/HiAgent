@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Presentation,
@@ -11,11 +11,19 @@ import {
   Plus,
   Paperclip,
   Sparkles,
+  X,
 } from "lucide-react";
 import { SendButton } from "@/shared/components/SendButton";
+import type { AttachedFile } from "@/shared/types";
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
 
 interface WelcomeScreenProps {
-  onSubmitTask: (task: string) => void;
+  onSubmitTask: (task: string, files?: File[]) => void;
 }
 
 const QUICK_ACTIONS = [
@@ -50,13 +58,50 @@ const cardItem = {
 export function WelcomeScreen({ onSubmitTask }: WelcomeScreenProps) {
   const [input, setInput] = useState("");
   const [isFocused, setIsFocused] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const addFiles = useCallback((fileList: FileList | File[]) => {
+    const newFiles: AttachedFile[] = Array.from(fileList).map((file) => ({
+      file,
+      id: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`,
+      previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
+    }));
+    setAttachedFiles((prev) => [...prev, ...newFiles]);
+  }, []);
+
+  const removeFile = useCallback((id: string) => {
+    setAttachedFiles((prev) => {
+      const file = prev.find((f) => f.id === id);
+      if (file?.previewUrl) URL.revokeObjectURL(file.previewUrl);
+      return prev.filter((f) => f.id !== id);
+    });
+  }, []);
+
+  // Cleanup URLs on unmount
+  useEffect(() => {
+    return () => {
+      attachedFiles.forEach((f) => {
+        if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+      });
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      addFiles(e.target.files);
+    }
+    e.target.value = "";
+  }, [addFiles]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = input.trim();
-    if (!trimmed) return;
-    onSubmitTask(trimmed);
+    if (!trimmed && attachedFiles.length === 0) return;
+    const files = attachedFiles.length > 0 ? attachedFiles.map((f) => f.file) : undefined;
+    onSubmitTask(trimmed || "See attached files", files);
     setInput("");
+    setAttachedFiles([]);
   };
 
   const handleQuickAction = (prompt: string) => {
@@ -107,6 +152,14 @@ export function WelcomeScreen({ onSubmitTask }: WelcomeScreenProps) {
 
         {/* Input card */}
         <form onSubmit={handleSubmit} className="mb-6 w-full">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={handleFileInputChange}
+          />
+
           <div
             className="rounded-xl border backdrop-blur-sm bg-card/80 transition-all duration-200"
             style={{
@@ -135,6 +188,34 @@ export function WelcomeScreen({ onSubmitTask }: WelcomeScreenProps) {
               autoFocus
             />
 
+            {/* File preview chips */}
+            {attachedFiles.length > 0 && (
+              <div className="flex flex-wrap gap-2 px-4 pb-2">
+                {attachedFiles.map((af) => (
+                  <div
+                    key={af.id}
+                    className="flex items-center gap-2 rounded-lg bg-secondary/80 px-2.5 py-1.5 text-xs text-foreground"
+                  >
+                    {af.previewUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={af.previewUrl} alt={af.file.name} className="h-8 w-8 rounded object-cover" />
+                    ) : (
+                      <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
+                    )}
+                    <span className="max-w-[120px] truncate">{af.file.name}</span>
+                    <span className="text-muted-foreground">{formatFileSize(af.file.size)}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeFile(af.id)}
+                      className="ml-0.5 rounded-full p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="flex items-center justify-between px-3 pb-3">
               <div className="flex items-center gap-0.5">
                 <button
@@ -145,6 +226,7 @@ export function WelcomeScreen({ onSubmitTask }: WelcomeScreenProps) {
                 </button>
                 <button
                   type="button"
+                  onClick={() => fileInputRef.current?.click()}
                   className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground/50 transition-colors duration-150 hover:bg-secondary hover:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 outline-none"
                 >
                   <Paperclip className="h-[18px] w-[18px]" strokeWidth={1.75} />
@@ -158,7 +240,7 @@ export function WelcomeScreen({ onSubmitTask }: WelcomeScreenProps) {
               </div>
 
               <SendButton
-                hasContent={!!input.trim()}
+                hasContent={!!input.trim() || attachedFiles.length > 0}
               />
             </div>
           </div>

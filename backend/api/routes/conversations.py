@@ -6,14 +6,23 @@ import asyncio
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path, UploadFile
 from fastapi.responses import StreamingResponse
 from loguru import logger
+from starlette.requests import Request
 
 from agent.llm.client import ClaudeClient
 from agent.memory.store import PersistentMemoryStore
 from api.dependencies import AppState, get_app_state, get_db_session
-from api.models import ConversationEntry, ConversationResponse, MessageRequest, UserInputRequest
+from api.models import (
+    ConversationEntry,
+    ConversationResponse,
+    FileAttachment,
+    MAX_FILE_SIZE_MB,
+    MAX_FILES_PER_MESSAGE,
+    MessageRequest,
+    UserInputRequest,
+)
 from api.auth import common_dependencies
 from api.builders import _build_orchestrator, _build_planner_orchestrator
 from api.sse import _create_queue_subscriber, _event_generator
@@ -28,6 +37,63 @@ _UUID_PATTERN = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
 _EVENT_QUEUE_MAXSIZE = 5000
 
 router = APIRouter(dependencies=common_dependencies)
+
+
+# ---------------------------------------------------------------------------
+# File upload helpers
+# ---------------------------------------------------------------------------
+
+
+async def _parse_uploads(files: list[UploadFile]) -> tuple[FileAttachment, ...]:
+    """Validate and convert uploaded files into immutable FileAttachment tuples."""
+    if len(files) > MAX_FILES_PER_MESSAGE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Too many files (max {MAX_FILES_PER_MESSAGE})",
+        )
+
+    attachments: list[FileAttachment] = []
+    max_bytes = MAX_FILE_SIZE_MB * 1024 * 1024
+    for f in files:
+        data = await f.read()
+        if len(data) > max_bytes:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File '{f.filename}' exceeds {MAX_FILE_SIZE_MB}MB limit",
+            )
+        attachments.append(
+            FileAttachment(
+                filename=f.filename or "unnamed",
+                content_type=f.content_type or "application/octet-stream",
+                data=data,
+                size=len(data),
+            )
+        )
+    return tuple(attachments)
+
+
+async def _upload_files_to_sandbox(
+    executor: Any,
+    attachments: tuple[FileAttachment, ...],
+) -> None:
+    """Upload attached files to the sandbox's /home/user/uploads/ directory."""
+    import os
+    import tempfile
+
+    for att in attachments:
+        try:
+            session = await executor._get_sandbox_session()
+            await session.execute("mkdir -p /home/user/uploads")
+            with tempfile.NamedTemporaryFile(delete=False, suffix=f"_{att.filename}") as tmp:
+                tmp.write(att.data)
+                tmp_path = tmp.name
+            try:
+                await session.upload_file(tmp_path, f"/home/user/uploads/{att.filename}")
+            finally:
+                os.unlink(tmp_path)
+            logger.info("uploaded_file filename=%s size=%d", att.filename, att.size)
+        except Exception as exc:
+            logger.warning("file_upload_failed filename=%s error=%s", att.filename, exc)
 
 
 # ---------------------------------------------------------------------------
@@ -56,13 +122,16 @@ async def _reconstruct_conversation(
         if m.role not in ("user", "assistant"):
             continue
         content = m.content
-        if isinstance(content, dict) and "text" in content:
+        if isinstance(content, list):
+            # Preserve multimodal content as-is
+            initial_messages.append({"role": m.role, "content": content})
+        elif isinstance(content, dict) and "text" in content:
             text = content["text"]
+            initial_messages.append({"role": m.role, "content": text})
         elif isinstance(content, str):
-            text = content
+            initial_messages.append({"role": m.role, "content": content})
         else:
-            text = str(content)
-        initial_messages.append({"role": m.role, "content": text})
+            initial_messages.append({"role": m.role, "content": str(content)})
 
     emitter = EventEmitter()
     event_queue: asyncio.Queue[AgentEvent | None] = asyncio.Queue(
@@ -116,11 +185,18 @@ async def _run_turn(
     conversation_id: str,
     orchestrator: Any,
     message: str,
+    attachments: tuple[FileAttachment, ...] = (),
 ) -> str:
     """Run a single turn of the conversation. Does NOT close the SSE connection."""
     try:
+        # Upload files to sandbox if we have attachments and an executor
+        if attachments:
+            entry = state.conversations.get(conversation_id)
+            if entry is not None:
+                await _upload_files_to_sandbox(entry.executor, attachments)
+
         logger.info("turn_started conversation_id=%s", conversation_id)
-        result = await orchestrator.run(message)
+        result = await orchestrator.run(message, attachments=attachments)
         logger.info("turn_completed conversation_id=%s", conversation_id)
         return result
     except asyncio.CancelledError:
@@ -234,10 +310,31 @@ async def _generate_title(
     response_model=ConversationResponse,
 )
 async def create_conversation(
-    request: MessageRequest,
+    request: Request,
     state: AppState = Depends(get_app_state),
 ) -> ConversationResponse:
-    """Create a new conversation and send the first message."""
+    """Create a new conversation and send the first message.
+
+    Accepts either JSON (MessageRequest) or multipart/form-data with files.
+    """
+    content_type = request.headers.get("content-type", "")
+
+    if "multipart/form-data" in content_type:
+        form = await request.form()
+        message = form.get("message")
+        if not message or not str(message).strip():
+            raise HTTPException(status_code=422, detail="message must not be empty")
+        message = str(message)
+        use_planner = str(form.get("use_planner", "false")).lower() == "true"
+        raw_files = form.getlist("files")
+        upload_files = [f for f in raw_files if isinstance(f, UploadFile)]
+        attachments = await _parse_uploads(upload_files) if upload_files else ()
+    else:
+        body = MessageRequest(**(await request.json()))
+        message = body.message
+        use_planner = body.use_planner
+        attachments = ()
+
     conversation_id = str(uuid.uuid4())
     conv_uuid = uuid.UUID(conversation_id)
     emitter = EventEmitter()
@@ -256,7 +353,7 @@ async def create_conversation(
 
     orchestrator: Any
     executor: Any
-    if request.use_planner:
+    if use_planner:
         orchestrator, executor = _build_planner_orchestrator(
             state.claude_client,
             emitter,
@@ -288,7 +385,7 @@ async def create_conversation(
     # Persist conversation and register DB subscriber
     async with state.db_session_factory() as session:
         await state.db_repo.create_conversation(
-            session, title=request.message[:80], conversation_id=conv_uuid
+            session, title=message[:80], conversation_id=conv_uuid
         )
 
     # Visibility barrier: confirm the committed row is readable from a fresh
@@ -310,12 +407,12 @@ async def create_conversation(
 
     # Start first turn
     entry.turn_task = asyncio.create_task(
-        _run_turn(state, conversation_id, orchestrator, request.message),
+        _run_turn(state, conversation_id, orchestrator, message, attachments),
     )
 
     # Generate a concise title in the background
     asyncio.create_task(
-        _generate_title(state.claude_client, conversation_id, request.message, emitter),
+        _generate_title(state.claude_client, conversation_id, message, emitter),
     )
 
     logger.info("conversation_created id=%s", conversation_id)
@@ -355,11 +452,30 @@ async def list_conversations(
     response_model=ConversationResponse,
 )
 async def send_message(
+    request: Request,
     conversation_id: str = Path(..., pattern=_UUID_PATTERN),
-    request: MessageRequest = ...,  # type: ignore[assignment]
     state: AppState = Depends(get_app_state),
 ) -> ConversationResponse:
-    """Send a follow-up message in an existing conversation."""
+    """Send a follow-up message in an existing conversation.
+
+    Accepts either JSON (MessageRequest) or multipart/form-data with files.
+    """
+    content_type = request.headers.get("content-type", "")
+
+    if "multipart/form-data" in content_type:
+        form = await request.form()
+        message = form.get("message")
+        if not message or not str(message).strip():
+            raise HTTPException(status_code=422, detail="message must not be empty")
+        message = str(message)
+        raw_files = form.getlist("files")
+        upload_files = [f for f in raw_files if isinstance(f, UploadFile)]
+        attachments = await _parse_uploads(upload_files) if upload_files else ()
+    else:
+        body = MessageRequest(**(await request.json()))
+        message = body.message
+        attachments = ()
+
     entry = state.conversations.get(conversation_id)
     if entry is None:
         entry = await _reconstruct_conversation(state, conversation_id)
@@ -375,7 +491,7 @@ async def send_message(
 
     # Start new turn on the same orchestrator (preserves full history)
     entry.turn_task = asyncio.create_task(
-        _run_turn(state, conversation_id, entry.orchestrator, request.message),
+        _run_turn(state, conversation_id, entry.orchestrator, message, attachments),
     )
 
     # Touch updated_at timestamp
