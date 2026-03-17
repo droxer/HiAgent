@@ -1,0 +1,35 @@
+"use client";
+
+import { Paperclip, X } from "lucide-react";
+import { formatFileSize } from "@/shared/lib/utils";
+
+interface FileAttachmentChipProps {
+  readonly name: string;
+  readonly size: number;
+  readonly previewUrl?: string;
+  readonly onRemove?: () => void;
+}
+
+export function FileAttachmentChip({ name, size, previewUrl, onRemove }: FileAttachmentChipProps) {
+  return (
+    <div className="flex items-center gap-2 rounded-lg bg-secondary/80 px-2.5 py-1.5 text-xs text-foreground">
+      {previewUrl ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img src={previewUrl} alt={name} className="h-8 w-8 rounded object-cover" />
+      ) : (
+        <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
+      )}
+      <span className="max-w-[120px] truncate">{name}</span>
+      <span className="text-muted-foreground">{formatFileSize(size)}</span>
+      {onRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="ml-0.5 rounded-full p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </div>
+  );
+}

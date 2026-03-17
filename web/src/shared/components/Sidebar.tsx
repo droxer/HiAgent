@@ -170,14 +170,14 @@ export function Sidebar({
             <TooltipContent side="right">New task</TooltipContent>
           </Tooltip>
         ) : (
-          <button
-            type="button"
+          <Button
             onClick={onNewTask}
-            className="flex w-full items-center gap-2 rounded-xl border border-border/50 bg-card/60 px-3 py-2 text-sm font-medium text-foreground backdrop-blur-sm transition-all duration-200 hover:border-border-active hover:bg-card/80 hover:shadow-[var(--shadow-card)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            variant="outline"
+            className="w-full justify-start gap-2 rounded-xl border-border/50 bg-card/60 backdrop-blur-sm hover:border-border-active hover:bg-card/80 hover:shadow-card"
           >
             <Plus className="h-4 w-4 text-muted-foreground" />
             New task
-          </button>
+          </Button>
         )}
       </div>
 
@@ -252,6 +252,7 @@ export function Sidebar({
                   key={task.id}
                   role="button"
                   tabIndex={0}
+                  aria-current={isActive ? "true" : undefined}
                   onClick={() => onSelectTask?.(task.id)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
@@ -260,9 +261,9 @@ export function Sidebar({
                     }
                   }}
                   className={cn(
-                    "group flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-left transition-all duration-150",
+                    "group flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-left transition-colors duration-150",
                     "hover:bg-card/60 hover:backdrop-blur-sm",
-                    isActive && "bg-card/80 shadow-[var(--shadow-card)] backdrop-blur-sm",
+                    isActive && "bg-card/80 shadow-card backdrop-blur-sm",
                   )}
                 >
                   <div className={cn(

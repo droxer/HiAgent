@@ -33,7 +33,7 @@ export function ThemeToggle() {
   }, []);
 
   if (!mounted) {
-    return <div className="h-7 w-7" />;
+    return <div className="h-9 w-9" />;
   }
 
   const current = theme ?? "dark";
@@ -45,7 +45,7 @@ export function ThemeToggle() {
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          className="h-9 w-9 text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
         >
           <Icon className="h-3.5 w-3.5" />
           <span className="sr-only">Toggle theme</span>

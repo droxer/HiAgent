@@ -2,16 +2,11 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Square, Paperclip, X } from "lucide-react";
+import { Square, Paperclip } from "lucide-react";
 import { SendButton } from "@/shared/components/SendButton";
+import { FileAttachmentChip } from "@/shared/components/FileAttachmentChip";
 import { cn } from "@/shared/lib/utils";
 import type { AttachedFile } from "@/shared/types";
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes}B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
-}
 
 interface ChatInputProps {
   readonly onSendMessage: (message: string, files?: File[]) => void;
@@ -143,7 +138,7 @@ export function ChatInput({ onSendMessage, disabled = false, onCancel, isAgentRu
 
         <div
           className={cn(
-            "relative rounded-xl backdrop-blur-sm bg-card/80 transition-all duration-200",
+            "relative rounded-xl backdrop-blur-sm bg-card/80 transition-shadow duration-200",
             isFocused
               ? "shadow-[0_0_0_1px_var(--color-border-active),0_4px_12px_rgba(0,0,0,0.3),0_0_20px_var(--color-input-glow)]"
               : "shadow-[0_0_0_1px_var(--color-border),0_1px_3px_rgba(0,0,0,0.2)]",
@@ -154,26 +149,13 @@ export function ChatInput({ onSendMessage, disabled = false, onCancel, isAgentRu
           {attachedFiles.length > 0 && (
             <div className="flex flex-wrap gap-2 px-4 pt-3">
               {attachedFiles.map((af) => (
-                <div
+                <FileAttachmentChip
                   key={af.id}
-                  className="flex items-center gap-2 rounded-lg bg-secondary/80 px-2.5 py-1.5 text-xs text-foreground"
-                >
-                  {af.previewUrl ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={af.previewUrl} alt={af.file.name} className="h-8 w-8 rounded object-cover" />
-                  ) : (
-                    <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
-                  )}
-                  <span className="max-w-[120px] truncate">{af.file.name}</span>
-                  <span className="text-muted-foreground">{formatFileSize(af.file.size)}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeFile(af.id)}
-                    className="ml-0.5 rounded-full p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
+                  name={af.file.name}
+                  size={af.file.size}
+                  previewUrl={af.previewUrl}
+                  onRemove={() => removeFile(af.id)}
+                />
               ))}
             </div>
           )}
@@ -186,7 +168,7 @@ export function ChatInput({ onSendMessage, disabled = false, onCancel, isAgentRu
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             onPaste={handlePaste}
-            placeholder={disabled ? "Agent is working..." : "Send a message..."}
+            placeholder={disabled ? "Agent is working..." : "What can I help you build?"}
             disabled={disabled}
             rows={1}
             className={cn(
@@ -233,7 +215,7 @@ export function ChatInput({ onSendMessage, disabled = false, onCancel, isAgentRu
                     exit={{ scale: 0.8, opacity: 0 }}
                     transition={{ duration: 0.15 }}
                     className={cn(
-                      "group relative flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]",
+                      "group relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
                       "bg-foreground/[0.06] text-muted-foreground",
                       "transition-all duration-200 ease-out",
                       "hover:bg-destructive/10 hover:text-destructive",
@@ -243,7 +225,7 @@ export function ChatInput({ onSendMessage, disabled = false, onCancel, isAgentRu
                   >
                     {/* Conic-gradient spinning border */}
                     <span
-                      className="absolute inset-0 rounded-[10px] opacity-60"
+                      className="absolute inset-0 rounded-lg opacity-60"
                       style={{
                         background: "conic-gradient(from 0deg, var(--color-ai-glow), transparent 60%, var(--color-ai-glow))",
                         mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",

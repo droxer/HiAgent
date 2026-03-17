@@ -429,7 +429,7 @@ export function IntegrationsPage() {
                   className="focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 >
                   {submitting && (
-                    <span className="mr-1.5 inline-block h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-shimmer" />
+                    <span className="mr-1.5 inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
                   )}
                   Connect
                 </Button>

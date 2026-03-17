@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -29,6 +29,7 @@ const QUICK_ACTIONS = [
 
 export function CommandPalette({ onNewTask, onNavigateHome }: CommandPaletteProps) {
   const [open, setOpen] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -44,6 +45,36 @@ export function CommandPalette({ onNewTask, onNavigateHome }: CommandPaletteProp
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
+
+  // Focus trap: keep Tab cycling within the dialog when open
+  useEffect(() => {
+    if (!open) return;
+
+    const handleTrap = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const container = dialogRef.current;
+      if (!container) return;
+
+      const focusable = container.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleTrap);
+    return () => document.removeEventListener("keydown", handleTrap);
+  }, [open]);
 
   const handleSelect = (prompt: string) => {
     setOpen(false);
@@ -66,6 +97,7 @@ export function CommandPalette({ onNewTask, onNavigateHome }: CommandPaletteProp
 
           {/* Command dialog — blur-to-sharp entry */}
           <motion.div
+            ref={dialogRef}
             className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]"
             initial={{ opacity: 0, scale: 0.96, y: -10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}

@@ -22,8 +22,8 @@ export function SendButton({ disabled = false, hasContent = false }: SendButtonP
       exit={{ scale: 0.85, opacity: 0 }}
       transition={{ type: "spring", stiffness: 400, damping: 20 }}
       className={cn(
-        "flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]",
-        "transition-all duration-200 ease-out",
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+        "transition-colors transition-shadow transition-transform duration-200 ease-out",
         "focus-visible:ring-[3px] focus-visible:ring-ring/50 outline-none",
         hasContent
           ? [

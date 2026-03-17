@@ -182,7 +182,7 @@ export function ConversationWorkspace({
                           {/* Timestamp below, right-aligned */}
                           {msg.timestamp && (
                             <div className="mt-1.5 flex items-center justify-end gap-1.5 pr-1">
-                              <span className="text-xs text-muted-foreground/40 tabular-nums">
+                              <span className="text-xs text-muted-foreground/60 tabular-nums">
                                 {formatTime(msg.timestamp)}
                               </span>
                             </div>

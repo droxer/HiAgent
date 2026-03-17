@@ -11,16 +11,10 @@ import {
   Plus,
   Paperclip,
   Sparkles,
-  X,
 } from "lucide-react";
 import { SendButton } from "@/shared/components/SendButton";
+import { FileAttachmentChip } from "@/shared/components/FileAttachmentChip";
 import type { AttachedFile } from "@/shared/types";
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes}B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
-}
 
 interface WelcomeScreenProps {
   onSubmitTask: (task: string, files?: File[]) => void;
@@ -182,7 +176,7 @@ export function WelcomeScreen({ onSubmitTask }: WelcomeScreenProps) {
                   handleSubmit(e);
                 }
               }}
-              placeholder="Assign a task or ask anything"
+              placeholder="What can I help you build?"
               rows={3}
               className="w-full resize-none rounded-t-xl bg-transparent px-4 pt-4 pb-2 text-sm leading-relaxed text-foreground placeholder:text-placeholder outline-none"
               autoFocus
@@ -192,26 +186,13 @@ export function WelcomeScreen({ onSubmitTask }: WelcomeScreenProps) {
             {attachedFiles.length > 0 && (
               <div className="flex flex-wrap gap-2 px-4 pb-2">
                 {attachedFiles.map((af) => (
-                  <div
+                  <FileAttachmentChip
                     key={af.id}
-                    className="flex items-center gap-2 rounded-lg bg-secondary/80 px-2.5 py-1.5 text-xs text-foreground"
-                  >
-                    {af.previewUrl ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img src={af.previewUrl} alt={af.file.name} className="h-8 w-8 rounded object-cover" />
-                    ) : (
-                      <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
-                    )}
-                    <span className="max-w-[120px] truncate">{af.file.name}</span>
-                    <span className="text-muted-foreground">{formatFileSize(af.file.size)}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeFile(af.id)}
-                      className="ml-0.5 rounded-full p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
+                    name={af.file.name}
+                    size={af.file.size}
+                    previewUrl={af.previewUrl}
+                    onRemove={() => removeFile(af.id)}
+                  />
                 ))}
               </div>
             )}

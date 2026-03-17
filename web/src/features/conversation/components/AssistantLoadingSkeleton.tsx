@@ -1,6 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { PulsingDot } from "@/shared/components/PulsingDot";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import type { AssistantPhase } from "@/shared/types";
 import { normalizeToolName } from "@/features/agent-computer/lib/tool-constants";
 
@@ -34,18 +36,8 @@ export function AssistantLoadingSkeleton({ phase }: AssistantLoadingSkeletonProp
       transition={{ duration: 0.25, ease: "easeOut" }}
     >
       {/* AI indicator row */}
-      <div className="mb-2 flex items-center gap-2">
-        <div className="relative">
-          <motion.div
-            className="h-2 w-2 rounded-full bg-ai-glow"
-            animate={{ opacity: [1, 0.5, 1] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          />
-          <span
-            className="absolute inset-0 rounded-full bg-ai-glow"
-            style={{ animation: "orbitalPulse 2s ease-out infinite" }}
-          />
-        </div>
+      <div className="mb-2 flex items-center gap-2" role="status" aria-live="polite">
+        <PulsingDot size="md" />
         <span className="text-xs font-medium tracking-wide text-ai-glow/70 uppercase">
           HiAgent
         </span>
@@ -57,22 +49,8 @@ export function AssistantLoadingSkeleton({ phase }: AssistantLoadingSkeletonProp
           <span className="text-sm text-ai-glow/70">{label}</span>
         </div>
         <div className="flex flex-col gap-1.5">
-          <div
-            className="h-3 w-48 rounded-full bg-secondary"
-            style={{
-              backgroundImage: "linear-gradient(90deg, var(--color-secondary) 0%, var(--color-border) 50%, var(--color-secondary) 100%)",
-              backgroundSize: "200% 100%",
-              animation: "shimmer 2s linear infinite",
-            }}
-          />
-          <div
-            className="h-3 w-32 rounded-full bg-secondary"
-            style={{
-              backgroundImage: "linear-gradient(90deg, var(--color-secondary) 0%, var(--color-border) 50%, var(--color-secondary) 100%)",
-              backgroundSize: "200% 100%",
-              animation: "shimmer 2s linear infinite 0.15s",
-            }}
-          />
+          <Skeleton className="h-3 w-48" />
+          <Skeleton className="h-3 w-32" />
         </div>
       </div>
     </motion.div>

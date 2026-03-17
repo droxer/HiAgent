@@ -8,6 +8,7 @@ import {
   PanelRightClose,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
+import { PulsingDot } from "@/shared/components/PulsingDot";
 import type { AgentEvent, TaskState, ToolCallInfo, AgentStatus } from "@/shared/types";
 import { normalizeToolName } from "@/features/agent-computer/lib/tool-constants";
 
@@ -129,15 +130,7 @@ function StatusDot({ status }: { readonly status: TimelineStep["status"] }) {
     return <span className="h-2 w-2 shrink-0 rounded-full bg-accent-rose" />;
   }
   // Running — with orbital pulse
-  return (
-    <span className="relative h-2 w-2 shrink-0">
-      <span className="absolute inset-0 rounded-full bg-ai-glow" />
-      <span
-        className="absolute inset-0 rounded-full bg-ai-glow"
-        style={{ animation: "orbitalPulse 2s ease-out infinite" }}
-      />
-    </span>
-  );
+  return <PulsingDot size="md" />;
 }
 
 function statusColorClass(status: TimelineStep["status"]): string {
@@ -185,7 +178,14 @@ export function AgentProgressCard({
       transition={{ type: "spring", stiffness: 300, damping: 24 }}
     >
       {/* Progress bar — gradient with glow */}
-      <div className="h-0.5 w-full bg-secondary">
+      <div
+        className="h-0.5 w-full bg-secondary"
+        role="progressbar"
+        aria-valuenow={Math.round(progressRatio * 100)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`Task progress: ${Math.round(progressRatio * 100)}%`}
+      >
         <motion.div
           className="h-full"
           style={{
@@ -211,16 +211,12 @@ export function AgentProgressCard({
               <span className="text-sm font-semibold tracking-tight text-foreground">
                 HiAgent&apos;s Computer
               </span>
-              {isRunning && (
-                <motion.span
-                  className="h-1.5 w-1.5 rounded-full bg-ai-glow shrink-0"
-                  animate={{ opacity: [1, 0.4, 1] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                />
-              )}
+              {isRunning && <PulsingDot size="sm" />}
             </div>
             {subtitle && (
               <div
+                role="status"
+                aria-live="polite"
                 className={cn(
                   "text-xs truncate",
                   isRunning ? "text-muted-foreground" : "text-accent-emerald",

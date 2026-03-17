@@ -113,11 +113,6 @@
 
   --animate-shimmer: shimmer 2s linear infinite;
 
-  @keyframes breathe {
-    0%, 100% { opacity: 0.4; }
-    50% { opacity: 0.8; }
-  }
-
   @keyframes aiGlow {
     0%, 100% { box-shadow: 0 0 4px rgba(129, 140, 248, 0.2); }
     50% { box-shadow: 0 0 12px rgba(129, 140, 248, 0.4); }
@@ -134,11 +129,6 @@
     100% { background-position: 0% 50%; }
   }
 
-  @keyframes beaconGlow {
-    0%, 100% { box-shadow: 0 0 4px rgba(129, 140, 248, 0.4); }
-    50% { box-shadow: 0 0 12px rgba(129, 140, 248, 0.6); }
-  }
-
   @keyframes conicSpin {
     0% { --conic-angle: 0deg; }
     100% { --conic-angle: 360deg; }
@@ -152,7 +142,7 @@
 
   --animate-orbital-pulse: orbitalPulse 2s ease-out infinite;
   --animate-gradient-shift: gradientShift 3s ease infinite;
-  --animate-beacon-glow: beaconGlow 2s ease-in-out infinite;
+  --animate-ai-glow: aiGlow 2s ease-in-out infinite;
 }
 
 /* ─── Light mode (default) ─── */
@@ -178,7 +168,7 @@
   --color-border-active: #A1A1AA;
   --color-placeholder: #A1A1AA;
   --color-accent-emerald: #10B981;
-  --color-accent-amber: #D97706;
+  --color-accent-amber: #B45309;
   --color-accent-rose: #EF4444;
   --color-accent-purple: #7C3AED;
   --color-ai-glow: #818CF8;

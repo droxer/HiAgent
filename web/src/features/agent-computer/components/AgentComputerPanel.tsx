@@ -16,6 +16,7 @@ import { ToolOutputRenderer } from "./ToolOutputRenderer";
 import { AgentStatusRow } from "./AgentStatusRow";
 import { ArtifactFilesPanel } from "./ArtifactFilesPanel";
 import { cn } from "@/shared/lib/utils";
+import { PulsingDot } from "@/shared/components/PulsingDot";
 import type { ToolCallInfo, AgentStatus, TaskState, ArtifactInfo } from "@/shared/types";
 
 /* ── tool name → friendly verb mapping for status bar ── */
@@ -186,12 +187,8 @@ export function AgentComputerPanel({
       {/* ── Activity tab ── */}
       {/* ── Activity status bar ── */}
       {activeTab === "activity" && isRunning && latestToolCall && (
-        <div className="flex shrink-0 items-center gap-2 border-b border-border bg-secondary/50 px-4 py-2">
-          <motion.span
-            className="h-1.5 w-1.5 rounded-full bg-ai-glow"
-            animate={{ opacity: [1, 0.4, 1] }}
-            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-          />
+        <div className="flex shrink-0 items-center gap-2 border-b border-border bg-secondary/50 px-4 py-2" role="status" aria-live="polite">
+          <PulsingDot size="sm" />
           <span className="text-xs text-muted-foreground">
             HiAgent is {toolLabel(latestToolCall.name)}
           </span>
@@ -288,11 +285,7 @@ export function AgentComputerPanel({
             {/* Live / Done indicator */}
             {isRunning && (
               <div className="flex items-center gap-1.5">
-                <motion.span
-                  className="h-2 w-2 rounded-full bg-ai-glow"
-                  animate={{ opacity: [1, 0.4, 1] }}
-                  transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-                />
+                <PulsingDot size="md" />
                 <span className="text-xs font-medium text-muted-foreground">
                   live
                 </span>
@@ -317,11 +310,7 @@ export function AgentComputerPanel({
               ) : taskState === "error" ? (
                 <CircleX className="h-3.5 w-3.5 text-accent-rose" />
               ) : isRunning ? (
-                <motion.span
-                  className="h-2 w-2 rounded-full bg-ai-glow"
-                  animate={{ opacity: [0.4, 1, 0.4] }}
-                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                />
+                <PulsingDot size="md" />
               ) : null}
               <span className="flex-1 truncate text-xs text-muted-foreground">
                 {taskState === "complete"
