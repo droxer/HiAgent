@@ -95,7 +95,7 @@ class ConversationRepository:
         model = ConversationModel(id=conversation_id or uuid.uuid4(), title=title)
         session.add(model)
         await session.flush()
-        await session.refresh(model)
+        await session.refresh(model)  # need generated id/timestamps before returning
         await session.commit()
         return _to_conversation(model)
 
@@ -172,9 +172,8 @@ class ConversationRepository:
             model.title = title
         model.updated_at = datetime.now(timezone.utc)
 
-        await session.flush()
-        await session.refresh(model)
         await session.commit()
+        await session.refresh(model)  # refresh after commit to get final state
         return _to_conversation(model)
 
     async def save_message(
@@ -194,7 +193,7 @@ class ConversationRepository:
         )
         session.add(model)
         await session.flush()
-        await session.refresh(model)
+        await session.refresh(model)  # need generated timestamps before returning
         await session.commit()
         return _to_message(model)
 
@@ -226,7 +225,6 @@ class ConversationRepository:
             iteration=iteration,
         )
         session.add(model)
-        await session.flush()
         await session.commit()
 
     async def get_events(
@@ -266,7 +264,7 @@ class ConversationRepository:
         )
         session.add(model)
         await session.flush()
-        await session.refresh(model)
+        await session.refresh(model)  # need generated timestamps before returning
         await session.commit()
         return _to_artifact(model)
 

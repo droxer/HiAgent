@@ -2,6 +2,7 @@
 
 import { LayoutGrid } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { ThemeToggle } from "@/shared/components/ThemeToggle";
 import type { TaskState } from "@/shared/types";
 
 interface TopBarProps {
@@ -13,7 +14,7 @@ interface TopBarProps {
 
 export function TopBar({ taskState, isConnected, currentIteration, onNavigateHome }: TopBarProps) {
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card/80 px-4 backdrop-blur-sm">
+    <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-sm">
       {/* Left: Breadcrumb */}
       <div className="flex items-center gap-1.5">
         <Button
@@ -27,15 +28,20 @@ export function TopBar({ taskState, isConnected, currentIteration, onNavigateHom
         </Button>
         {taskState !== "idle" && (
           <>
-            <span className="text-xs text-border-strong">/</span>
+            <span className="text-xs text-muted-foreground/50">/</span>
             <span className="text-xs text-muted-foreground">
               Task {currentIteration > 0 ? `(Step ${currentIteration})` : ""}
             </span>
           </>
         )}
         {isConnected && (
-          <span className="ml-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          <span className="ml-1.5 h-2 w-2 rounded-full bg-accent-emerald" aria-label="Connected" title="Connected" />
         )}
+      </div>
+
+      {/* Right: Actions */}
+      <div className="flex items-center gap-2">
+        <ThemeToggle />
       </div>
     </header>
   );

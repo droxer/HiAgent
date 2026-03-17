@@ -7,7 +7,7 @@ from typing import Any, Protocol
 
 from loguru import logger
 
-from agent.llm.client import ClaudeClient
+from agent.llm.client import ClaudeClient, LLMResponse
 from agent.loop.helpers import (
     apply_response_to_state,
     extract_final_text,
@@ -28,9 +28,9 @@ PLANNER_SYSTEM_PROMPT = """You are a planning agent that decomposes complex task
 Your workflow:
 1. Analyze the user's request
 2. Break it into independent sub-tasks where possible
-3. Use spawn_task_agent to create task agents for each sub-task
-4. Use wait_for_agents to wait for results
-5. Synthesize the results and communicate to the user via message_user
+3. Use agent_spawn to create task agents for each sub-task
+4. Use agent_wait to wait for results
+5. Synthesize the results and communicate to the user via user_message
 6. Call task_complete when done
 
 Guidelines:
@@ -206,7 +206,7 @@ class PlannerOrchestrator:
         state: AgentState,
         tools: list[dict[str, Any]],
         model: str,
-    ) -> Any | None:
+    ) -> LLMResponse | None:
         """Call the LLM with streaming and return the response, or None on failure."""
         try:
             async def _on_text_delta(delta: str) -> None:
@@ -224,13 +224,13 @@ class PlannerOrchestrator:
                 on_text_delta=_on_text_delta,
             )
         except Exception as exc:
-            logger.error("LLM call failed during planning: %s", exc)
+            logger.error("llm_call_failed_planning error={}", exc)
             return None
 
     async def _emit_llm_response(
         self,
         state: AgentState,
-        response: Any,
+        response: LLMResponse,
     ) -> None:
         """Emit an LLM_RESPONSE event."""
         await self._emitter.emit(
@@ -265,4 +265,4 @@ class PlannerOrchestrator:
         try:
             await self._sub_agent_manager.cleanup()
         except Exception as exc:
-            logger.error("Failed to clean up sub-agents: %s", exc)
+            logger.error("failed_to_cleanup_sub_agents error={}", exc)

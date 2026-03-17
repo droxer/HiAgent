@@ -1,7 +1,6 @@
 export { ConversationShell } from "./components/ConversationShell";
 export { ConversationProvider } from "./components/ConversationProvider";
 export { ConversationView } from "./components/ConversationView";
-export { ConversationSidebar } from "./components/ConversationSidebar";
 export { PendingAskOverlay } from "./components/PendingAskOverlay";
 export { ChatInput } from "./components/ChatInput";
 export { InputPrompt } from "./components/InputPrompt";

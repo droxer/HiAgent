@@ -51,7 +51,7 @@ class ImageGen(LocalTool):
 
     def definition(self) -> ToolDefinition:
         return ToolDefinition(
-            name="image_gen",
+            name="image_generate",
             description=(
                 "Generate images from a text prompt using MiniMax image-01. "
                 "Returns artifact metadata for each generated image."

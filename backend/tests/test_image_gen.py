@@ -35,7 +35,7 @@ def tool(artifact_manager, event_emitter):
 
 def test_definition(tool):
     defn = tool.definition()
-    assert defn.name == "image_gen"
+    assert defn.name == "image_generate"
     assert defn.execution_context == ExecutionContext.LOCAL
     assert "prompt" in defn.input_schema["required"]
     assert "aspect_ratio" in defn.input_schema["properties"]

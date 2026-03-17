@@ -10,6 +10,7 @@ See: https://docs.boxlite.ai/reference/python/box-types
 from __future__ import annotations
 
 import asyncio
+import base64
 import os
 import shlex
 import tempfile
@@ -33,7 +34,7 @@ from agent.sandbox.base import (
 TEMPLATE_IMAGES: dict[str, str] = {
     "default": "ghcr.io/droxer/hiagent-sandbox-default",
     "data_science": "ghcr.io/droxer/hiagent-sandbox-data-science",
-    "browser": "ghcr.io/droxer/hiagent-sandbox-browser",
+    "browser": "ghcr.io/droxer/hiagent-sandbox-browser:v2",
 }
 
 DEFAULT_IMAGE = "ghcr.io/droxer/hiagent-sandbox-default"
@@ -121,8 +122,9 @@ class BoxliteSession:
     async def write_file(self, path: str, content: str) -> None:
         """Write *content* to *path* inside the micro-VM.
 
-        Creates a temporary file on the host, uploads it via ``copy_in``,
-        then moves it to the target path. Parent directories are created
+        Tries ``copy_in`` first.  If the file does not appear in the VM
+        (e.g. ``copy_in`` fails silently), falls back to writing via a
+        base64-encoded ``exec`` command.  Parent directories are created
         automatically.
         """
         dir_path = os.path.dirname(path) or "/"
@@ -130,12 +132,15 @@ class BoxliteSession:
         # Ensure parent directory exists
         await self.exec(f"mkdir -p {shlex.quote(dir_path)}")
 
+        def _write_temp_file() -> str:
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".tmp", delete=False, encoding="utf-8"
+            ) as tmp:
+                tmp.write(content)
+                return tmp.name
+
         # Write to a temp file on the host, then copy into the VM
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".tmp", delete=False, encoding="utf-8"
-        ) as tmp:
-            tmp.write(content)
-            tmp_path = tmp.name
+        tmp_path = await asyncio.to_thread(_write_temp_file)
 
         try:
             # copy_in destination must be a directory
@@ -145,12 +150,31 @@ class BoxliteSession:
             tmp_name = os.path.basename(tmp_path)
             target_name = os.path.basename(path)
             if tmp_name != target_name:
-                await self.exec(
+                mv_result = await self.exec(
                     f"mv {shlex.quote(os.path.join(dir_path, tmp_name))} "
                     f"{shlex.quote(path)}"
                 )
+                if not mv_result.success:
+                    # Don't raise yet — try the base64 fallback below
+                    pass
         finally:
-            os.unlink(tmp_path)
+            await asyncio.to_thread(os.unlink, tmp_path)
+
+        # Verify the file actually landed in the VM
+        check = await self.exec(f"test -f {shlex.quote(path)}")
+        if check.success:
+            return
+
+        # Fallback: write via base64-encoded exec (avoids copy_in entirely)
+        encoded = base64.b64encode(content.encode("utf-8")).decode("ascii")
+        fallback = await self.exec(
+            f"echo {shlex.quote(encoded)} | base64 -d > {shlex.quote(path)}"
+        )
+        if not fallback.success:
+            raise OSError(
+                f"Failed to write file to '{path}': "
+                f"{fallback.stderr}"
+            )
 
     async def upload_file(self, local_path: str, remote_path: str) -> None:
         """Upload a host file into the micro-VM via ``copy_in``."""
@@ -180,7 +204,7 @@ class BoxliteSession:
 
         local_dir = os.path.dirname(local_path)
         if local_dir:
-            os.makedirs(local_dir, exist_ok=True)
+            await asyncio.to_thread(os.makedirs, local_dir, exist_ok=True)
 
         await self._box.copy_out(remote_path, local_dir or ".")
 
@@ -189,7 +213,7 @@ class BoxliteSession:
         target_name = os.path.basename(local_path)
         if downloaded_name != target_name:
             downloaded_path = os.path.join(local_dir or ".", downloaded_name)
-            os.rename(downloaded_path, local_path)
+            await asyncio.to_thread(os.rename, downloaded_path, local_path)
 
     # -- lifecycle -----------------------------------------------------------
 

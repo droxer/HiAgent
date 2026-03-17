@@ -10,6 +10,7 @@ based on the application settings.
 
 from __future__ import annotations
 
+import asyncio
 import os
 from typing import Protocol
 
@@ -54,19 +55,23 @@ class LocalStorageBackend:
     def __init__(self, storage_dir: str = "./artifacts") -> None:
         self._storage_dir = storage_dir
 
-    async def save(self, key: str, data: bytes, content_type: str) -> str:
-        os.makedirs(self._storage_dir, exist_ok=True)
+    def _resolve_and_validate(self, key: str) -> str:
+        """Resolve the full path for *key* and validate against traversal."""
         file_path = os.path.join(self._storage_dir, key)
-
-        # Guard against path traversal
         storage_real = os.path.realpath(self._storage_dir)
         file_real = os.path.realpath(file_path)
         if not file_real.startswith(storage_real + os.sep):
             raise ValueError(f"Path traversal attempt blocked: {key}")
+        return file_real
 
-        with open(file_path, "wb") as f:
+    def _sync_save(self, file_real: str, data: bytes) -> None:
+        os.makedirs(self._storage_dir, exist_ok=True)
+        with open(file_real, "wb") as f:
             f.write(data)
 
+    async def save(self, key: str, data: bytes, content_type: str) -> str:
+        file_real = self._resolve_and_validate(key)
+        await asyncio.to_thread(self._sync_save, file_real, data)
         logger.debug("local_storage_saved key=%s size=%d", key, len(data))
         return key
 
@@ -80,23 +85,28 @@ class LocalStorageBackend:
             raise ValueError(f"Artifact path escapes storage dir: {key}")
         return candidate
 
-    async def delete(self, key: str) -> None:
-        file_path = os.path.join(self._storage_dir, key)
-        storage_real = os.path.realpath(self._storage_dir)
-        file_real = os.path.realpath(file_path)
-        if not file_real.startswith(storage_real + os.sep):
-            raise ValueError(f"Path traversal attempt blocked: {key}")
+    def _sync_delete(self, file_real: str) -> bool:
         if os.path.isfile(file_real):
             os.remove(file_real)
+            return True
+        return False
+
+    async def delete(self, key: str) -> None:
+        file_real = self._resolve_and_validate(key)
+        deleted = await asyncio.to_thread(self._sync_delete, file_real)
+        if deleted:
             logger.debug("local_storage_deleted key=%s", key)
 
-    async def exists(self, key: str) -> bool:
+    def _sync_exists(self, key: str) -> bool:
         file_path = os.path.join(self._storage_dir, key)
         storage_real = os.path.realpath(self._storage_dir)
         file_real = os.path.realpath(file_path)
         if not file_real.startswith(storage_real + os.sep):
             return False
         return os.path.isfile(file_real)
+
+    async def exists(self, key: str) -> bool:
+        return await asyncio.to_thread(self._sync_exists, key)
 
 
 # ---------------------------------------------------------------------------
@@ -139,23 +149,22 @@ class R2StorageBackend:
             self._public_url or "(presigned)",
         )
 
-    async def save(self, key: str, data: bytes, content_type: str) -> str:
+    def _sync_put_object(self, key: str, data: bytes, content_type: str) -> None:
         self._client.put_object(
             Bucket=self._bucket_name,
             Key=key,
             Body=data,
             ContentType=content_type,
         )
+
+    async def save(self, key: str, data: bytes, content_type: str) -> str:
+        await asyncio.to_thread(self._sync_put_object, key, data, content_type)
         logger.debug("r2_storage_saved key=%s size=%d", key, len(data))
         return key
 
-    async def get_url(
+    def _sync_generate_presigned_url(
         self, key: str, content_type: str, filename: str
     ) -> str:
-        """Return a public URL or a presigned URL for the artifact."""
-        if self._public_url:
-            return f"{self._public_url}/{key}"
-
         return self._client.generate_presigned_url(
             "get_object",
             Params={
@@ -167,14 +176,28 @@ class R2StorageBackend:
             ExpiresIn=_PRESIGNED_URL_EXPIRY,
         )
 
-    async def delete(self, key: str) -> None:
+    async def get_url(
+        self, key: str, content_type: str, filename: str
+    ) -> str:
+        """Return a public URL or a presigned URL for the artifact."""
+        if self._public_url:
+            return f"{self._public_url}/{key}"
+
+        return await asyncio.to_thread(
+            self._sync_generate_presigned_url, key, content_type, filename
+        )
+
+    def _sync_delete_object(self, key: str) -> None:
         self._client.delete_object(
             Bucket=self._bucket_name,
             Key=key,
         )
+
+    async def delete(self, key: str) -> None:
+        await asyncio.to_thread(self._sync_delete_object, key)
         logger.debug("r2_storage_deleted key=%s", key)
 
-    async def exists(self, key: str) -> bool:
+    def _sync_head_object(self, key: str) -> bool:
         try:
             self._client.head_object(
                 Bucket=self._bucket_name,
@@ -183,6 +206,9 @@ class R2StorageBackend:
             return True
         except self._client.exceptions.ClientError:
             return False
+
+    async def exists(self, key: str) -> bool:
+        return await asyncio.to_thread(self._sync_head_object, key)
 
 
 # ---------------------------------------------------------------------------

@@ -28,7 +28,7 @@ class DocRead(SandboxTool):
 
     def definition(self) -> ToolDefinition:
         return ToolDefinition(
-            name="doc_read",
+            name="document_read",
             description=(
                 "Read a document file inside the sandbox. Supports PDF, CSV, "
                 "and plain text formats (.txt, .md, .json, .log, .yaml, .xml)."

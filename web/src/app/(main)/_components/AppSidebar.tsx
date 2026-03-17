@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/shared/components";
 import { useAppStore } from "@/shared/stores";
-import { useConversationContext } from "../hooks/use-conversation-context";
 
-export function ConversationSidebar() {
-  const { conversationId, handleSwitchConversation, handleNewConversation } =
-    useConversationContext();
+export function AppSidebar() {
+  const router = useRouter();
+  const pathname = usePathname();
   const {
+    conversationId,
     conversationHistory,
     sidebarCollapsed,
     sidebarWidth,
@@ -19,6 +20,8 @@ export function ConversationSidebar() {
     searchQuery,
     setSearchQuery,
     deleteConversation,
+    switchConversation,
+    resetConversation,
   } = useAppStore();
 
   useEffect(() => {
@@ -38,12 +41,23 @@ export function ConversationSidebar() {
     return () => clearTimeout(timer);
   }, [searchQuery, loadConversations]);
 
+  const handleNewConversation = () => {
+    resetConversation();
+    if (pathname !== "/") router.push("/");
+  };
+
+  const handleSelectConversation = (id: string) => {
+    if (id === conversationId) return;
+    switchConversation(id);
+    if (pathname !== "/") router.push("/");
+  };
+
   return (
     <Sidebar
       taskHistory={conversationHistory}
       activeTaskId={conversationId}
       onNewTask={handleNewConversation}
-      onSelectTask={handleSwitchConversation}
+      onSelectTask={handleSelectConversation}
       collapsed={sidebarCollapsed}
       width={sidebarWidth}
       onToggle={toggleSidebar}

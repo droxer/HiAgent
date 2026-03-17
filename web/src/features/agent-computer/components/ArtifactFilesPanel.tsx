@@ -25,6 +25,8 @@ function formatFileSize(bytes: number): string {
 function fileIcon(contentType: string) {
   if (contentType.startsWith("image/")) return FileImage;
   if (contentType === "application/pdf") return FileText;
+  if (contentType.includes("wordprocessingml")) return FileText;
+  if (contentType.includes("presentationml")) return FileText;
   if (
     contentType.startsWith("text/x-") ||
     contentType === "text/javascript" ||
@@ -43,6 +45,9 @@ function fileIcon(contentType: string) {
 function fileCategory(contentType: string): string {
   if (contentType.startsWith("image/")) return "Image";
   if (contentType === "application/pdf") return "PDF";
+  if (contentType.includes("wordprocessingml")) return "Document";
+  if (contentType.includes("spreadsheet")) return "Spreadsheet";
+  if (contentType.includes("presentationml")) return "Presentation";
   if (contentType.startsWith("text/x-") || contentType === "text/javascript" || contentType === "application/json")
     return "Code";
   if (contentType === "text/csv") return "Data";
@@ -83,7 +88,7 @@ export function ArtifactFilesPanel({ artifacts, conversationId }: ArtifactFilesP
     (artifact: ArtifactInfo) => {
       const url = getArtifactUrl(artifact.id);
       if (!url) return;
-      window.open(url, "_blank", "noopener,noreferrer");
+      window.open(`${url}?inline=1`, "_blank", "noopener,noreferrer");
     },
     [getArtifactUrl],
   );
@@ -127,15 +132,15 @@ export function ArtifactFilesPanel({ artifacts, conversationId }: ArtifactFilesP
             </div>
 
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-medium text-foreground">
+              <p className="truncate text-sm font-medium text-foreground">
                 {artifact.name}
               </p>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {category} &middot; {formatFileSize(artifact.size)}
               </p>
             </div>
 
-            <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
               {isPreviewable && (
                 <button
                   type="button"

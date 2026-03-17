@@ -16,7 +16,7 @@ from agent.loop.orchestrator import AgentState
 from agent.tools.executor import ToolExecutor
 from agent.tools.registry import ToolRegistry
 from api.events import EventEmitter, EventType
-from config.settings import get_settings
+from config.settings import Settings, get_settings
 from loguru import logger
 
 
@@ -30,6 +30,7 @@ class TaskAgentConfig:
     priority: int = 0
     depends_on: tuple[str, ...] = ()
     model: str | None = None
+    role: str = ""
 
 
 @dataclass(frozen=True)
@@ -44,13 +45,14 @@ class AgentResult:
 
 
 TASK_AGENT_SYSTEM_PROMPT = """You are a task agent focused on completing a specific objective.
-
+{role_section}
 Your task: {task_description}
 {context_section}
 
 Guidelines:
 - Focus exclusively on the assigned task
 - Use available tools to accomplish the objective
+- Use agent_send and agent_receive to coordinate with other agents if needed
 - Be thorough but efficient
 - When done, call task_complete with a detailed summary of what was accomplished
 - Include any relevant file paths or outputs in your summary
@@ -59,11 +61,13 @@ Guidelines:
 
 def _build_system_prompt(config: TaskAgentConfig) -> str:
     """Build the system prompt from a TaskAgentConfig."""
+    role_section = f"\nYour role: {config.role}\n" if config.role else ""
     context_section = (
         f"\nAdditional context:\n{config.context}" if config.context else ""
     )
     return TASK_AGENT_SYSTEM_PROMPT.format(
         task_description=config.task_description,
+        role_section=role_section,
         context_section=context_section,
     )
 
@@ -168,7 +172,7 @@ class TaskAgentRunner:
         self,
         state: AgentState,
         tools: list[dict[str, Any]],
-        settings: Any,
+        settings: Settings,
     ) -> AgentState:
         """Run a single iteration of the task agent loop."""
         # Compact history before the LLM call if needed

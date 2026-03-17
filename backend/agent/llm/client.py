@@ -39,6 +39,7 @@ class LLMResponse:
     tool_calls: tuple[ToolCall, ...]
     stop_reason: str
     usage: TokenUsage
+    thinking: str = ""
 
 
 def _extract_text_blocks(content: list) -> str:
@@ -53,6 +54,11 @@ def _extract_tool_calls(content: list) -> tuple[ToolCall, ...]:
         for block in content
         if block.type == "tool_use"
     )
+
+
+def _extract_thinking(content: list) -> str:
+    """Extract and concatenate thinking text from thinking blocks."""
+    return "".join(block.thinking for block in content if block.type == "thinking")
 
 
 def _build_usage(usage: Any) -> TokenUsage:
@@ -70,6 +76,7 @@ def _parse_response(response: Any) -> LLMResponse:
         tool_calls=_extract_tool_calls(response.content),
         stop_reason=response.stop_reason,
         usage=_build_usage(response.usage),
+        thinking=_extract_thinking(response.content),
     )
 
 
@@ -96,6 +103,13 @@ class ClaudeClient:
             http_client=httpx.AsyncClient(proxy=http_proxy),
         )
 
+    async def close(self) -> None:
+        """Close the underlying httpx client.
+
+        Should be called at application shutdown to release connections.
+        """
+        await self._client.close()
+
     async def create_message(
         self,
         system: str,
@@ -103,6 +117,7 @@ class ClaudeClient:
         tools: list[dict[str, Any]] | None = None,
         model: str | None = None,
         max_tokens: int | None = None,
+        thinking_budget: int = 0,
     ) -> LLMResponse:
         """Send a message to the Claude API and return a parsed response.
 
@@ -145,6 +160,13 @@ class ClaudeClient:
         if tools:
             kwargs["tools"] = tools
 
+        if thinking_budget > 0:
+            kwargs["thinking"] = {"type": "enabled", "budget_tokens": thinking_budget}
+            # Anthropic requires max_tokens >= thinking_budget when thinking is enabled
+            min_max_tokens = thinking_budget + 1024
+            if kwargs["max_tokens"] < min_max_tokens:
+                kwargs["max_tokens"] = min_max_tokens
+
         last_exc: Exception | None = None
         for attempt in range(_MAX_RETRIES):
             try:
@@ -176,6 +198,7 @@ class ClaudeClient:
         model: str | None = None,
         max_tokens: int | None = None,
         on_text_delta: Callable[[str], Coroutine[Any, Any, None]] | None = None,
+        thinking_budget: int = 0,
     ) -> LLMResponse:
         """Send a message to the Claude API with streaming, invoking on_text_delta for each token.
 
@@ -208,6 +231,13 @@ class ClaudeClient:
         }
         if tools:
             kwargs["tools"] = tools
+
+        if thinking_budget > 0:
+            kwargs["thinking"] = {"type": "enabled", "budget_tokens": thinking_budget}
+            # Anthropic requires max_tokens >= thinking_budget when thinking is enabled
+            min_max_tokens = thinking_budget + 1024
+            if kwargs["max_tokens"] < min_max_tokens:
+                kwargs["max_tokens"] = min_max_tokens
 
         last_exc: Exception | None = None
         for attempt in range(_MAX_RETRIES):

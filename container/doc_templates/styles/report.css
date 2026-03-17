@@ -1,0 +1,106 @@
+/* Report theme — formal, with header/footer and page numbers */
+@page {
+    size: {{PAGE_SIZE}} {{ORIENTATION}};
+    margin: 3cm 2.5cm;
+
+    @top-center {
+        content: "{{TITLE}}";
+        font-size: 8pt;
+        color: #888;
+        border-bottom: 0.5pt solid #ccc;
+        padding-bottom: 6pt;
+    }
+    @bottom-center {
+        content: counter(page) " / " counter(pages);
+        font-size: 8pt;
+        color: #888;
+    }
+}
+@page :first {
+    @top-center { content: none; }
+}
+
+body {
+    font-family: "Georgia", "Times New Roman", "DejaVu Serif", serif;
+    font-size: 11pt;
+    line-height: 1.7;
+    color: #1a1a1a;
+}
+
+h1 { font-size: 26pt; margin: 0 0 16pt 0; color: #111; }
+h2 { font-size: 18pt; margin: 28pt 0 10pt 0; color: #222; border-bottom: 0.5pt solid #ccc; padding-bottom: 4pt; }
+h3 { font-size: 14pt; margin: 20pt 0 8pt 0; color: #333; }
+h4 { font-size: 12pt; margin: 16pt 0 6pt 0; color: #444; }
+h5, h6 { font-size: 11pt; margin: 12pt 0 4pt 0; color: #555; font-style: italic; }
+
+p { margin: 0 0 10pt 0; text-align: justify; }
+
+ul, ol { margin: 0 0 10pt 0; padding-left: 28pt; }
+li { margin-bottom: 4pt; }
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14pt 0;
+    font-size: 10pt;
+}
+th {
+    background: #2c3e50;
+    color: #fff;
+    font-weight: 600;
+    text-align: left;
+    padding: 7pt 10pt;
+}
+td {
+    padding: 6pt 10pt;
+    border-bottom: 0.5pt solid #ddd;
+}
+tr:nth-child(even) td { background: #f8f9fa; }
+
+pre {
+    background: #f8f9fa;
+    border: 0.5pt solid #dee2e6;
+    border-radius: 3pt;
+    padding: 10pt 14pt;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 9pt;
+    line-height: 1.5;
+    margin: 10pt 0;
+}
+code {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 9pt;
+    background: #f0f0f0;
+    padding: 1pt 3pt;
+    border-radius: 2pt;
+}
+pre code { background: none; padding: 0; }
+
+blockquote {
+    border-left: 3pt solid #2c3e50;
+    margin: 10pt 0;
+    padding: 6pt 14pt;
+    color: #555;
+    font-style: italic;
+}
+
+hr { border: none; border-top: 0.5pt solid #ccc; margin: 20pt 0; }
+
+img { max-width: 100%; height: auto; }
+
+.doc-title {
+    font-size: 32pt;
+    font-weight: 700;
+    color: #2c3e50;
+    margin: 40pt 0 24pt 0;
+    text-align: center;
+}
+
+/* Syntax highlighting */
+.codehilite .hll { background-color: #ffffcc; }
+.codehilite .c { color: #6a737d; }
+.codehilite .k { color: #d73a49; }
+.codehilite .s { color: #032f62; }
+.codehilite .nf { color: #6f42c1; }
+.codehilite .nc { color: #6f42c1; }
+.codehilite .mi { color: #005cc5; }

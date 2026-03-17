@@ -123,7 +123,7 @@ async def test_gives_up_after_max_retries(mock_sleep, repo, session_factory) -> 
 
     await subscriber(event)  # should not raise
 
-    assert repo.save_event.call_count == 3
+    assert repo.save_event.call_count == 5
 
 
 async def test_no_retry_on_integrity_error(repo, session_factory) -> None:

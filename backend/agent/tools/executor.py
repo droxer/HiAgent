@@ -29,14 +29,32 @@ class ToolExecutor:
         self._registry = registry
         self._sandbox_provider = sandbox_provider
         self._sandbox_config = sandbox_config
-        self._sandbox_session: Any | None = None
+        self._sandbox_sessions: dict[str, Any] = {}
         self._event_emitter = event_emitter
         self._artifact_manager = artifact_manager or ArtifactManager()
 
-    async def _get_sandbox_session(self) -> Any:
-        """Lazily create a sandbox session on first use."""
-        if self._sandbox_session is not None:
-            return self._sandbox_session
+    def _resolve_template(self, tool_tags: tuple[str, ...] = ()) -> str:
+        """Determine the sandbox template from config or tool tags."""
+        if self._sandbox_config is not None:
+            return self._sandbox_config.template
+        if "browser" in tool_tags:
+            return "browser"
+        return "default"
+
+    async def _get_sandbox_session(
+        self, tool_tags: tuple[str, ...] = ()
+    ) -> Any:
+        """Get or create a sandbox session for the required template.
+
+        Sessions are keyed by template name so that browser tools get a
+        Playwright-enabled sandbox even when a ``default`` sandbox was
+        already created for earlier non-browser tool calls.
+        """
+        template = self._resolve_template(tool_tags)
+
+        existing = self._sandbox_sessions.get(template)
+        if existing is not None:
+            return existing
 
         if self._sandbox_provider is None:
             raise RuntimeError(
@@ -46,10 +64,17 @@ class ToolExecutor:
 
         from agent.sandbox.base import SandboxConfig
 
-        config = self._sandbox_config or SandboxConfig(template="default")
-        self._sandbox_session = await self._sandbox_provider.create_session(config)
-        logger.info("Sandbox session created (template=%s)", config.template)
-        return self._sandbox_session
+        if self._sandbox_config is not None:
+            config = self._sandbox_config
+        elif template == "browser":
+            config = SandboxConfig(template="browser", memory_mb=4096, cpu_count=2)
+        else:
+            config = SandboxConfig(template=template)
+
+        session = await self._sandbox_provider.create_session(config)
+        self._sandbox_sessions[template] = session
+        logger.info("Sandbox session created (template=%s)", template)
+        return session
 
     @property
     def artifact_manager(self) -> ArtifactManager:
@@ -78,7 +103,7 @@ class ToolExecutor:
                 return await tool.execute(**tool_input)
 
             if isinstance(tool, SandboxTool):
-                session = await self._get_sandbox_session()
+                session = await self._get_sandbox_session(tool.definition().tags)
                 logger.debug(
                     "sandbox_tool_input name={} keys={}",
                     tool_name,
@@ -114,10 +139,19 @@ class ToolExecutor:
             return result
 
         artifact_paths = result.metadata.get("artifact_paths")
-        if not artifact_paths:
+        screenshot_path = result.metadata.get("screenshot")
+
+        # Collect all paths to extract
+        paths_to_extract: list[str] = []
+        if artifact_paths:
+            paths_to_extract.extend(artifact_paths)
+        if screenshot_path and screenshot_path not in paths_to_extract:
+            paths_to_extract.append(screenshot_path)
+
+        if not paths_to_extract:
             return result
 
-        path_list = list(artifact_paths)
+        path_list = paths_to_extract
         artifacts = await self._artifact_manager.extract_from_sandbox(
             session=session,
             remote_paths=path_list,
@@ -154,25 +188,29 @@ class ToolExecutor:
         return result
 
     async def cleanup(self) -> None:
-        """Clean up sandbox resources.
+        """Clean up all sandbox sessions.
 
         Safe to call multiple times; a second call is a no-op.
         Handles the case where the session or provider is ``None``.
         """
-        session = self._sandbox_session
-        if session is None:
+        if not self._sandbox_sessions:
             return
 
-        # Clear reference first to prevent double-cleanup even if
-        # destroy_session raises.
-        self._sandbox_session = None
+        # Snapshot and clear to prevent double-cleanup.
+        sessions = dict(self._sandbox_sessions)
+        self._sandbox_sessions.clear()
 
         if self._sandbox_provider is None:
-            logger.warning("Sandbox session exists but no provider to destroy it")
+            logger.warning("Sandbox sessions exist but no provider to destroy them")
             return
 
-        try:
-            await self._sandbox_provider.destroy_session(session)
-            logger.info("Sandbox session destroyed")
-        except Exception as exc:
-            logger.error("Failed to destroy sandbox session: %s", exc)
+        for template, session in sessions.items():
+            try:
+                await self._sandbox_provider.destroy_session(session)
+                logger.info("Sandbox session destroyed (template=%s)", template)
+            except Exception as exc:
+                logger.error(
+                    "Failed to destroy sandbox session (template=%s): %s",
+                    template,
+                    exc,
+                )

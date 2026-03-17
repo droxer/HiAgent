@@ -1,9 +1,11 @@
-"""Tool for recalling entries from shared memory by substring search."""
+"""Tool for recalling entries from memory by substring search."""
 
 from __future__ import annotations
 
 import json
 from typing import Any
+
+from loguru import logger
 
 from agent.tools.base import (
     ExecutionContext,
@@ -14,17 +16,23 @@ from agent.tools.base import (
 
 
 class MemoryRecall(LocalTool):
-    """Search the agent's shared memory for entries matching a query."""
+    """Search the agent's memory for entries matching a query."""
 
-    def __init__(self, store: dict[str, str]) -> None:
-        if store is None:
-            raise ValueError("Store dict must not be None")
-        self._store = store
+    def __init__(
+        self,
+        store: dict[str, str] | None = None,
+        persistent_store: Any | None = None,
+    ) -> None:
+        self._store = store if store is not None else {}
+        self._persistent = persistent_store
 
     def definition(self) -> ToolDefinition:
         return ToolDefinition(
-            name="memory_recall",
-            description="Search agent memory for entries matching a query string.",
+            name="memory_search",
+            description=(
+                "Search agent memory for entries matching a query string. "
+                "Searches both conversation-specific and global memories."
+            ),
             input_schema={
                 "type": "object",
                 "properties": {
@@ -51,16 +59,27 @@ class MemoryRecall(LocalTool):
         if not query.strip():
             return ToolResult.fail("Query must not be empty")
 
+        if self._persistent is not None:
+            try:
+                matches = await self._persistent.recall(query, namespace)
+                return ToolResult.ok(
+                    json.dumps(matches, ensure_ascii=False),
+                    metadata={"match_count": len(matches), "namespace": namespace},
+                )
+            except Exception as exc:
+                logger.warning(
+                    "memory_persistent_store_fallback key={} error={}", "recall", exc
+                )
+
+        # Fallback to in-memory search
         prefix = f"{namespace}:"
         query_lower = query.lower()
-
         matches = {
             k: v
             for k, v in self._store.items()
             if k.startswith(prefix)
             and (query_lower in k.lower() or query_lower in v.lower())
         }
-
         return ToolResult.ok(
             json.dumps(matches, ensure_ascii=False),
             metadata={"match_count": len(matches), "namespace": namespace},

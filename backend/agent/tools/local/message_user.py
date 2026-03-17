@@ -23,7 +23,7 @@ class MessageUser(LocalTool):
 
     def definition(self) -> ToolDefinition:
         return ToolDefinition(
-            name="message_user",
+            name="user_message",
             description="Send a message to the user.",
             input_schema={
                 "type": "object",

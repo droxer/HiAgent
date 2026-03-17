@@ -58,6 +58,9 @@ _EXTENSION_CONTENT_TYPES: dict[str, str] = {
     ".gif": "image/gif",
     ".svg": "image/svg+xml",
     ".pdf": "application/pdf",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 }
 
 

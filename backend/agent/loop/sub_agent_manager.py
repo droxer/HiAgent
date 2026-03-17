@@ -9,6 +9,11 @@ from typing import Callable
 from agent.llm.client import ClaudeClient
 from agent.loop.task_runner import AgentResult, TaskAgentConfig, TaskAgentRunner
 from agent.tools.executor import ToolExecutor
+from agent.tools.meta.send_message import (
+    AgentMessageBus,
+    ReceiveMessages,
+    SendToAgent,
+)
 from agent.tools.registry import ToolRegistry
 from api.events import EventEmitter
 from loguru import logger
@@ -47,6 +52,7 @@ class SubAgentManager:
         self._max_concurrent = max_concurrent
         self._max_total = max_total
 
+        self._message_bus = AgentMessageBus()
         self._agents: dict[str, asyncio.Task[AgentResult]] = {}
         self._results: dict[str, AgentResult] = {}
         self._configs: dict[str, TaskAgentConfig] = {}
@@ -137,7 +143,9 @@ class SubAgentManager:
                 )
 
         self._agents.clear()
+        self._results.clear()
         self._executors.clear()
+        self._message_bus.clear()
 
     async def _run_agent(
         self,
@@ -203,6 +211,8 @@ class SubAgentManager:
             sandbox_template=config.sandbox_template,
             priority=config.priority,
             depends_on=config.depends_on,
+            model=config.model,
+            role=config.role,
         )
 
     async def _execute_agent(
@@ -213,6 +223,15 @@ class SubAgentManager:
         """Create and run a TaskAgentRunner, handling errors."""
         try:
             registry = self._registry_factory()
+
+            # Inject messaging tools for inter-agent communication
+            registry = registry.register(
+                SendToAgent(self._message_bus, sender_id=agent_id)
+            )
+            registry = registry.register(
+                ReceiveMessages(self._message_bus, receiver_id=agent_id)
+            )
+
             executor = self._executor_factory(registry)
             self._executors[agent_id] = executor
 

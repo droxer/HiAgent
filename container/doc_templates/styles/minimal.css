@@ -1,0 +1,76 @@
+/* Minimal theme — no decoration, maximum content density */
+@page {
+    size: {{PAGE_SIZE}} {{ORIENTATION}};
+    margin: 2cm 2cm;
+}
+
+body {
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 10pt;
+    line-height: 1.5;
+    color: #222;
+}
+
+h1 { font-size: 18pt; margin: 0 0 8pt 0; }
+h2 { font-size: 14pt; margin: 16pt 0 6pt 0; }
+h3 { font-size: 12pt; margin: 12pt 0 4pt 0; }
+h4, h5, h6 { font-size: 10pt; margin: 10pt 0 4pt 0; font-weight: 600; }
+
+p { margin: 0 0 6pt 0; }
+
+ul, ol { margin: 0 0 6pt 0; padding-left: 20pt; }
+li { margin-bottom: 2pt; }
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8pt 0;
+    font-size: 9pt;
+}
+th {
+    font-weight: 600;
+    text-align: left;
+    padding: 4pt 6pt;
+    border-bottom: 1pt solid #333;
+}
+td {
+    padding: 3pt 6pt;
+    border-bottom: 0.5pt solid #ddd;
+}
+
+pre {
+    background: #f8f8f8;
+    padding: 6pt 8pt;
+    font-family: monospace;
+    font-size: 8.5pt;
+    line-height: 1.4;
+    margin: 6pt 0;
+}
+code {
+    font-family: monospace;
+    font-size: 8.5pt;
+}
+
+blockquote {
+    margin: 6pt 0;
+    padding: 2pt 10pt;
+    border-left: 2pt solid #ccc;
+    color: #555;
+}
+
+hr { border: none; border-top: 0.5pt solid #ccc; margin: 10pt 0; }
+
+img { max-width: 100%; height: auto; }
+
+.doc-title {
+    font-size: 20pt;
+    font-weight: 700;
+    margin: 0 0 12pt 0;
+}
+
+/* Syntax highlighting */
+.codehilite .c { color: #6a737d; }
+.codehilite .k { color: #d73a49; }
+.codehilite .s { color: #032f62; }
+.codehilite .nf { color: #6f42c1; }
+.codehilite .mi { color: #005cc5; }

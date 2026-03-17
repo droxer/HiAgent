@@ -103,7 +103,11 @@ class SandboxPool:
         return E2BSession(sandbox=sandbox, config=entry.config)
 
     async def release(self, session: Any) -> None:
-        """Pause *session* and add it to the pool (or kill if pool is full)."""
+        """Pause *session* and add it to the pool (or kill if pool is full).
+
+        Uses a sentinel-based reservation to avoid a TOCTOU race between
+        checking pool capacity and inserting the entry.
+        """
         from agent.sandbox.e2b_provider import E2BSession
 
         if not isinstance(session, E2BSession):
@@ -117,41 +121,66 @@ class SandboxPool:
             return
 
         key = self._key_for(config)
+        should_pool = False
 
+        # Reserve a slot with a sentinel under the lock
         async with self._lock:
-            if len(self._entries[key]) >= self._max_per_key:
+            if len(self._entries[key]) < self._max_per_key:
+                self._entries[key].append(None)  # type: ignore[arg-type]
+                should_pool = True
+            else:
                 logger.debug(
                     "Pool full for key %s, killing sandbox %s",
                     key,
                     sandbox_id,
                 )
-                await session.kill()
-                return
 
-        # Pause the sandbox so it can be resumed later
-        await session.close()
+        if not should_pool:
+            await session.kill()
+            return
 
+        # Pause the sandbox outside the lock
+        try:
+            await session.close()
+        except Exception:
+            # Remove the sentinel if pausing failed
+            async with self._lock:
+                entries = self._entries[key]
+                if None in entries:
+                    entries.remove(None)
+            await session.kill()
+            return
+
+        # Replace the sentinel with the real entry
+        entry = _PoolEntry(
+            sandbox_id=sandbox_id,
+            paused_at=time.monotonic(),
+            config=config,
+        )
         async with self._lock:
-            self._entries[key].append(
-                _PoolEntry(
-                    sandbox_id=sandbox_id,
-                    paused_at=time.monotonic(),
-                    config=config,
-                )
-            )
+            entries = self._entries[key]
+            try:
+                idx = entries.index(None)
+                entries[idx] = entry  # type: ignore[assignment]
+            except ValueError:
+                # Sentinel was removed (e.g. by drain); just append if room
+                if len(entries) < self._max_per_key:
+                    entries.append(entry)
+
         logger.info("Pooled sandbox %s for key %s", sandbox_id, key)
 
     async def drain(self) -> None:
-        """Kill all pooled sandboxes. Called on application shutdown."""
+        """Kill all pooled sandboxes in parallel. Called on application shutdown."""
         from agent.sandbox.e2b_provider import _import_e2b
 
         async with self._lock:
             all_entries: list[_PoolEntry] = []
             for entries in self._entries.values():
-                all_entries.extend(entries)
+                # Filter out any sentinel None values
+                all_entries.extend(e for e in entries if e is not None)
             self._entries.clear()
 
-        for entry in all_entries:
+        async def _kill_entry(entry: _PoolEntry) -> None:
             try:
                 SandboxClass = _import_e2b()
                 sandbox = await asyncio.to_thread(
@@ -166,4 +195,5 @@ class SandboxPool:
                     "Failed to drain sandbox %s: %s", entry.sandbox_id, exc
                 )
 
+        await asyncio.gather(*[_kill_entry(e) for e in all_entries])
         logger.info("Sandbox pool drained (%d sandboxes)", len(all_entries))

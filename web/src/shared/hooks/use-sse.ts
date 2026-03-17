@@ -10,6 +10,7 @@ const SSE_EVENT_NAMES: readonly string[] = [
   "task_error",
   "turn_start",
   "turn_complete",
+  "turn_cancelled",
   "iteration_start",
   "iteration_complete",
   "llm_request",
@@ -154,5 +155,21 @@ export function useSSE(conversationId: string | null, isLive = true) {
     return cleanup;
   }, [conversationId, isLive, cleanup, connect]);
 
-  return { events, isConnected };
+  /** Remove events from the last assistant turn so a retry doesn't duplicate. */
+  const clearLastTurn = useCallback(() => {
+    setEvents((prev) => {
+      // Find the last turn_start — everything from there is the turn we're retrying
+      let lastTurnStart = -1;
+      for (let i = prev.length - 1; i >= 0; i--) {
+        if (prev[i].type === "turn_start") {
+          lastTurnStart = i;
+          break;
+        }
+      }
+      if (lastTurnStart === -1) return [];
+      return prev.slice(0, lastTurnStart);
+    });
+  }, []);
+
+  return { events, isConnected, clearLastTurn };
 }

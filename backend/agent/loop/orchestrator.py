@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, replace
 from typing import Any
 
@@ -67,6 +68,7 @@ class AgentOrchestrator:
         max_iterations: int = 50,
         observer: Observer | None = None,
         initial_messages: tuple[dict[str, Any], ...] = (),
+        thinking_budget: int = 0,
     ) -> None:
         if not system_prompt:
             raise ValueError("system_prompt must not be empty")
@@ -77,13 +79,46 @@ class AgentOrchestrator:
         self._system_prompt = system_prompt
         self._max_iterations = max_iterations
         self._observer = observer or Observer()
+        self._thinking_budget = thinking_budget
         self._task_complete_summary: str | None = None
+        self._cancel_event = asyncio.Event()
         self._state = AgentState(messages=initial_messages)
 
     async def on_task_complete(self, summary: str) -> None:
         """Callback for the task_complete tool."""
         self._task_complete_summary = summary
 
+    def cancel(self) -> None:
+        """Signal the current turn to stop."""
+        self._cancel_event.set()
+
+    def reset_cancel(self) -> None:
+        """Clear the cancellation signal."""
+        self._cancel_event.clear()
+
+    def get_last_user_message(self) -> str | None:
+        """Return the content of the most recent user message, or None."""
+        for msg in reversed(self._state.messages):
+            if msg.get("role") == "user" and isinstance(msg.get("content"), str):
+                return msg["content"]
+        return None
+
+    def rollback_to_before_last_user_message(self) -> None:
+        """Remove the last user message and everything after it."""
+        messages = list(self._state.messages)
+        for i in range(len(messages) - 1, -1, -1):
+            if messages[i].get("role") == "user" and isinstance(
+                messages[i].get("content"), str
+            ):
+                self._state = replace(
+                    self._state,
+                    messages=tuple(messages[:i]),
+                    completed=False,
+                    error=None,
+                )
+                return
+
+    # NOTE: orchestrator is not re-entrant — do not call run() concurrently
     async def run(self, user_message: str) -> str:
         """Execute the agent loop and return the final text response."""
         if not user_message.strip():
@@ -107,10 +142,23 @@ class AgentOrchestrator:
         tools = self._registry.to_anthropic_tools()
 
         while not self._state.completed and self._state.error is None:
+            if self._cancel_event.is_set():
+                break
             self._state = self._state.increment_iteration()
             self._state = await self._run_iteration(self._state, tools)
 
         logger.info("turn_complete iterations={}", self._state.iteration)
+
+        if self._cancel_event.is_set():
+            self._cancel_event.clear()
+            final_text = extract_final_text(self._state)
+            await self._emitter.emit(
+                EventType.TURN_CANCELLED,
+                {"result": final_text},
+            )
+            # Reset so the orchestrator can accept new turns
+            self._state = replace(self._state, completed=False, error=None)
+            return final_text
 
         if self._state.error:
             await self._emitter.emit(
@@ -165,6 +213,7 @@ class AgentOrchestrator:
                 messages=list(state.messages),
                 tools=tools if tools else None,
                 on_text_delta=_on_text_delta,
+                thinking_budget=self._thinking_budget,
             )
         except Exception as exc:
             logger.error("llm_call_failed error={}", exc)
@@ -189,6 +238,13 @@ class AgentOrchestrator:
             iteration=state.iteration,
         )
 
+        if response.thinking:
+            await self._emitter.emit(
+                EventType.THINKING,
+                {"thinking": response.thinking},
+                iteration=state.iteration,
+            )
+
         state = apply_response_to_state(state, response)
 
         if not response.tool_calls:
@@ -200,6 +256,7 @@ class AgentOrchestrator:
             executor=self._executor,
             emitter=self._emitter,
             stop_check=lambda: self._task_complete_summary is not None,
+            cancel_check=lambda: self._cancel_event.is_set(),
         )
 
         # Check if task_complete tool was invoked during tool processing

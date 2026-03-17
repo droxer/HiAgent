@@ -23,7 +23,10 @@ export function ConversationView() {
     handleSendMessage,
     handleCreateConversation,
     handleNewConversation,
+    handleCancel,
+    handleRetry,
     isWaitingForAgent,
+    userCancelled,
   } = useConversationContext();
 
   const isActive = conversationId !== null;
@@ -64,6 +67,9 @@ export function ConversationView() {
             onSendMessage={handleSendMessage}
             onNavigateHome={handleNewConversation}
             isWaitingForAgent={isWaitingForAgent}
+            userCancelled={userCancelled}
+            onCancel={handleCancel}
+            onRetry={handleRetry}
           />
         </motion.div>
       )}

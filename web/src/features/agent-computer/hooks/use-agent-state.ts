@@ -44,6 +44,17 @@ export function useAgentState(events: AgentEvent[]) {
           content: String(e.data.message ?? e.data.content ?? ""),
           timestamp: e.timestamp,
         });
+      } else if (e.type === "turn_cancelled") {
+        // Finalize any streaming text as a partial message
+        if (streamingText) {
+          msgs.push({
+            role: "assistant",
+            content: streamingText,
+            timestamp: streamingTimestamp,
+          });
+          streamingText = "";
+          streamingTimestamp = 0;
+        }
       } else if (e.type === "turn_complete" || e.type === "task_complete") {
         const result = String(e.data.result ?? "");
         if (result) {
@@ -168,6 +179,7 @@ export function useAgentState(events: AgentEvent[]) {
       if (e.type === "iteration_start") state = "executing";
       if (e.type === "tool_call") state = "executing";
       if (e.type === "turn_complete") state = "idle";
+      if (e.type === "turn_cancelled") state = "idle";
       if (e.type === "task_complete") state = "complete";
       if (e.type === "task_error") state = "error";
     }
@@ -234,6 +246,7 @@ export function useAgentState(events: AgentEvent[]) {
       } else if (
         e.type === "llm_response" ||
         e.type === "turn_complete" ||
+        e.type === "turn_cancelled" ||
         e.type === "task_complete" ||
         e.type === "task_error"
       ) {
@@ -268,6 +281,7 @@ export function useAgentState(events: AgentEvent[]) {
       } else if (
         e.type === "task_complete" ||
         e.type === "turn_complete" ||
+        e.type === "turn_cancelled" ||
         e.type === "task_error"
       ) {
         phase = { phase: "idle" };

@@ -30,11 +30,11 @@ migrate:
 build-web:
 	cd web && npm run build
 
-# Build sandbox Docker images
+# Build sandbox Docker images (from container/ folder)
 build-sandbox:
-	docker build -t ghcr.io/droxer/hiagent-sandbox-default -f sandbox/Dockerfile.default sandbox
-	docker build -t ghcr.io/droxer/hiagent-sandbox-data-science -f sandbox/Dockerfile.data_science sandbox
-	docker build -t ghcr.io/droxer/hiagent-sandbox-browser -f sandbox/Dockerfile.browser sandbox
+	docker build -t ghcr.io/droxer/hiagent-sandbox-default -f container/Dockerfile.default container
+	docker build -t ghcr.io/droxer/hiagent-sandbox-data-science -f container/Dockerfile.data_science container
+	docker build -t ghcr.io/droxer/hiagent-sandbox-browser -f container/Dockerfile.browser container
 
 # Push sandbox Docker images to GHCR
 push-sandbox:

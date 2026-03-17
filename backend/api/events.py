@@ -16,6 +16,7 @@ class EventType(StrEnum):
 
     TURN_START = "turn_start"
     TURN_COMPLETE = "turn_complete"
+    TURN_CANCELLED = "turn_cancelled"
 
     ITERATION_START = "iteration_start"
     ITERATION_COMPLETE = "iteration_complete"
@@ -43,6 +44,9 @@ class EventType(StrEnum):
     ARTIFACT_CREATED = "artifact_created"
 
     CONVERSATION_TITLE = "conversation_title"
+
+    PREVIEW_AVAILABLE = "preview_available"
+    PREVIEW_STOPPED = "preview_stopped"
 
 
 @dataclass(frozen=True)
@@ -104,18 +108,19 @@ class EventEmitter:
             data=data,
             iteration=iteration,
         )
-        for subscriber in self._subscribers:
-            try:
-                await subscriber(event)
-            except Exception as exc:
-                # Log but don't let a failing subscriber break the pipeline
-                from loguru import logger
+        from loguru import logger
 
+        results = await asyncio.gather(
+            *[subscriber(event) for subscriber in self._subscribers],
+            return_exceptions=True,
+        )
+        for subscriber, result in zip(self._subscribers, results):
+            if isinstance(result, Exception):
                 logger.error(
                     "Subscriber {} failed for event {}: {}",
                     subscriber,
                     event_type,
-                    exc,
+                    result,
                 )
 
     async def emit_and_wait(

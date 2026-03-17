@@ -21,7 +21,7 @@ const components: Components = {
     if (isInline) {
       return (
         <code
-          className="rounded bg-black/5 px-1.5 py-0.5 text-xs font-mono"
+          className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono"
           {...props}
         >
           {children}
@@ -59,7 +59,7 @@ const components: Components = {
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-accent-blue underline underline-offset-2"
+        className="text-primary underline underline-offset-2"
       >
         {children}
       </a>

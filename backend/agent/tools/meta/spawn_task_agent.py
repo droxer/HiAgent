@@ -22,10 +22,10 @@ class SpawnTaskAgent(LocalTool):
 
     def definition(self) -> ToolDefinition:
         return ToolDefinition(
-            name="spawn_task_agent",
+            name="agent_spawn",
             description=(
                 "Spawn a new task agent to execute a focused sub-task. "
-                "Returns an agent_id that can be passed to wait_for_agents."
+                "Returns an agent_id that can be passed to agent_wait."
             ),
             input_schema={
                 "type": "object",
@@ -55,6 +55,16 @@ class SpawnTaskAgent(LocalTool):
                         "description": "Use the lite (faster/cheaper) model for this task. Good for simple, focused tasks.",
                         "default": False,
                     },
+                    "role": {
+                        "type": "string",
+                        "description": (
+                            "Specialization role for the agent (e.g., "
+                            "'researcher', 'coder', 'reviewer', "
+                            "'data_analyst'). Affects the agent's "
+                            "system prompt."
+                        ),
+                        "default": "",
+                    },
                 },
                 "required": ["task_description"],
             },
@@ -68,6 +78,7 @@ class SpawnTaskAgent(LocalTool):
         sandbox_template: str = kwargs.get("sandbox_template", "default")
         depends_on: list[str] = kwargs.get("depends_on", [])
         use_lite_model: bool = kwargs.get("use_lite_model", False)
+        role: str = kwargs.get("role", "")
 
         if not task_description.strip():
             return ToolResult.fail("task_description must not be empty")
@@ -84,6 +95,7 @@ class SpawnTaskAgent(LocalTool):
                 sandbox_template=sandbox_template,
                 depends_on=tuple(depends_on),
                 model=model,
+                role=role,
             )
             agent_id = await self._manager.spawn(config)
         except Exception as exc:

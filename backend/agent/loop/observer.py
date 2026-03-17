@@ -118,6 +118,8 @@ def _compact_message(
         return message
 
     compacted_content = tuple(_compact_content_block(block) for block in content)
+    # Intentional type widening: content is returned as list (not tuple) to
+    # match the Anthropic API message format expected by downstream consumers.
     return {**message, "content": list(compacted_content)}
 
 

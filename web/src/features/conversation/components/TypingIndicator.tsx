@@ -22,7 +22,6 @@ export function TypingIndicator() {
             key={i}
             className="h-1.5 w-1.5 rounded-full bg-accent-emerald"
             animate={{
-              scale: [1, 1.4, 1],
               opacity: [0.4, 1, 0.4],
             }}
             transition={{

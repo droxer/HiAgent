@@ -1,8 +1,10 @@
-"""Tool for storing key-value pairs in shared memory."""
+"""Tool for storing key-value pairs in persistent memory."""
 
 from __future__ import annotations
 
 from typing import Any
+
+from loguru import logger
 
 from agent.tools.base import (
     ExecutionContext,
@@ -13,17 +15,23 @@ from agent.tools.base import (
 
 
 class MemoryStore(LocalTool):
-    """Store a value in the agent's shared memory under a namespaced key."""
+    """Store a value in the agent's memory under a namespaced key."""
 
-    def __init__(self, store: dict[str, str]) -> None:
-        if store is None:
-            raise ValueError("Store dict must not be None")
-        self._store = store
+    def __init__(
+        self,
+        store: dict[str, str] | None = None,
+        persistent_store: Any | None = None,
+    ) -> None:
+        self._store = store if store is not None else {}
+        self._persistent = persistent_store
 
     def definition(self) -> ToolDefinition:
         return ToolDefinition(
             name="memory_store",
-            description="Store a key-value pair in the agent's memory.",
+            description=(
+                "Store a key-value pair in the agent's persistent memory. "
+                "Memory persists across conversations."
+            ),
             input_schema={
                 "type": "object",
                 "properties": {
@@ -57,10 +65,21 @@ class MemoryStore(LocalTool):
         if not value:
             return ToolResult.fail("Value must not be empty")
 
+        if self._persistent is not None:
+            try:
+                await self._persistent.store(key, value, namespace)
+                return ToolResult.ok(
+                    f"Stored value under '{namespace}:{key}' (persistent).",
+                    metadata={"namespace": namespace, "key": key, "persistent": True},
+                )
+            except Exception as exc:
+                logger.warning(
+                    "memory_persistent_store_fallback key={} error={}", key, exc
+                )
+
         compound_key = f"{namespace}:{key}"
         self._store[compound_key] = value
-
         return ToolResult.ok(
             f"Stored value under '{compound_key}'.",
-            metadata={"namespace": namespace, "key": key},
+            metadata={"namespace": namespace, "key": key, "persistent": False},
         )

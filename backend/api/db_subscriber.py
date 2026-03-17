@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import uuid
+from collections.abc import Callable, Coroutine
 from typing import Any
 
 from loguru import logger
@@ -18,14 +19,14 @@ from sqlalchemy.exc import IntegrityError, OperationalError, InterfaceError, Pro
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from agent.state.repository import ConversationRepository
-from api.events import AgentEvent, EventType
+from api.events import AgentEvent, EventType, SubscriberCallback
 
 # Event types that should not be persisted (too noisy or ephemeral)
 _SKIP_EVENTS = {EventType.TEXT_DELTA}
 
 # Retry configuration
-_MAX_RETRIES = 3
-_BASE_DELAY = 0.1  # seconds — delays: 0.1, 0.3, 0.9
+_MAX_RETRIES = 5
+_BASE_DELAY = 0.15  # seconds — delays: 0.15, 0.45, 1.35, 4.05
 
 # Exceptions worth retrying (transient / connection issues)
 _RETRYABLE_EXCEPTIONS = (OperationalError, InterfaceError, TimeoutError, OSError)
@@ -101,7 +102,7 @@ def _clean_data(data: dict[str, Any]) -> dict[str, Any]:
 
 
 async def _retry_with_backoff(
-    func: Any,
+    func: Callable[[], Coroutine[Any, Any, None]],
     conversation_id: uuid.UUID,
     event: AgentEvent,
     clean_data: dict[str, Any],
@@ -128,8 +129,36 @@ async def _retry_with_backoff(
                     exc,
                 )
                 await asyncio.sleep(delay)
-        except (IntegrityError, ProgrammingError) as exc:
-            # Non-retryable: constraint violation or SQL error
+        except IntegrityError as exc:
+            exc_str = str(exc)
+            if "ForeignKeyViolationError" in exc_str and attempt < _MAX_RETRIES - 1:
+                # FK violation may be a timing issue — conversation row
+                # not yet visible to this session.  Retry with backoff.
+                last_exc = exc
+                delay = _BASE_DELAY * (3 ** attempt)
+                logger.warning(
+                    "db_subscriber_fk_retry attempt={}/{} delay={:.2f}s "
+                    "conversation_id={} event_type={}",
+                    attempt + 1,
+                    _MAX_RETRIES,
+                    delay,
+                    conversation_id,
+                    event.type.value,
+                )
+                await asyncio.sleep(delay)
+            else:
+                # Other integrity errors are non-retryable
+                logger.error(
+                    "db_subscriber_event_lost_non_retryable "
+                    "conversation_id={} event_type={} error={} data={}",
+                    conversation_id,
+                    event.type.value,
+                    exc,
+                    clean_data,
+                )
+                return
+        except ProgrammingError as exc:
+            # Non-retryable SQL errors
             logger.error(
                 "db_subscriber_event_lost_non_retryable "
                 "conversation_id={} event_type={} error={} data={}",
@@ -156,8 +185,12 @@ def create_db_subscriber(
     repo: ConversationRepository,
     session_factory: async_sessionmaker[AsyncSession],
     pending_writes: PendingWrites | None = None,
-) -> Any:
+) -> SubscriberCallback:
     """Create an async event subscriber that persists to PostgreSQL."""
+
+    logger.info(
+        "db_subscriber_created conversation_id={}", conversation_id
+    )
 
     async def _subscriber(event: AgentEvent) -> None:
         if event.type in _SKIP_EVENTS:
@@ -176,6 +209,10 @@ def create_db_subscriber(
                         content={"text": message},
                         iteration=None,
                     )
+                    logger.info(
+                        "db_message_saved role=user conversation_id={}",
+                        conversation_id,
+                    )
 
                 elif event.type == EventType.TURN_COMPLETE:
                     result = clean.get("result", "")
@@ -185,6 +222,10 @@ def create_db_subscriber(
                         role="assistant",
                         content={"text": result},
                         iteration=event.iteration,
+                    )
+                    logger.info(
+                        "db_message_saved role=assistant conversation_id={}",
+                        conversation_id,
                     )
 
                 elif event.type == EventType.TASK_COMPLETE:
@@ -196,6 +237,10 @@ def create_db_subscriber(
                         content={"text": result},
                         iteration=event.iteration,
                     )
+                    logger.info(
+                        "db_message_saved role=assistant conversation_id={}",
+                        conversation_id,
+                    )
 
                 elif event.type == EventType.TASK_ERROR:
                     await repo.save_event(
@@ -204,6 +249,21 @@ def create_db_subscriber(
                         event_type=event.type.value,
                         data=clean,
                         iteration=event.iteration,
+                    )
+
+                elif event.type == EventType.MESSAGE_USER:
+                    text = clean.get("message", clean.get("text", ""))
+                    await repo.save_message(
+                        session,
+                        conversation_id,
+                        role="assistant",
+                        content={"text": text},
+                        iteration=event.iteration,
+                    )
+                    logger.info(
+                        "db_message_saved role=assistant (message_user) "
+                        "conversation_id={}",
+                        conversation_id,
                     )
 
                 elif event.type == EventType.ARTIFACT_CREATED:
@@ -215,6 +275,15 @@ def create_db_subscriber(
                         original_name=str(clean.get("name", "")),
                         content_type=str(clean.get("content_type", "application/octet-stream")),
                         size=int(clean.get("size", 0)),
+                    )
+                    # Also persist as a regular event so historical views
+                    # can reconstruct the artifact list from the events table.
+                    await repo.save_event(
+                        session,
+                        conversation_id,
+                        event_type=event.type.value,
+                        data=clean,
+                        iteration=event.iteration,
                     )
 
                 elif event.type == EventType.CONVERSATION_TITLE:

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notoSans, instrumentSerif } from "./fonts";
+import { inter, instrumentSerif, jetbrainsMono } from "./fonts";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -24,7 +24,8 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${notoSans.variable} ${instrumentSerif.variable}`}
+      suppressHydrationWarning
+      className={`${inter.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable}`}
     >
       <body className="font-sans antialiased">
         <Providers>{children}</Providers>

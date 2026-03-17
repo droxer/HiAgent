@@ -1,75 +1,90 @@
 @import "tailwindcss";
 @import "katex/dist/katex.min.css";
-@import "highlight.js/styles/github.min.css";
+@import "highlight.js/styles/github-dark.min.css";
 
 @theme {
-  /* ─── shadcn/ui theme tokens ─── */
-  --color-background: #FAF9F7;
-  --color-foreground: #1C1917;
-  --color-primary: #1C1917;
-  --color-primary-foreground: #FAFAF9;
-  --color-secondary: #F0EEEA;
-  --color-secondary-foreground: #1C1917;
-  --color-muted: #F0EEEA;
-  --color-muted-foreground: #78716C;
-  --color-destructive: #DC2626;
-  --color-border: #E7E5E4;
-  --color-input: #E7E5E4;
-  --color-ring: #1C1917;
-  --color-card: #FFFFFF;
-  --color-card-foreground: #1C1917;
-  --color-popover: #FFFFFF;
-  --color-popover-foreground: #1C1917;
+  /* ─── Theme tokens (registered for Tailwind utility generation) ─── */
+  --color-background: #0A0A0A;
+  --color-foreground: #EDEDED;
+  --color-primary: #FFFFFF;
+  --color-primary-foreground: #0A0A0A;
+  --color-secondary: #1A1A1A;
+  --color-secondary-foreground: #EDEDED;
+  --color-muted: #1A1A1A;
+  --color-muted-foreground: #A1A1AA;
+  --color-destructive: #F87171;
+  --color-border: #2A2A2A;
+  --color-input: #2A2A2A;
+  --color-ring: #EDEDED;
+  --color-card: #141414;
+  --color-card-foreground: #EDEDED;
+  --color-popover: #141414;
+  --color-popover-foreground: #EDEDED;
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
   --radius-lg: 0.5rem;
   --radius-xl: 0.75rem;
 
   /* Custom border colors */
-  --color-border-strong: #D6D3D1;
-  --color-border-active: #78716C;
+  --color-border-strong: #3A3A3A;
+  --color-border-active: #525252;
 
   /* Custom text colors */
-  --color-placeholder: #A8A29E;
+  --color-placeholder: #6B6B76;
 
-  /* Accent colors — consistent across all components */
-  --color-accent-blue: #2563EB;
-  --color-accent-emerald: #059669;
+  /* Accent colors */
+  --color-accent-emerald: #34D399;
   --color-accent-amber: #D97706;
-  --color-accent-rose: #E11D48;
+  --color-accent-rose: #F87171;
   --color-accent-purple: #7C3AED;
 
+  /* AI active glow */
+  --color-ai-glow: #818CF8;
+
+  /* Dark Observatory tokens */
+  --color-user-accent: #3B82F6;
+  --color-user-accent-dim: rgba(59, 130, 246, 0.08);
+  --color-ai-surface: rgba(129, 140, 248, 0.04);
+  --color-ai-border: rgba(129, 140, 248, 0.12);
+  --color-input-glow: rgba(37, 99, 235, 0.15);
+
   /* Sidebar */
-  --color-sidebar-bg: #FFFFFF;
-  --color-sidebar-active: #F0EEEA;
-  --color-sidebar-hover: #F7F6F4;
+  --color-sidebar-bg: #0A0A0A;
+  --color-sidebar-active: #1A1A1A;
+  --color-sidebar-hover: #141414;
 
   /* Terminal (dark panel) */
-  --color-terminal-bg: #1C1917;
-  --color-terminal-surface: #292524;
-  --color-terminal-border: #44403C;
+  --color-terminal-bg: #0A0A0A;
+  --color-terminal-surface: #141414;
+  --color-terminal-border: #2A2A2A;
   --color-terminal-text: #D6D3D1;
-  --color-terminal-dim: #78716C;
+  --color-terminal-dim: #6B6B76;
 
-  /* Font families — values injected via next/font CSS variables */
-  --font-sans: var(--font-noto-sans), system-ui, -apple-system, sans-serif;
+  /* Font families */
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
   --font-serif: var(--font-instrument-serif), Georgia, "Times New Roman", serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 
   /* Type scale */
   --font-size-hero: 3.75rem;
   --font-size-hero--line-height: 1.1;
-  --font-size-heading: 1.125rem;
+  --font-size-h1: 1.5rem;
+  --font-size-h1--line-height: 1.3;
+  --font-size-h2: 1rem;
+  --font-size-h2--line-height: 1.3;
+  --font-size-heading: 1rem;
   --font-size-heading--line-height: 1.3;
-  --font-size-caption: 0.6875rem;
+  --font-size-body: 0.875rem;
+  --font-size-body--line-height: 1.5;
+  --font-size-caption: 0.75rem;
   --font-size-caption--line-height: 1.45;
   --font-size-micro: 0.625rem;
   --font-size-micro--line-height: 1.4;
 
-  /* Shadows */
-  --shadow-card: 0 1px 3px rgba(28, 25, 23, 0.04), 0 1px 2px rgba(28, 25, 23, 0.02);
-  --shadow-card-hover: 0 4px 12px rgba(28, 25, 23, 0.06), 0 1px 3px rgba(28, 25, 23, 0.04);
-  --shadow-elevated: 0 8px 24px rgba(28, 25, 23, 0.08), 0 2px 8px rgba(28, 25, 23, 0.04);
+  /* Shadows (defaults, overridden by :root / .dark below) */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
 
   /* Animations */
   --animate-fade-in: fadeIn 0.3s ease-out;
@@ -97,6 +112,137 @@
   }
 
   --animate-shimmer: shimmer 2s linear infinite;
+
+  @keyframes breathe {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.8; }
+  }
+
+  @keyframes aiGlow {
+    0%, 100% { box-shadow: 0 0 4px rgba(129, 140, 248, 0.2); }
+    50% { box-shadow: 0 0 12px rgba(129, 140, 248, 0.4); }
+  }
+
+  @keyframes orbitalPulse {
+    0%, 100% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(1.8); opacity: 0; }
+  }
+
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  @keyframes beaconGlow {
+    0%, 100% { box-shadow: 0 0 4px rgba(129, 140, 248, 0.4); }
+    50% { box-shadow: 0 0 12px rgba(129, 140, 248, 0.6); }
+  }
+
+  @keyframes conicSpin {
+    0% { --conic-angle: 0deg; }
+    100% { --conic-angle: 360deg; }
+  }
+
+  @keyframes meshDrift {
+    0% { background-position: 0% 0%; }
+    50% { background-position: 100% 100%; }
+    100% { background-position: 0% 0%; }
+  }
+
+  --animate-orbital-pulse: orbitalPulse 2s ease-out infinite;
+  --animate-gradient-shift: gradientShift 3s ease infinite;
+  --animate-beacon-glow: beaconGlow 2s ease-in-out infinite;
+}
+
+/* ─── Light mode (default) ─── */
+
+:root {
+  --color-background: #FFFFFF;
+  --color-foreground: #1A1A1A;
+  --color-primary: #1A1A1A;
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: #F4F4F5;
+  --color-secondary-foreground: #1A1A1A;
+  --color-muted: #F4F4F5;
+  --color-muted-foreground: #71717A;
+  --color-destructive: #EF4444;
+  --color-border: #E4E4E7;
+  --color-input: #E4E4E7;
+  --color-ring: #1A1A1A;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #1A1A1A;
+  --color-popover: #FFFFFF;
+  --color-popover-foreground: #1A1A1A;
+  --color-border-strong: #D4D4D8;
+  --color-border-active: #A1A1AA;
+  --color-placeholder: #A1A1AA;
+  --color-accent-emerald: #10B981;
+  --color-accent-amber: #D97706;
+  --color-accent-rose: #EF4444;
+  --color-accent-purple: #7C3AED;
+  --color-ai-glow: #818CF8;
+  --color-user-accent: #3B82F6;
+  --color-user-accent-dim: rgba(59, 130, 246, 0.06);
+  --color-ai-surface: rgba(129, 140, 248, 0.06);
+  --color-ai-border: rgba(129, 140, 248, 0.15);
+  --color-input-glow: rgba(37, 99, 235, 0.10);
+  --color-sidebar-bg: #F9FAFB;
+  --color-sidebar-active: #F0F0F2;
+  --color-sidebar-hover: #F4F4F5;
+  --color-terminal-bg: #F6F6F7;
+  --color-terminal-surface: #ECECEE;
+  --color-terminal-border: #D4D4D8;
+  --color-terminal-text: #2D2D2D;
+  --color-terminal-dim: #8B8B96;
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* ─── Dark mode ─── */
+
+.dark {
+  --color-background: #0A0A0A;
+  --color-foreground: #EDEDED;
+  --color-primary: #FFFFFF;
+  --color-primary-foreground: #0A0A0A;
+  --color-secondary: #1A1A1A;
+  --color-secondary-foreground: #EDEDED;
+  --color-muted: #1A1A1A;
+  --color-muted-foreground: #A1A1AA;
+  --color-destructive: #F87171;
+  --color-border: #2A2A2A;
+  --color-input: #2A2A2A;
+  --color-ring: #EDEDED;
+  --color-card: #141414;
+  --color-card-foreground: #EDEDED;
+  --color-popover: #141414;
+  --color-popover-foreground: #EDEDED;
+  --color-border-strong: #3A3A3A;
+  --color-border-active: #525252;
+  --color-placeholder: #6B6B76;
+  --color-accent-emerald: #34D399;
+  --color-accent-amber: #D97706;
+  --color-accent-rose: #F87171;
+  --color-accent-purple: #7C3AED;
+  --color-ai-glow: #818CF8;
+  --color-user-accent: #3B82F6;
+  --color-user-accent-dim: rgba(59, 130, 246, 0.08);
+  --color-ai-surface: rgba(129, 140, 248, 0.04);
+  --color-ai-border: rgba(129, 140, 248, 0.12);
+  --color-input-glow: rgba(37, 99, 235, 0.15);
+  --color-sidebar-bg: #0A0A0A;
+  --color-sidebar-active: #1A1A1A;
+  --color-sidebar-hover: #141414;
+  --color-terminal-bg: #0A0A0A;
+  --color-terminal-surface: #141414;
+  --color-terminal-border: #2A2A2A;
+  --color-terminal-text: #D6D3D1;
+  --color-terminal-dim: #6B6B76;
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 /* ─── Typography ─── */
@@ -133,17 +279,29 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(120, 113, 108, 0.2);
+  background: rgba(0, 0, 0, 0.15);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(120, 113, 108, 0.4);
+  background: rgba(0, 0, 0, 0.25);
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(120, 113, 108, 0.2) transparent;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dark * {
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 
 /* ─── Reduced motion ─── */
@@ -219,6 +377,24 @@ body {
 
 .markdown-body pre {
   margin: 0.5em 0;
+  background: var(--color-secondary);
+  border-radius: 0.375rem;
+  padding: 0.75em 1em;
+}
+
+.markdown-body code {
+  font-family: var(--font-mono);
+}
+
+.markdown-body :not(pre) > code {
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 0.25rem;
+  padding: 0.15em 0.4em;
+  font-size: 0.9em;
+}
+
+.dark .markdown-body :not(pre) > code {
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .markdown-body img {
@@ -234,6 +410,48 @@ body {
 .markdown-body .katex-display {
   margin: 0.75em 0;
   overflow-x: auto;
+}
+
+/* ─── Highlight.js light-mode overrides ─── */
+
+:root .hljs {
+  background: var(--color-secondary);
+  color: var(--color-foreground);
+}
+
+:root .hljs-keyword,
+:root .hljs-selector-tag,
+:root .hljs-literal,
+:root .hljs-section,
+:root .hljs-link {
+  color: #7C3AED;
+}
+
+:root .hljs-string,
+:root .hljs-title,
+:root .hljs-name,
+:root .hljs-type,
+:root .hljs-attr,
+:root .hljs-symbol,
+:root .hljs-bullet,
+:root .hljs-addition,
+:root .hljs-template-tag,
+:root .hljs-template-variable {
+  color: #059669;
+}
+
+:root .hljs-comment,
+:root .hljs-quote,
+:root .hljs-deletion,
+:root .hljs-meta {
+  color: #71717A;
+}
+
+:root .hljs-number,
+:root .hljs-regexp,
+:root .hljs-built_in,
+:root .hljs-variable {
+  color: #D97706;
 }
 
 /* Override Next.js dev overlay portal positioning */

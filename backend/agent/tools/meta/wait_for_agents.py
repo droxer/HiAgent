@@ -23,7 +23,7 @@ class WaitForAgents(LocalTool):
 
     def definition(self) -> ToolDefinition:
         return ToolDefinition(
-            name="wait_for_agents",
+            name="agent_wait",
             description=(
                 "Wait for task agents to complete. "
                 "If agent_ids is empty, waits for all running agents."

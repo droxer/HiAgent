@@ -23,7 +23,7 @@ class AskUser(LocalTool):
 
     def definition(self) -> ToolDefinition:
         return ToolDefinition(
-            name="ask_user",
+            name="user_ask",
             description="Ask the user a question and wait for their response.",
             input_schema={
                 "type": "object",

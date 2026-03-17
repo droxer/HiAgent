@@ -13,7 +13,7 @@ steps:
     description: Fetch top result for details
     input_template:
       url: "{top_result_url}"
-  - tool: message_user
+  - tool: user_message
     description: Deliver research findings
     input_template:
       message: "{summary}"

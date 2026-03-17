@@ -35,7 +35,7 @@ export function InputPrompt({ question, onSubmit }: InputPromptProps) {
         <div className="rounded-xl border border-border bg-card p-6" style={{ boxShadow: "var(--shadow-elevated)" }}>
           {/* Header */}
           <div className="mb-4 flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-amber/10 text-accent-amber">
               <MessageCircle className="h-4 w-4" />
             </div>
             <div>

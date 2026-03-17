@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import type { AgentEvent, TaskState, ToolCallInfo, AgentStatus } from "@/shared/types";
+import { normalizeToolName } from "@/features/agent-computer/lib/tool-constants";
 
 interface AgentProgressCardProps {
   events: AgentEvent[];
@@ -61,7 +62,7 @@ function buildSteps(
           const tc = toolCalls.find((t) => t.id === toolId);
           steps = [...steps, {
             id: `tool-${toolId}`,
-            title: `Using ${toolName}`,
+            title: `Using ${normalizeToolName(toolName)}`,
             status: tc?.output !== undefined ? "complete" : "running",
           }];
         }
@@ -119,22 +120,30 @@ function buildSteps(
   return [...steps];
 }
 
-function StatusDot({ status }: { status: TimelineStep["status"] }) {
-  if (status === "running") {
-    return (
-      <motion.span
-        className="h-2 w-2 rounded-full bg-accent-emerald"
-        animate={{ scale: [1, 1.4, 1], opacity: [1, 0.6, 1] }}
-        transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-      />
-    );
+/* Colored dot status indicators */
+function StatusDot({ status }: { readonly status: TimelineStep["status"] }) {
+  if (status === "complete") {
+    return <span className="h-2 w-2 shrink-0 rounded-full bg-accent-emerald" />;
   }
-
   if (status === "error") {
-    return <span className="h-2 w-2 rounded-full bg-accent-rose" />;
+    return <span className="h-2 w-2 shrink-0 rounded-full bg-accent-rose" />;
   }
+  // Running — with orbital pulse
+  return (
+    <span className="relative h-2 w-2 shrink-0">
+      <span className="absolute inset-0 rounded-full bg-ai-glow" />
+      <span
+        className="absolute inset-0 rounded-full bg-ai-glow"
+        style={{ animation: "orbitalPulse 2s ease-out infinite" }}
+      />
+    </span>
+  );
+}
 
-  return <span className="h-2 w-2 rounded-full bg-accent-emerald opacity-40" />;
+function statusColorClass(status: TimelineStep["status"]): string {
+  if (status === "complete") return "text-accent-emerald";
+  if (status === "error") return "text-accent-rose";
+  return "text-ai-glow";
 }
 
 export function AgentProgressCard({
@@ -172,13 +181,17 @@ export function AgentProgressCard({
       style={{ boxShadow: "var(--shadow-card)" }}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ boxShadow: "var(--shadow-card-hover)", y: -1, borderColor: "var(--color-border-strong)" }}
+      whileHover={{ boxShadow: "var(--shadow-card-hover)", borderColor: "var(--color-border-strong)" }}
       transition={{ type: "spring", stiffness: 300, damping: 24 }}
     >
-      {/* Progress bar */}
-      <div className="h-0.5 w-full bg-muted">
+      {/* Progress bar — gradient with glow */}
+      <div className="h-0.5 w-full bg-secondary">
         <motion.div
-          className="h-full bg-accent-emerald"
+          className="h-full"
+          style={{
+            background: "linear-gradient(90deg, var(--color-ai-glow), var(--color-accent-purple))",
+            boxShadow: "0 0 8px color-mix(in srgb, var(--color-ai-glow) 30%, transparent)",
+          }}
           initial={{ width: 0 }}
           animate={{ width: `${progressRatio * 100}%` }}
           transition={{ type: "spring", stiffness: 120, damping: 20 }}
@@ -187,20 +200,20 @@ export function AgentProgressCard({
 
       {/* Unified header row */}
       <div className="flex items-center gap-3 px-4 py-3">
-        {/* Left: clickable title area */}
+        {/* Left: clickable title area — toggles expand/collapse */}
         <button
           type="button"
-          onClick={onClick}
+          onClick={() => setExpanded((prev) => !prev)}
           className="group flex flex-1 min-w-0 items-center gap-3 text-left cursor-pointer"
         >
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-serif tracking-tight text-foreground">
+              <span className="text-sm font-semibold tracking-tight text-foreground">
                 HiAgent&apos;s Computer
               </span>
               {isRunning && (
                 <motion.span
-                  className="h-1.5 w-1.5 rounded-full bg-accent-emerald shrink-0"
+                  className="h-1.5 w-1.5 rounded-full bg-ai-glow shrink-0"
                   animate={{ opacity: [1, 0.4, 1] }}
                   transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                 />
@@ -217,23 +230,7 @@ export function AgentProgressCard({
               </div>
             )}
           </div>
-          {panelOpen ? (
-            <PanelRightClose className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
-          ) : (
-            <PanelRightOpen className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
-          )}
-        </button>
-
-        {/* Right: counter + chevron */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setExpanded((prev) => !prev);
-          }}
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0"
-        >
-          <span className="tabular-nums font-medium">
+          <span className="tabular-nums font-mono text-xs font-medium text-muted-foreground">
             {completedCount}/{totalCount}
           </span>
           <motion.span
@@ -241,12 +238,28 @@ export function AgentProgressCard({
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
             className="flex items-center"
           >
-            <ChevronDown className="h-3.5 w-3.5" />
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
           </motion.span>
+        </button>
+
+        {/* Right: panel toggle icon — opens/closes AgentComputerPanel */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClick?.();
+          }}
+          className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer shrink-0"
+        >
+          {panelOpen ? (
+            <PanelRightClose className="h-4 w-4" />
+          ) : (
+            <PanelRightOpen className="h-4 w-4" />
+          )}
         </button>
       </div>
 
-      {/* Collapsible timeline */}
+      {/* Collapsible timeline — dot status indicators */}
       <AnimatePresence>
         {expanded && (
           <motion.div
@@ -257,10 +270,7 @@ export function AgentProgressCard({
             className="overflow-hidden"
           >
             <div className="px-4 pb-3">
-              <div className="relative max-h-48 overflow-y-auto">
-                {/* Vertical connector line */}
-                <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" />
-
+              <div className="max-h-48 overflow-y-auto font-mono text-xs">
                 <div className="space-y-0.5">
                   {steps.map((step, index) => (
                     <motion.div
@@ -272,16 +282,13 @@ export function AgentProgressCard({
                         duration: 0.2,
                         ease: "easeOut",
                       }}
-                      className="flex items-center gap-2 px-0 py-1 text-sm"
+                      className="flex items-center gap-2.5 py-0.5"
                     >
-                      {/* Status dot container — fixed 14px, centered, above connector */}
-                      <span className="relative z-10 flex h-[14px] w-[14px] shrink-0 items-center justify-center">
-                        <StatusDot status={step.status} />
-                      </span>
+                      <StatusDot status={step.status} />
                       <span
                         className={cn(
                           "truncate",
-                          step.status === "running" && "text-foreground font-medium",
+                          step.status === "running" && "text-foreground",
                           step.status === "complete" && "text-muted-foreground",
                           step.status === "error" && "text-accent-rose",
                         )}

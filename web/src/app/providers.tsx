@@ -1,6 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { ThemeProvider } from "next-themes";
+import { MotionConfig } from "framer-motion";
 import { TooltipProvider } from "@/shared/components/ui/tooltip";
 
 interface ProvidersProps {
@@ -8,5 +10,11 @@ interface ProvidersProps {
 }
 
 export function Providers({ children }: ProvidersProps) {
-  return <TooltipProvider delayDuration={300}>{children}</TooltipProvider>;
+  return (
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <MotionConfig reducedMotion="user">
+        <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
+      </MotionConfig>
+    </ThemeProvider>
+  );
 }

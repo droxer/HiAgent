@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from agent.tools.base import (
@@ -11,9 +12,10 @@ from agent.tools.base import (
     ToolResult,
 )
 
-_SCREENSHOT_PATH = "/tmp/screenshot.png"
-_SCRIPT_PATH = "/tmp/browser_action.py"
-_WS_FILE = "/tmp/browser_ws.txt"
+_SCREENSHOT_PATH = "/home/user/.browser/screenshot.png"
+_SCRIPT_PATH = "/home/user/.browser/browser_action.py"
+_CONFIG_PATH = "/tmp/_browser_config.json"
+_WS_FILE = "/home/user/.browser/browser_ws.txt"
 
 _VALID_DIRECTIONS = frozenset({"up", "down"})
 _VALID_EXTRACT_TYPES = frozenset({"text", "links", "tables"})
@@ -37,7 +39,7 @@ def get_browser():
             return p, browser
         except Exception:
             pass
-    browser = p.chromium.launch(headless=True)
+    browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
     return p, browser
 
 
@@ -61,6 +63,21 @@ async def _run_browser_script(session: Any, script: str) -> tuple[str, int]:
     if result.stderr:
         output = f"{output}\n[stderr]\n{result.stderr}" if output else result.stderr
     return output, result.exit_code
+
+
+async def _capture_screenshot_base64(session: Any) -> str | None:
+    """Download screenshot from sandbox and return base64-encoded PNG.
+
+    Uses shell base64 encoding since the sandbox session API only
+    supports text file reads (no ``read_file_bytes``).
+    """
+    try:
+        result = await session.exec(f"base64 -w0 {_SCREENSHOT_PATH}", timeout=10)
+        if result.exit_code == 0 and result.stdout:
+            return result.stdout.strip()
+    except Exception:
+        pass
+    return None
 
 
 class BrowserNavigate(SandboxTool):
@@ -89,10 +106,24 @@ class BrowserNavigate(SandboxTool):
         if not url.strip():
             return ToolResult.fail("URL must not be empty")
 
-        escaped_url = url.replace('"', '\\"')
+        await session.write_file(
+            _CONFIG_PATH, json.dumps({"url": url})
+        )
         action_code = (
-            f'page.goto("{escaped_url}", wait_until="domcontentloaded")\n'
-            f"print(page.title())"
+            "import json, time\n"
+            f'_cfg = json.load(open("{_CONFIG_PATH}"))\n'
+            "last_err = None\n"
+            "for _attempt in range(3):\n"
+            "    try:\n"
+            '        page.goto(_cfg["url"], wait_until="domcontentloaded", timeout=30000)\n'
+            "        last_err = None\n"
+            "        break\n"
+            "    except Exception as e:\n"
+            "        last_err = e\n"
+            "        time.sleep(2)\n"
+            "if last_err is not None:\n"
+            "    raise last_err\n"
+            "print(page.title())"
         )
         script = _build_browser_script(action_code)
 
@@ -105,9 +136,13 @@ class BrowserNavigate(SandboxTool):
             return ToolResult.fail(f"Navigation error (exit {exit_code}): {output}")
 
         title = output.strip().split("\n")[0] if output.strip() else "Unknown"
+        screenshot_b64 = await _capture_screenshot_base64(session)
+        metadata: dict[str, Any] = {"screenshot": _SCREENSHOT_PATH, "title": title}
+        if screenshot_b64:
+            metadata["screenshot_base64"] = screenshot_b64
         return ToolResult.ok(
             f"Navigated to {url}. Page title: {title}",
-            metadata={"screenshot": _SCREENSHOT_PATH, "title": title},
+            metadata=metadata,
         )
 
 
@@ -137,8 +172,14 @@ class BrowserClick(SandboxTool):
         if not selector.strip():
             return ToolResult.fail("Selector must not be empty")
 
-        escaped = selector.replace('"', '\\"')
-        action_code = f'page.click("{escaped}")\npage.wait_for_timeout(500)'
+        await session.write_file(
+            _CONFIG_PATH, json.dumps({"selector": selector})
+        )
+        action_code = (
+            "import json\n"
+            f'_cfg = json.load(open("{_CONFIG_PATH}"))\n'
+            'page.click(_cfg["selector"])\npage.wait_for_timeout(500)'
+        )
         script = _build_browser_script(action_code)
 
         try:
@@ -149,9 +190,13 @@ class BrowserClick(SandboxTool):
         if exit_code != 0:
             return ToolResult.fail(f"Click error (exit {exit_code}): {output}")
 
+        screenshot_b64 = await _capture_screenshot_base64(session)
+        metadata: dict[str, Any] = {"screenshot": _SCREENSHOT_PATH, "selector": selector}
+        if screenshot_b64:
+            metadata["screenshot_base64"] = screenshot_b64
         return ToolResult.ok(
             f"Clicked element: {selector}",
-            metadata={"screenshot": _SCREENSHOT_PATH, "selector": selector},
+            metadata=metadata,
         )
 
 
@@ -189,10 +234,13 @@ class BrowserType(SandboxTool):
         if not text:
             return ToolResult.fail("Text must not be empty")
 
-        escaped_sel = selector.replace('"', '\\"')
-        escaped_txt = text.replace('"', '\\"')
+        await session.write_file(
+            _CONFIG_PATH, json.dumps({"selector": selector, "text": text})
+        )
         action_code = (
-            f'page.fill("{escaped_sel}", "{escaped_txt}")\npage.wait_for_timeout(300)'
+            "import json\n"
+            f'_cfg = json.load(open("{_CONFIG_PATH}"))\n'
+            'page.fill(_cfg["selector"], _cfg["text"])\npage.wait_for_timeout(300)'
         )
         script = _build_browser_script(action_code)
 
@@ -204,9 +252,13 @@ class BrowserType(SandboxTool):
         if exit_code != 0:
             return ToolResult.fail(f"Type error (exit {exit_code}): {output}")
 
+        screenshot_b64 = await _capture_screenshot_base64(session)
+        metadata: dict[str, Any] = {"screenshot": _SCREENSHOT_PATH, "selector": selector}
+        if screenshot_b64:
+            metadata["screenshot_base64"] = screenshot_b64
         return ToolResult.ok(
             f"Typed text into: {selector}",
-            metadata={"screenshot": _SCREENSHOT_PATH, "selector": selector},
+            metadata=metadata,
         )
 
 
@@ -262,21 +314,30 @@ class BrowserScroll(SandboxTool):
         if exit_code != 0:
             return ToolResult.fail(f"Scroll error (exit {exit_code}): {output}")
 
+        screenshot_b64 = await _capture_screenshot_base64(session)
+        metadata: dict[str, Any] = {"screenshot": _SCREENSHOT_PATH, "direction": direction}
+        if screenshot_b64:
+            metadata["screenshot_base64"] = screenshot_b64
         return ToolResult.ok(
             f"Scrolled {direction} by {amount}px",
-            metadata={"screenshot": _SCREENSHOT_PATH, "direction": direction},
+            metadata=metadata,
         )
 
 
 _EXTRACT_TEXT_CODE = """\
-target = page.query_selector("{selector}")
+import json as _json
+_cfg = _json.load(open("{config_path}"))
+_sel = _cfg.get("selector", "")
+target = page.query_selector(_sel) if _sel else None
 el = target if target else page
 print(el.inner_text())
 """
 
 _EXTRACT_LINKS_CODE = """\
-import json
-target = page.query_selector("{selector}")
+import json as _json
+_cfg = _json.load(open("{config_path}"))
+_sel = _cfg.get("selector", "")
+target = page.query_selector(_sel) if _sel else None
 scope = target if target else page
 links = scope.eval_on_selector_all(
     "a[href]",
@@ -287,8 +348,10 @@ for link in links:
 """
 
 _EXTRACT_TABLES_CODE = """\
-import json
-target = page.query_selector("{selector}")
+import json as _json
+_cfg = _json.load(open("{config_path}"))
+_sel = _cfg.get("selector", "")
+target = page.query_selector(_sel) if _sel else None
 scope = target if target else page
 tables = scope.eval_on_selector_all(
     "table",
@@ -307,15 +370,14 @@ for i, table in enumerate(tables):
 """
 
 
-def _build_extract_code(selector: str, extract_type: str) -> str:
+def _build_extract_code(extract_type: str) -> str:
     """Return the extraction action code for the given type."""
-    escaped = selector.replace('"', '\\"') if selector else ""
     templates = {
         "text": _EXTRACT_TEXT_CODE,
         "links": _EXTRACT_LINKS_CODE,
         "tables": _EXTRACT_TABLES_CODE,
     }
-    return templates[extract_type].format(selector=escaped)
+    return templates[extract_type].format(config_path=_CONFIG_PATH)
 
 
 class BrowserExtract(SandboxTool):
@@ -355,7 +417,10 @@ class BrowserExtract(SandboxTool):
                 f"Must be one of: {', '.join(sorted(_VALID_EXTRACT_TYPES))}"
             )
 
-        action_code = _build_extract_code(selector, extract_type)
+        await session.write_file(
+            _CONFIG_PATH, json.dumps({"selector": selector})
+        )
+        action_code = _build_extract_code(extract_type)
         script = _build_browser_script(action_code)
 
         try:
@@ -366,10 +431,14 @@ class BrowserExtract(SandboxTool):
         if exit_code != 0:
             return ToolResult.fail(f"Extract error (exit {exit_code}): {output}")
 
+        screenshot_b64 = await _capture_screenshot_base64(session)
+        metadata: dict[str, Any] = {
+            "screenshot": _SCREENSHOT_PATH,
+            "extract_type": extract_type,
+        }
+        if screenshot_b64:
+            metadata["screenshot_base64"] = screenshot_b64
         return ToolResult.ok(
             output.strip() if output.strip() else "(no content extracted)",
-            metadata={
-                "screenshot": _SCREENSHOT_PATH,
-                "extract_type": extract_type,
-            },
+            metadata=metadata,
         )

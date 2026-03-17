@@ -33,10 +33,13 @@ export interface ConversationContextValue {
   readonly artifacts: ArtifactInfo[];
   readonly allMessages: ChatMessage[];
   readonly isWaitingForAgent: boolean;
+  readonly userCancelled: boolean;
   readonly handleSendMessage: (message: string) => void;
   readonly handleCreateConversation: (message: string) => void;
   readonly handleSwitchConversation: (conversationId: string) => void;
   readonly handleNewConversation: () => void;
+  readonly handleCancel: () => void;
+  readonly handleRetry: () => void;
   readonly pendingAsk: ReturnType<typeof usePendingAsk>["pendingAsk"];
   readonly handlePromptSubmit: (response: string) => Promise<void>;
   readonly respondError: string | null;
@@ -53,11 +56,8 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
   const conversationId = useAppStore((s) => s.conversationId);
   const isLive = useAppStore((s) => s.isLiveConversation);
 
-  const { events, isConnected } = useSSE(conversationId, isLive);
-  const { historyMessages, historyEvents } = useConversationHistory(
-    conversationId,
-    isLive,
-  );
+  const { events, isConnected, clearLastTurn } = useSSE(conversationId, isLive);
+  const { historyMessages, historyEvents } = useConversationHistory(conversationId);
 
   const effectiveEvents = isLive ? events : historyEvents;
 
@@ -75,21 +75,21 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
   } = useAgentState(effectiveEvents);
 
   const effectiveTaskState: TaskState = isLive ? taskState : "complete";
-  // When live with history (resumed conversation), merge history as base + live messages
   const effectiveMessages = isLive
-    ? historyMessages.length > 0
-      ? [...historyMessages, ...messages]
-      : messages
+    ? [...historyMessages, ...messages]
     : historyMessages;
 
   const {
     allMessages,
     isWaitingForAgent,
+    userCancelled,
     handleSendMessage,
     handleCreateConversation,
     handleSwitchConversation,
     handleNewConversation,
-  } = useConversation(effectiveMessages, effectiveTaskState, effectiveEvents, assistantPhase);
+    handleCancel,
+    handleRetry,
+  } = useConversation(effectiveMessages, effectiveTaskState, effectiveEvents, assistantPhase, clearLastTurn);
 
   const { pendingAsk, handlePromptSubmit, respondError } = usePendingAsk(
     effectiveEvents,
@@ -112,10 +112,13 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
     artifacts,
     allMessages,
     isWaitingForAgent: isLive ? isWaitingForAgent : false,
+    userCancelled: isLive ? userCancelled : false,
     handleSendMessage,
     handleCreateConversation,
     handleSwitchConversation,
     handleNewConversation,
+    handleCancel,
+    handleRetry,
     pendingAsk,
     handlePromptSubmit,
     respondError,

@@ -4,6 +4,7 @@ export type EventType =
   | "task_error"
   | "turn_start"
   | "turn_complete"
+  | "turn_cancelled"
   | "iteration_start"
   | "iteration_complete"
   | "llm_request"

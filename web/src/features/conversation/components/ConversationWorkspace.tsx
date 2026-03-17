@@ -2,6 +2,8 @@
 
 import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { RotateCcw, Copy, Check } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/shared/components/ui/tooltip";
 import { TopBar, MarkdownRenderer } from "@/shared/components";
 import { AgentProgressCard, AgentComputerPanel } from "@/features/agent-computer";
 import { NON_ARTIFACT_TOOLS } from "@/features/agent-computer/lib/tool-constants";
@@ -40,6 +42,9 @@ interface ConversationWorkspaceProps {
   onSendMessage: (message: string) => void;
   onNavigateHome?: () => void;
   isWaitingForAgent?: boolean;
+  userCancelled?: boolean;
+  onCancel?: () => void;
+  onRetry?: () => void;
 }
 
 export function ConversationWorkspace({
@@ -59,10 +64,21 @@ export function ConversationWorkspace({
   onSendMessage,
   onNavigateHome,
   isWaitingForAgent = false,
+  userCancelled = false,
+  onCancel,
+  onRetry,
 }: ConversationWorkspaceProps) {
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const autoOpenedRef = useRef(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback((text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }, []);
 
   useEffect(() => {
     chatScrollRef.current?.scrollTo({
@@ -71,7 +87,6 @@ export function ConversationWorkspace({
     });
   }, [messages, events, toolCalls]);
 
-  // Collect artifact image URLs from tool calls that have artifact IDs
   const inlineImageUrls = useMemo(() => {
     if (!conversationId) return [];
     return toolCalls
@@ -81,7 +96,6 @@ export function ConversationWorkspace({
       );
   }, [toolCalls, conversationId]);
 
-  // Auto-open panel when real artifacts appear (sandbox tool results, not web_search etc.)
   const hasArtifacts = useMemo(
     () => toolCalls.some((tc) => tc.output !== undefined && !NON_ARTIFACT_TOOLS.has(tc.name)),
     [toolCalls],
@@ -98,6 +112,7 @@ export function ConversationWorkspace({
   }, []);
 
   const showLoadingSkeleton =
+    !userCancelled &&
     (isWaitingForAgent || (assistantPhase.phase !== "idle" && !isStreaming)) &&
     messages.length > 0;
 
@@ -117,74 +132,162 @@ export function ConversationWorkspace({
       <div className="flex flex-1 overflow-hidden">
         {/* Left pane: Conversation */}
         <div className={cn("flex flex-col", panelOpen ? "w-1/2 border-r border-border" : "w-full")}>
-          <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-6 py-5">
+          <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-6 py-6">
             {messages.length === 0 && (
               <div className="flex h-full items-center justify-center">
                 <p className="text-sm text-muted-foreground">Waiting for response...</p>
               </div>
             )}
 
-            <div className={cn("mx-auto space-y-5", !panelOpen && "max-w-3xl")}>
-              {messages.map((msg, i) => (
-                <motion.div
-                  key={`msg-${i}`}
-                  className={cn(msg.role === "user" ? "flex justify-end" : "")}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.15, ease: "easeOut" }}
-                >
-                  {msg.role === "user" ? (
-                    <div className={cn("max-w-[80%]", msg.content.length < 60 && "max-w-fit")}>
+            <div className={cn("mx-auto", !panelOpen && "max-w-3xl")}>
+              {messages.map((msg, i) => {
+                const isLastAssistant = msg.role === "assistant" && i === messages.length - 1;
+                const isStreamingThis = isStreaming && isLastAssistant;
+
+                return (
+                  <div
+                    key={`msg-${i}`}
+                    className={cn(
+                      i > 0 && "mt-7",
+                    )}
+                  >
+                    {msg.role === "user" ? (
+                      /* ─── User message ─── right-aligned command surface */
                       <motion.div
-                        className="rounded-2xl rounded-br-md border border-border-strong bg-secondary px-4 py-3.5 text-sm font-medium leading-relaxed tracking-[-0.01em] text-foreground"
-                        style={{
-                          boxShadow: "0 1px 3px rgba(28,25,23,0.04), 0 1px 2px rgba(28,25,23,0.02)",
-                        }}
-                        whileHover={{
-                          boxShadow: "0 4px 12px rgba(28,25,23,0.06), 0 1px 3px rgba(28,25,23,0.04)",
-                        }}
-                        transition={{ duration: 0.2 }}
+                        initial={{ opacity: 0, x: 16 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className="flex justify-end"
                       >
-                        <p className="whitespace-pre-wrap">
-                          {msg.content}
+                        <div className="max-w-[80%] min-w-[120px]">
+                          {/* Frosted card surface */}
+                          <div className="rounded-2xl rounded-br-md bg-[var(--color-user-accent-dim)] px-4 py-3 border border-[var(--color-user-accent)]/10">
+                            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                              {msg.content}
+                            </p>
+                          </div>
+                          {/* Timestamp below, right-aligned */}
                           {msg.timestamp && (
-                            <span className="ml-3 inline-block align-baseline text-[10px] font-normal tracking-normal text-muted-foreground/50 tabular-nums select-none">
-                              {formatTime(msg.timestamp)}
-                            </span>
+                            <div className="mt-1.5 flex items-center justify-end gap-1.5 pr-1">
+                              <span className="text-xs text-muted-foreground/40 tabular-nums">
+                                {formatTime(msg.timestamp)}
+                              </span>
+                            </div>
                           )}
-                        </p>
-                      </motion.div>
-                    </div>
-                  ) : (
-                    <div className="text-sm leading-relaxed text-foreground">
-                      <MarkdownRenderer content={msg.content} />
-                      <AnimatePresence>
-                        {isStreaming && i === messages.length - 1 && (
-                          <StreamingCursor />
-                        )}
-                      </AnimatePresence>
-                      {/* Render generated images inline after the last assistant message */}
-                      {i === messages.length - 1 && inlineImageUrls.length > 0 && (
-                        <div className="mt-3 flex flex-wrap gap-3">
-                          {inlineImageUrls.map((url) => (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img
-                              key={url}
-                              src={url}
-                              alt="Generated image"
-                              className="max-h-72 rounded-lg border border-border object-contain shadow-sm"
-                            />
-                          ))}
                         </div>
-                      )}
-                    </div>
-                  )}
-                </motion.div>
-              ))}
+                      </motion.div>
+                    ) : (
+                      /* ─── Assistant message ─── left-aligned, bounded width */
+                      <motion.div
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.25, ease: "easeOut" }}
+                        className="group relative max-w-[85%]"
+                      >
+                        {/* Atmospheric background on hover / during streaming */}
+                        <div
+                          className={cn(
+                            "pointer-events-none absolute -inset-x-4 -inset-y-3 rounded-xl transition-colors duration-300",
+                            isStreamingThis
+                              ? "bg-[var(--color-ai-surface)]"
+                              : "bg-transparent group-hover:bg-[var(--color-ai-surface)]",
+                          )}
+                        />
+
+                        <div className="relative">
+                          {/* Message body */}
+                          <div className="text-sm leading-[1.5] text-foreground/90">
+                            <MarkdownRenderer content={msg.content} />
+                            <AnimatePresence>
+                              {isStreamingThis && <StreamingCursor />}
+                            </AnimatePresence>
+
+                            {/* Inline images */}
+                            {isLastAssistant && inlineImageUrls.length > 0 && (
+                              <div className="mt-4 flex flex-wrap gap-3">
+                                {inlineImageUrls.map((url) => (
+                                  /* eslint-disable-next-line @next/next/no-img-element */
+                                  <img
+                                    key={url}
+                                    src={url}
+                                    alt="Generated image"
+                                    className="max-h-72 rounded-lg border border-border object-contain shadow-sm"
+                                  />
+                                ))}
+                              </div>
+                            )}
+
+                          </div>
+
+                          {/* Message action bar */}
+                          {isLastAssistant && !isStreaming && (taskState === "idle" || taskState === "complete") && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.15, ease: "easeOut", delay: 0.2 }}
+                              className="mt-2 flex items-center gap-0.5"
+                            >
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopy(msg.content)}
+                                    className={cn(
+                                      "inline-flex items-center justify-center rounded-md p-1.5",
+                                      "text-muted-foreground/60",
+                                      "transition-all duration-150 ease-out",
+                                      "hover:text-foreground hover:bg-secondary",
+                                      "active:translate-y-[0.5px]",
+                                      "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                                    )}
+                                  >
+                                    {copied
+                                      ? <Check className="h-3.5 w-3.5 text-accent-emerald" />
+                                      : <Copy className="h-3.5 w-3.5" />}
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" sideOffset={4}>
+                                  {copied ? "Copied" : "Copy"}
+                                </TooltipContent>
+                              </Tooltip>
+
+                              {onRetry && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button
+                                      type="button"
+                                      onClick={onRetry}
+                                      className={cn(
+                                        "inline-flex items-center justify-center rounded-md p-1.5",
+                                        "text-muted-foreground/60",
+                                        "transition-all duration-150 ease-out",
+                                        "hover:text-foreground hover:bg-secondary",
+                                        "active:translate-y-[0.5px]",
+                                        "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                                      )}
+                                    >
+                                      <RotateCcw className="h-3.5 w-3.5" />
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom" sideOffset={4}>
+                                    Retry
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </motion.div>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+                );
+              })}
 
               <AnimatePresence mode="wait">
                 {showLoadingSkeleton && (
-                  <AssistantLoadingSkeleton phase={effectivePhase} />
+                  <div className="mt-7">
+                    <AssistantLoadingSkeleton phase={effectivePhase} />
+                  </div>
                 )}
               </AnimatePresence>
             </div>
@@ -208,12 +311,14 @@ export function ConversationWorkspace({
           <div className={cn("mx-auto w-full", !panelOpen && "max-w-3xl")}>
             <ChatInput
               onSendMessage={onSendMessage}
-              disabled={isWaitingForAgent || taskState === "executing"}
+              disabled={!userCancelled && (isWaitingForAgent || taskState === "executing" || taskState === "planning")}
+              onCancel={onCancel}
+              isAgentRunning={!userCancelled && (isWaitingForAgent || taskState === "executing" || taskState === "planning")}
             />
           </div>
         </div>
 
-        {/* Right pane: HiAgent's Computer — only visible when open */}
+        {/* Right pane: HiAgent's Computer */}
         {panelOpen && (
           <motion.div
             className="flex w-1/2 flex-col"
@@ -223,7 +328,6 @@ export function ConversationWorkspace({
           >
             <AgentComputerPanel
               conversationId={conversationId}
-              thinkingContent={thinkingContent}
               toolCalls={toolCalls}
               agentStatuses={agentStatuses}
               artifacts={artifacts}

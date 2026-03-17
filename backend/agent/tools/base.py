@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import types
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -23,10 +24,10 @@ class ToolResult:
     success: bool
     output: str
     error: str | None = None
-    metadata: dict | None = None
+    metadata: dict[str, Any] | None = None
 
     @classmethod
-    def ok(cls, output: str, metadata: dict | None = None) -> ToolResult:
+    def ok(cls, output: str, metadata: dict[str, Any] | None = None) -> ToolResult:
         """Create a successful result."""
         frozen_metadata = (
             types.MappingProxyType(metadata) if metadata is not None else None
@@ -45,9 +46,9 @@ class ToolDefinition:
 
     name: str
     description: str
-    input_schema: dict
+    input_schema: Mapping[str, Any]
     execution_context: ExecutionContext
-    tags: tuple[str, ...] = field(default_factory=tuple)
+    tags: tuple[str, ...] = field(default=())
 
 
 class LocalTool(ABC):

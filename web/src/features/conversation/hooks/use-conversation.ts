@@ -5,17 +5,21 @@ import { useAppStore } from "@/shared/stores";
 import {
   createConversation,
   sendFollowUpMessage,
+  cancelTurn,
+  retryTurn,
 } from "../api/conversation-api";
 import type { AgentEvent, AssistantPhase, ChatMessage, TaskState } from "@/shared/types";
 
 export function useConversation(
-  assistantMessages: ChatMessage[],
+  transcriptMessages: ChatMessage[],
   taskState: TaskState,
   events: AgentEvent[] = [],
   assistantPhase: AssistantPhase,
+  clearLastTurn?: () => void,
 ) {
   const [userMessages, setUserMessages] = useState<ChatMessage[]>([]);
   const [isWaitingForAgent, setIsWaitingForAgent] = useState(false);
+  const [userCancelled, setUserCancelled] = useState(false);
   const eventCountAtSendRef = useRef(events.length);
 
   const {
@@ -39,6 +43,27 @@ export function useConversation(
     }
   }, [isWaitingForAgent, taskState, events.length, assistantPhase.phase]);
 
+  // Clear userCancelled when the backend confirms cancellation via SSE
+  useEffect(() => {
+    if (userCancelled && (taskState === "idle" || taskState === "complete")) {
+      setUserCancelled(false);
+    }
+  }, [userCancelled, taskState]);
+
+  // Reset local state when switching away from a conversation externally
+  // (e.g. sidebar). We track the previous ID to avoid clearing state when
+  // conversationId transitions from null → newId (initial creation), since
+  // that would wipe out `isWaitingForAgent` set by handleCreateConversation.
+  const prevConversationIdRef = useRef<string | null>(conversationId);
+  useEffect(() => {
+    const prev = prevConversationIdRef.current;
+    prevConversationIdRef.current = conversationId;
+    if (prev !== null && prev !== conversationId) {
+      setUserMessages([]);
+      setIsWaitingForAgent(false);
+    }
+  }, [conversationId]);
+
   // Update conversation title when the LLM generates one
   useEffect(() => {
     if (!conversationId) return;
@@ -52,14 +77,23 @@ export function useConversation(
   }, [conversationId, events, updateConversationTitle]);
 
   const allMessages = useMemo(() => {
-    const combined = [...userMessages, ...assistantMessages];
+    const pendingMessages = userMessages.filter((pending) => {
+      return !transcriptMessages.some(
+        (persisted) =>
+          persisted.role === pending.role &&
+          persisted.content === pending.content &&
+          Math.abs(persisted.timestamp - pending.timestamp) < 30_000,
+      );
+    });
+    const combined = [...pendingMessages, ...transcriptMessages];
     return [...combined].sort((a, b) => a.timestamp - b.timestamp);
-  }, [userMessages, assistantMessages]);
+  }, [userMessages, transcriptMessages]);
 
   const handleCreateConversation = useCallback(
     async (message: string) => {
       eventCountAtSendRef.current = events.length;
       setIsWaitingForAgent(true);
+      setUserCancelled(false);
       setUserMessages([
         { role: "user", content: message, timestamp: Date.now() },
       ]);
@@ -89,6 +123,7 @@ export function useConversation(
 
       eventCountAtSendRef.current = events.length;
       setIsWaitingForAgent(true);
+      setUserCancelled(false);
       setUserMessages((prev) => [
         ...prev,
         { role: "user", content: message, timestamp: Date.now() },
@@ -118,6 +153,7 @@ export function useConversation(
 
       eventCountAtSendRef.current = events.length;
       setIsWaitingForAgent(true);
+      setUserCancelled(false);
       setUserMessages((prev) => [
         ...prev,
         { role: "user", content: message, timestamp: Date.now() },
@@ -169,13 +205,40 @@ export function useConversation(
     setUserMessages([]);
   }, [resetConversation]);
 
+  const handleCancel = useCallback(() => {
+    if (!conversationId) return;
+    setIsWaitingForAgent(false);
+    setUserCancelled(true);
+    // Fire and forget — don't block the UI on the backend cancel
+    cancelTurn(conversationId).catch((err) => {
+      console.error("Failed to cancel turn:", err);
+    });
+  }, [conversationId]);
+
+  const handleRetry = useCallback(async () => {
+    if (!conversationId) return;
+    try {
+      clearLastTurn?.();
+      const result = await retryTurn(conversationId);
+      if (result.status === "retrying") {
+        eventCountAtSendRef.current = events.length;
+        setIsWaitingForAgent(true);
+      }
+    } catch (err) {
+      console.error("Failed to retry turn:", err);
+    }
+  }, [conversationId, events.length, clearLastTurn]);
+
   return {
     conversationId,
     allMessages,
     isWaitingForAgent,
+    userCancelled,
     handleSendMessage,
     handleCreateConversation,
     handleSwitchConversation,
     handleNewConversation,
+    handleCancel,
+    handleRetry,
   };
 }

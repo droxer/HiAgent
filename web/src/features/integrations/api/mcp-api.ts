@@ -1,0 +1,54 @@
+import { API_BASE } from "@/shared/constants";
+
+export interface MCPServer {
+  readonly name: string;
+  readonly transport: "stdio" | "sse";
+  readonly command: string;
+  readonly url: string;
+  readonly status: "connected" | "disconnected";
+  readonly tool_count: number;
+}
+
+export interface MCPServerCreateParams {
+  readonly name: string;
+  readonly transport: "stdio" | "sse";
+  readonly command?: string;
+  readonly args?: readonly string[];
+  readonly url?: string;
+  readonly env?: Readonly<Record<string, string>>;
+  readonly timeout?: number;
+}
+
+export async function fetchMCPServers(): Promise<readonly MCPServer[]> {
+  const res = await fetch(`${API_BASE}/mcp/servers`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch MCP servers: ${res.status}`);
+  }
+  const data = await res.json();
+  return data.servers;
+}
+
+export async function addMCPServer(
+  config: MCPServerCreateParams,
+): Promise<MCPServer> {
+  const res = await fetch(`${API_BASE}/mcp/servers`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(config),
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Failed to add MCP server: ${detail}`);
+  }
+  return res.json();
+}
+
+export async function removeMCPServer(name: string): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/mcp/servers/${encodeURIComponent(name)}`,
+    { method: "DELETE" },
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to remove MCP server: ${res.status}`);
+  }
+}

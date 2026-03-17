@@ -1,22 +1,22 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useAppStore } from "@/shared/stores";
 import { fetchMessages, fetchEvents } from "../api/history-api";
 import type { ChatMessage, AgentEvent } from "@/shared/types";
 
 /**
- * Loads messages and events from the history API for a non-live (historical) conversation.
- * Preserves history when transitioning from historical to live (resume).
- * Only clears when conversationId changes.
+ * Loads persisted messages and events for the selected conversation.
+ * History remains available when transitioning between historical and live mode.
  */
 export function useConversationHistory(
   conversationId: string | null,
-  isLive: boolean,
 ) {
   const [historyMessages, setHistoryMessages] = useState<ChatMessage[]>([]);
   const [historyEvents, setHistoryEvents] = useState<AgentEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const prevConversationId = useRef<string | null>(null);
+  const resetConversation = useAppStore((state) => state.resetConversation);
 
   // Clear history only when conversationId changes
   useEffect(() => {
@@ -29,9 +29,10 @@ export function useConversationHistory(
     }
   }, [conversationId]);
 
-  // Fetch history for non-live conversations
+  // Fetch persisted history for any selected conversation so the transcript
+  // can survive refreshes and SSE reconnects.
   useEffect(() => {
-    if (!conversationId || isLive) {
+    if (!conversationId) {
       return;
     }
 
@@ -79,6 +80,11 @@ export function useConversationHistory(
       })
       .catch((err) => {
         if (!cancelled) {
+          if (err instanceof Error && err.message.includes("404")) {
+            setHistoryMessages([]);
+            setHistoryEvents([]);
+            resetConversation();
+          }
           console.error("Failed to load conversation history:", err);
         }
       })
@@ -89,7 +95,7 @@ export function useConversationHistory(
     return () => {
       cancelled = true;
     };
-  }, [conversationId, isLive]);
+  }, [conversationId, resetConversation]);
 
   return { historyMessages, historyEvents, isLoading };
 }

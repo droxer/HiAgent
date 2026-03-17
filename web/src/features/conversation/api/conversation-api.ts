@@ -34,6 +34,36 @@ export async function sendFollowUpMessage(
   }
 }
 
+export async function cancelTurn(
+  conversationId: string,
+): Promise<{ status: string }> {
+  const res = await fetch(
+    `${API_BASE}/conversations/${conversationId}/cancel`,
+    { method: "POST" },
+  );
+
+  if (!res.ok) {
+    throw new Error(`Failed to cancel turn: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export async function retryTurn(
+  conversationId: string,
+): Promise<{ status: string; message?: string }> {
+  const res = await fetch(
+    `${API_BASE}/conversations/${conversationId}/retry`,
+    { method: "POST" },
+  );
+
+  if (!res.ok) {
+    throw new Error(`Failed to retry turn: ${res.status}`);
+  }
+
+  return res.json();
+}
+
 export async function respondToAgent(
   conversationId: string,
   requestId: string,

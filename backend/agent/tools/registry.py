@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from agent.tools.base import (
     ExecutionContext,
     LocalTool,
@@ -39,6 +41,26 @@ class ToolRegistry:
         new_tools = {**self._tools, name: tool}
         return ToolRegistry(tools=new_tools)
 
+    def remove_by_tag(self, tag: str) -> ToolRegistry:
+        """Return a new registry excluding tools that carry *tag*."""
+        filtered = {
+            name: tool
+            for name, tool in self._tools.items()
+            if tag not in (tool.definition().tags or ())
+        }
+        return ToolRegistry(tools=filtered)
+
+    def merge(self, other: ToolRegistry) -> ToolRegistry:
+        """Return a new registry containing tools from both *self* and *other*.
+
+        Raises ValueError if any tool names collide.
+        """
+        collisions = set(self._tools) & set(other._tools)
+        if collisions:
+            raise ValueError(f"Tool name collision during merge: {collisions}")
+        merged = {**self._tools, **other._tools}
+        return ToolRegistry(tools=merged)
+
     # -- Queries ------------------------------------------------------------
 
     def get(self, name: str) -> LocalTool | SandboxTool | None:
@@ -58,9 +80,9 @@ class ToolRegistry:
 
     # -- Serialisation helpers ----------------------------------------------
 
-    def to_anthropic_tools(self) -> list[dict]:
+    def to_anthropic_tools(self) -> list[dict[str, Any]]:
         """Convert all tools to Anthropic API format."""
-        results: list[dict] = []
+        results: list[dict[str, Any]] = []
         for tool in self._tools.values():
             defn = tool.definition()
             results.append(

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import {
-  ArrowUp,
   Presentation,
   Globe,
   AppWindow,
@@ -13,7 +12,7 @@ import {
   Paperclip,
   Sparkles,
 } from "lucide-react";
-import { IconButton } from "@/shared/components";
+import { SendButton } from "@/shared/components/SendButton";
 
 interface WelcomeScreenProps {
   onSubmitTask: (task: string) => void;
@@ -27,22 +26,24 @@ const QUICK_ACTIONS = [
   { icon: MoreHorizontal, label: "More", prompt: "" },
 ] as const;
 
-const pillContainer = {
+const HEADING_WORDS = ["What", "can", "I", "build", "for", "you?"];
+
+const cardContainer = {
   hidden: {},
   show: {
     transition: {
       staggerChildren: 0.05,
-      delayChildren: 0.3,
+      delayChildren: 0.35,
     },
   },
 };
 
-const pillItem = {
-  hidden: { opacity: 0, y: 6 },
+const cardItem = {
+  hidden: { opacity: 0, y: 8 },
   show: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.25, ease: "easeOut" as const },
+    transition: { duration: 0.3, ease: "easeOut" as const },
   },
 };
 
@@ -66,40 +67,57 @@ export function WelcomeScreen({ onSubmitTask }: WelcomeScreenProps) {
 
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden px-6">
-      {/* Subtle radial glow */}
+      {/* Animated gradient mesh background */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
-          background:
-            "radial-gradient(ellipse 60% 50% at 50% 45%, rgba(214, 211, 209, 0.3) 0%, transparent 70%)",
+          background: [
+            "radial-gradient(ellipse 60% 50% at 30% 40%, var(--color-ai-surface) 0%, transparent 70%)",
+            "radial-gradient(ellipse 50% 60% at 70% 55%, color-mix(in srgb, var(--color-accent-purple) 4%, transparent) 0%, transparent 70%)",
+          ].join(", "),
+          backgroundSize: "200% 200%",
+          animation: "meshDrift 20s ease-in-out infinite",
         }}
       />
 
       <motion.div
         className="relative z-10 flex w-full max-w-[680px] flex-col items-center"
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] as const }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
       >
-        {/* Large serif heading — matching Manus scale */}
-        <h1 className="mb-10 text-center font-serif text-[2.75rem] leading-[1.15] font-normal tracking-tight text-foreground sm:text-[3.25rem]">
-          What can I do for you?
+        {/* Staggered word reveal heading */}
+        <h1 className="mb-10 text-center font-serif text-[2.75rem] font-semibold leading-[1.15] tracking-tight text-foreground sm:text-[3.25rem]">
+          {HEADING_WORDS.map((word, i) => (
+            <motion.span
+              key={i}
+              className="inline-block mr-[0.3em]"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.35,
+                delay: i * 0.08,
+                ease: "easeOut",
+              }}
+            >
+              {word}
+            </motion.span>
+          ))}
         </h1>
 
         {/* Input card */}
         <form onSubmit={handleSubmit} className="mb-6 w-full">
           <div
-            className="rounded-2xl border bg-card transition-all duration-200"
+            className="rounded-xl border backdrop-blur-sm bg-card/80 transition-all duration-200"
             style={{
               borderColor: isFocused
                 ? "var(--color-border-active)"
                 : "var(--color-border)",
               boxShadow: isFocused
-                ? "var(--shadow-card-hover)"
+                ? "var(--shadow-card-hover), 0 0 20px var(--color-input-glow)"
                 : "var(--shadow-card)",
             }}
           >
-            {/* Textarea */}
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -113,60 +131,58 @@ export function WelcomeScreen({ onSubmitTask }: WelcomeScreenProps) {
               }}
               placeholder="Assign a task or ask anything"
               rows={3}
-              className="w-full resize-none rounded-t-2xl bg-transparent px-5 pt-4 pb-2 text-[0.9375rem] leading-relaxed text-foreground placeholder:text-placeholder outline-none"
+              className="w-full resize-none rounded-t-xl bg-transparent px-4 pt-4 pb-2 text-sm leading-relaxed text-foreground placeholder:text-placeholder outline-none"
               autoFocus
             />
 
-            {/* Bottom toolbar — left icons + right send */}
             <div className="flex items-center justify-between px-3 pb-3">
               <div className="flex items-center gap-0.5">
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground/50 transition-colors hover:bg-secondary hover:text-muted-foreground"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground/50 transition-colors duration-150 hover:bg-secondary hover:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 outline-none"
                 >
                   <Plus className="h-[18px] w-[18px]" strokeWidth={1.75} />
                 </button>
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground/50 transition-colors hover:bg-secondary hover:text-muted-foreground"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground/50 transition-colors duration-150 hover:bg-secondary hover:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 outline-none"
                 >
                   <Paperclip className="h-[18px] w-[18px]" strokeWidth={1.75} />
                 </button>
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground/50 transition-colors hover:bg-secondary hover:text-muted-foreground"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground/50 transition-colors duration-150 hover:bg-secondary hover:text-muted-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 outline-none"
                 >
                   <Sparkles className="h-[18px] w-[18px]" strokeWidth={1.75} />
                 </button>
               </div>
 
-              <IconButton
-                icon={ArrowUp}
-                label="Send"
-                type="submit"
-                variant="default"
-                disabled={!input.trim()}
+              <SendButton
+                hasContent={!!input.trim()}
               />
             </div>
           </div>
         </form>
 
-        {/* Quick action pills — horizontal row */}
+        {/* Capability cards (replacing pills) */}
         <motion.div
-          className="flex flex-wrap justify-center gap-2"
-          variants={pillContainer}
+          className="flex flex-wrap justify-center gap-2.5"
+          variants={cardContainer}
           initial="hidden"
           animate="show"
         >
           {QUICK_ACTIONS.map((action) => (
             <motion.button
               key={action.label}
-              variants={pillItem}
+              variants={cardItem}
               onClick={() => handleQuickAction(action.prompt)}
-              className="flex items-center gap-1.5 rounded-full border border-border/80 bg-card/80 px-3.5 py-2 text-[0.8125rem] text-muted-foreground backdrop-blur-sm transition-all hover:border-border-active hover:text-foreground hover:shadow-sm"
+              whileHover={{ y: -2 }}
+              className="group relative flex items-center gap-2 rounded-xl border border-border bg-card/80 px-4 py-2.5 text-sm text-muted-foreground backdrop-blur-sm transition-all hover:border-border-active hover:text-foreground"
             >
-              <action.icon className="h-3.5 w-3.5" strokeWidth={1.75} />
+              <action.icon className="h-4 w-4 transition-colors group-hover:text-ai-glow" strokeWidth={1.75} />
               {action.label}
+              {/* Glowing underline reveal on hover */}
+              <span className="absolute bottom-0 left-3 right-3 h-px bg-ai-glow/0 transition-all duration-300 group-hover:bg-ai-glow/40" />
             </motion.button>
           ))}
         </motion.div>

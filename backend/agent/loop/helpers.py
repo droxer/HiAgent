@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from loguru import logger
 
@@ -10,8 +10,11 @@ from agent.llm.client import LLMResponse, ToolCall
 from agent.tools.executor import ToolExecutor
 from api.events import EventEmitter, EventType
 
+if TYPE_CHECKING:
+    from agent.loop.orchestrator import AgentState
 
-def apply_response_to_state(state: Any, response: LLMResponse) -> Any:
+
+def apply_response_to_state(state: AgentState, response: LLMResponse) -> AgentState:
     """Add the assistant message (text + tool_use blocks) to state.
 
     Returns an unchanged state when the response carries no content.
@@ -36,19 +39,37 @@ def build_tool_result_block(
     tool_use_id: str,
     output: str,
     success: bool,
+    screenshot_base64: str | None = None,
 ) -> dict[str, Any]:
-    """Build a single tool_result content block."""
+    """Build a single tool_result content block, optionally with screenshot."""
+    content: list[dict[str, Any]] = []
+
+    if output:
+        content.append({"type": "text", "text": output})
+
+    if screenshot_base64:
+        content.append(
+            {
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": "image/png",
+                    "data": screenshot_base64,
+                },
+            }
+        )
+
     block: dict[str, Any] = {
         "type": "tool_result",
         "tool_use_id": tool_use_id,
-        "content": output,
+        "content": content if content else output,
     }
     if not success:
         block["is_error"] = True
     return block
 
 
-def extract_final_text(state: Any) -> str:
+def extract_final_text(state: AgentState) -> str:
     """Extract the final assistant text from the completed state."""
     for msg in reversed(state.messages):
         if msg.get("role") != "assistant":
@@ -64,13 +85,14 @@ def extract_final_text(state: Any) -> str:
 
 
 async def process_tool_calls(
-    state: Any,
+    state: AgentState,
     tool_calls: tuple[ToolCall, ...],
     executor: ToolExecutor,
     emitter: EventEmitter,
     agent_id: str | None = None,
     stop_check: Callable[[], bool] | None = None,
-) -> Any:
+    cancel_check: Callable[[], bool] | None = None,
+) -> AgentState:
     """Execute each tool call and add results to state.
 
     Args:
@@ -130,12 +152,22 @@ async def process_tool_calls(
             iteration=state.iteration,
         )
 
+        screenshot_base64 = None
+        if result.metadata and "screenshot_base64" in result.metadata:
+            screenshot_base64 = result.metadata["screenshot_base64"]
+
         tool_results.append(
-            build_tool_result_block(tc.id, output, result.success),
+            build_tool_result_block(
+                tc.id, output, result.success, screenshot_base64=screenshot_base64
+            ),
         )
 
         # Break early when task_complete (or any other stop condition) fires
         if stop_check is not None and stop_check():
+            break
+
+        # Break early when cancellation is requested
+        if cancel_check is not None and cancel_check():
             break
 
     return state.add_message({"role": "user", "content": tool_results})

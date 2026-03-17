@@ -1,12 +1,81 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { ChevronDown, ChevronUp, Copy, Check, Image as ImageIcon, FileText } from "lucide-react";
+import {
+  Terminal,
+  Globe,
+  Database,
+  Monitor,
+  FileText,
+  FileCode,
+  Play,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
+import { MarkdownRenderer } from "@/shared/components";
+import { TerminalWindow, stripAnsi } from "@/shared/components/ui/terminal-window";
+import { WebLinks, type WebLink } from "@/shared/components/ui/web-links";
+import { ImageOutput } from "@/shared/components/ui/image-output";
+import { HtmlOutput } from "@/shared/components/ui/html-output";
+import { CodeOutput } from "@/shared/components/ui/code-output";
+import { ExpandToggle } from "@/shared/components/ui/expand-toggle";
 import { CODE_TOOLS } from "../lib/tool-constants";
+import { getToolCategory, type ToolCategory } from "../lib/tool-constants";
 
 /** Max chars to show before collapsing */
 const COLLAPSE_THRESHOLD = 500;
+
+interface CategoryStyle {
+  readonly border: string;
+  readonly icon: LucideIcon;
+  readonly label: string;
+}
+
+const CATEGORY_STYLES: Record<ToolCategory, CategoryStyle> = {
+  code:    { border: "border-l-accent-emerald/60", icon: Terminal,  label: "Code" },
+  file:    { border: "border-l-user-accent/60",    icon: FileCode,  label: "File" },
+  search:  { border: "border-l-accent-purple/60",  icon: Globe,     label: "Search" },
+  memory:  { border: "border-l-accent-amber/60",   icon: Database,  label: "Memory" },
+  browser: { border: "border-l-ai-glow/60",        icon: Monitor,   label: "Browser" },
+  preview: { border: "border-l-accent-emerald/60", icon: Play,      label: "Preview" },
+  default: { border: "border-l-border",            icon: FileText,  label: "" },
+};
+
+interface SearchPayload {
+  readonly query: string;
+  readonly results: readonly WebLink[];
+}
+
+function tryParseSearchResults(output: string): SearchPayload | null {
+  try {
+    const parsed = JSON.parse(output);
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      typeof parsed.query === "string" &&
+      Array.isArray(parsed.results)
+    ) {
+      return parsed as SearchPayload;
+    }
+  } catch {
+    // Not valid JSON — fall through
+  }
+  return null;
+}
+
+interface PreviewInfo {
+  readonly port: string | null;
+  readonly directory: string | null;
+}
+
+function parsePreviewOutput(output: string): PreviewInfo {
+  const portMatch = output.match(/port\s+(\d+)/i);
+  const dirMatch = output.match(/serving\s+(\/\S+)/i);
+  return {
+    port: portMatch ? portMatch[1] : null,
+    directory: dirMatch ? dirMatch[1] : null,
+  };
+}
 
 interface ToolOutputRendererProps {
   readonly output: string;
@@ -18,151 +87,143 @@ interface ToolOutputRendererProps {
 
 export function ToolOutputRenderer({ output, toolName, contentType, conversationId, artifactIds }: ToolOutputRendererProps) {
   const [expanded, setExpanded] = useState(false);
-  const [copied, setCopied] = useState(false);
   const isLong = output.length > COLLAPSE_THRESHOLD;
   const isCode = CODE_TOOLS.has(toolName) || contentType?.startsWith("text/x-") || contentType?.startsWith("text/javascript");
   const isImage = contentType?.startsWith("image/");
   const isHtml = contentType === "text/html";
 
-  const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(output);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // Clipboard access denied — silently degrade
-    }
-  }, [output]);
+  const category = getToolCategory(toolName);
+  const style = CATEGORY_STYLES[category];
+  const CategoryIcon = style.icon;
 
   const handleToggle = useCallback(() => setExpanded((p) => !p), []);
 
   const displayText = isLong && !expanded ? output.slice(0, COLLAPSE_THRESHOLD) : output;
 
-  // Image artifact rendering — render from artifact endpoint, data URI, or HTTP URL
+  // Image artifact rendering
   if (isImage) {
-    const hasArtifacts = artifactIds && artifactIds.length > 0 && conversationId;
-    const looksLikeUri = output.startsWith("data:") || output.startsWith("http");
     return (
-      <div className="mt-2.5 rounded-md bg-muted/60 p-3">
-        <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <ImageIcon className="h-3 w-3" />
-          <span>Image output</span>
-        </div>
-        <div className="flex flex-col items-center gap-3 rounded border border-border bg-background p-2">
-          {hasArtifacts ? (
-            artifactIds.map((aid) => (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                key={aid}
-                src={`/api/conversations/${conversationId}/artifacts/${aid}`}
-                alt="Generated image"
-                className="max-h-80 rounded object-contain"
-              />
-            ))
-          ) : looksLikeUri ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={output} alt="Agent output" className="max-h-80 rounded object-contain" />
-          ) : (
-            <p className="text-xs text-muted-foreground italic">
-              Image artifact available (use artifact viewer to display)
-            </p>
-          )}
-        </div>
-        {!hasArtifacts && !looksLikeUri && (
-          <pre className="mt-2 whitespace-pre-wrap font-mono text-xs leading-relaxed text-muted-foreground">
-            {displayText}
-          </pre>
-        )}
-      </div>
+      <ImageOutput
+        output={output}
+        conversationId={conversationId}
+        artifactIds={artifactIds}
+        className="mt-2.5"
+      />
     );
   }
 
   // HTML content rendering
   if (isHtml) {
+    return <HtmlOutput output={output} className="mt-2.5" />;
+  }
+
+  // Web search results — show clean clickable links
+  if (category === "search" && toolName === "web_search") {
+    const searchData = tryParseSearchResults(output);
+    if (searchData) {
+      return (
+        <WebLinks
+          query={searchData.query}
+          results={searchData.results}
+          className="mt-2.5"
+        />
+      );
+    }
+  }
+
+  // Preview tool — terminal-style renderer
+  if (category === "preview") {
+    const preview = parsePreviewOutput(output);
+    const isActive = toolName === "preview_start";
+    const portLabel = preview.port ? `:${preview.port}` : "";
+
     return (
-      <div className="mt-2.5 rounded-md bg-muted/60 p-3">
-        <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <FileText className="h-3 w-3" />
-          <span>HTML output</span>
+      <TerminalWindow title={`preview${portLabel ? ` \u2014 ${portLabel}` : ""}`} className="mt-2.5">
+        {/* Command line */}
+        <div className="flex gap-2">
+          <span className="text-accent-emerald">$</span>
+          <span className="text-[var(--color-terminal-text)]">server start</span>
         </div>
-        <div className="rounded border border-border bg-background p-2">
-          <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-muted-foreground">
-            {displayText}
-            {isLong && !expanded && "..."}
-          </pre>
+
+        {/* Output */}
+        <pre className="mt-2 whitespace-pre-wrap text-accent-emerald">{stripAnsi(output)}</pre>
+
+        {/* Status indicator */}
+        <div className="mt-3 flex items-center gap-2 border-t border-[var(--color-terminal-border)] pt-3">
+          {isActive ? (
+            <>
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-emerald opacity-75" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent-emerald" />
+              </span>
+              <span className="text-accent-emerald">
+                Listening on port {preview.port ?? "..."}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="inline-flex h-2.5 w-2.5 rounded-full bg-[var(--color-terminal-dim)]" />
+              <span className="text-[var(--color-terminal-dim)]">Server stopped</span>
+            </>
+          )}
         </div>
-        {isLong && <ExpandToggle expanded={expanded} onToggle={handleToggle} />}
-      </div>
+      </TerminalWindow>
     );
   }
 
-  return (
-    <div className="mt-2.5 rounded-md bg-muted/60 px-3 py-2">
-      {/* Copy button for code outputs */}
-      {isCode && output.length > 50 && (
-        <div className="mb-1.5 flex justify-end">
-          <button
-            type="button"
-            onClick={handleCopy}
-            aria-label={copied ? "Copied" : "Copy to clipboard"}
-            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            {copied ? (
-              <>
-                <Check className="h-3 w-3" />
-                Copied
-              </>
-            ) : (
-              <>
-                <Copy className="h-3 w-3" />
-                Copy
-              </>
-            )}
-          </button>
-        </div>
-      )}
+  // Shell exec — terminal-style renderer
+  if (toolName === "shell_exec") {
+    return (
+      <TerminalWindow title="shell" className="mt-2.5">
+        {/* Output */}
+        <pre className="whitespace-pre-wrap text-[var(--color-terminal-text)]">
+          {stripAnsi(displayText)}
+          {isLong && !expanded && (
+            <span className="text-[var(--color-terminal-dim)]">{"\n..."}</span>
+          )}
+        </pre>
 
-      <pre
-        className={cn(
-          "whitespace-pre-wrap font-mono text-xs leading-relaxed text-muted-foreground",
-          isCode && "text-emerald-700 dark:text-emerald-400",
+        {isLong && (
+          <div className="mt-2 border-t border-[var(--color-terminal-border)] pt-2">
+            <ExpandToggle expanded={expanded} onToggle={handleToggle} />
+          </div>
         )}
-      >
-        {displayText}
+      </TerminalWindow>
+    );
+  }
+
+  // Code output
+  if (isCode) {
+    return (
+      <CodeOutput
+        output={output}
+        icon={style.icon}
+        label={style.label}
+        className="mt-2.5"
+      />
+    );
+  }
+
+  // Category-aware rendering for all other tools (markdown fallback)
+  return (
+    <div className={cn("mt-2.5 rounded-md border-l-2 bg-muted/60 px-3 py-2", style.border)}>
+      <div className="mb-1.5 flex items-center justify-end">
+        {style.label && (
+          <span className="flex items-center gap-1 text-[10px] text-muted-foreground/70">
+            <CategoryIcon className="h-3 w-3" />
+            {style.label}
+          </span>
+        )}
+      </div>
+
+      <div className="prose-sm text-xs leading-relaxed text-muted-foreground [&_a]:text-user-accent [&_a]:underline [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-xs [&_h1]:text-sm [&_h1]:font-semibold [&_h2]:text-xs [&_h2]:font-semibold [&_h3]:text-xs [&_h3]:font-medium [&_li]:my-0.5 [&_ol]:my-1 [&_ol]:pl-4 [&_p]:my-1 [&_pre]:my-1 [&_pre]:rounded [&_pre]:bg-muted [&_pre]:p-2 [&_pre]:text-xs [&_ul]:my-1 [&_ul]:pl-4">
+        <MarkdownRenderer content={displayText} />
         {isLong && !expanded && (
-          <span className="text-muted-foreground/50">{"\n..."}</span>
+          <span className="text-muted-foreground/50">...</span>
         )}
-      </pre>
+      </div>
 
       {isLong && <ExpandToggle expanded={expanded} onToggle={handleToggle} />}
     </div>
-  );
-}
-
-function ExpandToggle({
-  expanded,
-  onToggle,
-}: {
-  readonly expanded: boolean;
-  readonly onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-    >
-      {expanded ? (
-        <>
-          <ChevronUp className="h-3 w-3" />
-          Show less
-        </>
-      ) : (
-        <>
-          <ChevronDown className="h-3 w-3" />
-          Show more
-        </>
-      )}
-    </button>
   );
 }

@@ -1,0 +1,49 @@
+"""FastAPI dependency injection for shared application state."""
+
+from __future__ import annotations
+
+from collections.abc import AsyncGenerator
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
+
+from fastapi import Depends, Request
+
+from agent.state.database import get_session
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
+
+    from agent.artifacts.storage import StorageBackend
+    from agent.llm.client import ClaudeClient
+    from agent.state.repository import ConversationRepository
+    from api.db_subscriber import PendingWrites
+    from api.models import ConversationEntry, MCPState
+
+
+@dataclass
+class AppState:
+    """Holds all shared state currently captured via closures in the app factory."""
+
+    claude_client: ClaudeClient
+    sandbox_provider: Any  # SandboxProvider
+    storage_backend: StorageBackend
+    db_engine: AsyncEngine
+    db_session_factory: async_sessionmaker[AsyncSession]
+    db_repo: ConversationRepository
+    db_pending_writes: PendingWrites
+    conversations: dict[str, ConversationEntry] = field(default_factory=dict)
+    mcp_state: MCPState | None = None
+    sandbox_pool: Any = None  # Optional E2B pool
+
+
+def get_app_state(request: Request) -> AppState:
+    """Retrieve the shared AppState from the FastAPI app instance."""
+    return request.app.state.app_state
+
+
+async def get_db_session(
+    state: AppState = Depends(get_app_state),
+) -> AsyncGenerator[Any, None]:
+    """Yield an async DB session from the shared session factory."""
+    async for session in get_session(state.db_session_factory):
+        yield session

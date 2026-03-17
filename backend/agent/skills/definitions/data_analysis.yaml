@@ -18,7 +18,7 @@ steps:
     input_template:
       code: "{visualization_code}"
       language: python
-  - tool: message_user
+  - tool: user_message
     description: Share analysis results
     input_template:
       message: "{analysis_summary}"
