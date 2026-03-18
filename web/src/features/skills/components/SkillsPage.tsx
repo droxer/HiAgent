@@ -83,7 +83,7 @@ export function SkillsPage() {
 
   // Install form state
   const [showForm, setShowForm] = useState(false);
-  const [installSource, setInstallSource] = useState<InstallSource>("git");
+  const [installSource, setInstallSource] = useState<InstallSource>("upload");
   const [formUrl, setFormUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -98,7 +98,7 @@ export function SkillsPage() {
   const resetForm = () => {
     setFormUrl("");
     setSelectedFiles(null);
-    setInstallSource("git");
+    setInstallSource("upload");
     setShowForm(false);
   };
 
@@ -360,20 +360,23 @@ export function SkillsPage() {
             <div className="space-y-1.5">
               <Label className="text-xs">{t("skills.source")}</Label>
               <div className="flex gap-1 rounded-md bg-secondary p-1">
-                {(["git", "upload"] as const).map((src) => (
+                {(["upload", "git"] as const).map((src) => (
                   <button
                     key={src}
                     type="button"
-                    onClick={() => setInstallSource(src)}
+                    onClick={() => { if (src !== "git") setInstallSource(src); }}
+                    disabled={src === "git"}
                     className={cn(
                       "flex-1 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors duration-150",
                       "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-                      installSource === src
-                        ? "bg-background text-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground",
+                      src === "git"
+                        ? "cursor-not-allowed text-muted-foreground-dim opacity-60"
+                        : installSource === src
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground",
                     )}
                   >
-                    {src === "git" ? t("skills.gitRepo") : t("skills.upload")}
+                    {src === "git" ? t("skills.gitRepoComingSoon") : t("skills.upload")}
                   </button>
                 ))}
               </div>
@@ -479,7 +482,7 @@ export function SkillsPage() {
                 }
               >
                 {submitting && (
-                  <span className="mr-1.5 inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  <span className="mr-1.5 inline-block h-3.5 w-3.5 skeleton-shimmer rounded-sm" />
                 )}
                 {t("skills.install")}
               </Button>

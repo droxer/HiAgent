@@ -7,6 +7,8 @@ from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from agent.state.models import Base
+from agent.memory.models import MemoryEntry  # noqa: F401
+from agent.mcp.models import MCPServerModel  # noqa: F401
 from config.settings import get_settings
 
 config = context.config

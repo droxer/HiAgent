@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from agent.mcp.client import MCPCallResult, MCPStdioClient, MCPToolSchema
+from agent.mcp.client import MCPCallResult, MCPClient, MCPToolSchema
 from agent.tools.base import ExecutionContext, LocalTool, ToolDefinition, ToolResult
 
 
@@ -16,7 +16,7 @@ class MCPBridgedTool(LocalTool):
     (``<server>__<tool>``) to avoid collisions across servers.
     """
 
-    def __init__(self, schema: MCPToolSchema, client: MCPStdioClient) -> None:
+    def __init__(self, schema: MCPToolSchema, client: MCPClient) -> None:
         self._schema = schema
         self._client = client
 
@@ -31,9 +31,7 @@ class MCPBridgedTool(LocalTool):
         )
 
     async def execute(self, **kwargs: Any) -> ToolResult:
-        result: MCPCallResult = await self._client.call_tool(
-            self._schema.name, kwargs
-        )
+        result: MCPCallResult = await self._client.call_tool(self._schema.name, kwargs)
         if result.is_error:
             return ToolResult.fail(result.content)
         return ToolResult.ok(

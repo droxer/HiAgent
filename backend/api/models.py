@@ -9,7 +9,7 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel, Field, field_validator
 
-from agent.mcp.client import MCPStdioClient
+from agent.mcp.client import MCPClient
 from agent.mcp.config import MCPServerConfig
 from agent.tools.executor import ToolExecutor
 from agent.tools.registry import ToolRegistry
@@ -30,10 +30,15 @@ _DEFAULT_PREVIEW_PORT = 8080
 # File upload constraints
 MAX_FILE_SIZE_MB = 25
 MAX_FILES_PER_MESSAGE = 10
-VISION_MIME_TYPES = frozenset({
-    "image/png", "image/jpeg", "image/gif", "image/webp",
-    "application/pdf",
-})
+VISION_MIME_TYPES = frozenset(
+    {
+        "image/png",
+        "image/jpeg",
+        "image/gif",
+        "image/webp",
+        "application/pdf",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -110,7 +115,7 @@ class MCPState:
     """Container for MCP lifecycle state, stored on app.state."""
 
     registry: ToolRegistry | None = None
-    clients: dict[str, MCPStdioClient] = field(default_factory=dict)
+    clients: dict[str, MCPClient] = field(default_factory=dict)
     configs: dict[str, MCPServerConfig] = field(default_factory=dict)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
@@ -167,3 +172,29 @@ class MCPServerCreateRequest(BaseModel):
     url: str = ""
     env: dict[str, str] = Field(default_factory=dict)
     timeout: float = 30.0
+
+    @field_validator("transport")
+    @classmethod
+    def transport_must_be_valid(cls, v: str) -> str:
+        if v not in ("stdio", "sse"):
+            raise ValueError("transport must be 'stdio' or 'sse'")
+        return v
+
+    @field_validator("command")
+    @classmethod
+    def stdio_requires_command(cls, v: str, info: Any) -> str:
+        transport = info.data.get("transport", "")
+        if transport == "stdio" and not v.strip():
+            raise ValueError("stdio transport requires a non-empty command")
+        return v
+
+    @field_validator("url")
+    @classmethod
+    def sse_requires_url(cls, v: str, info: Any) -> str:
+        transport = info.data.get("transport", "")
+        if transport == "sse":
+            if not v.strip():
+                raise ValueError("sse transport requires a non-empty url")
+            if not v.startswith(("http://", "https://")):
+                raise ValueError("sse url must start with http:// or https://")
+        return v

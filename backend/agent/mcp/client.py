@@ -8,12 +8,12 @@ import json
 import os
 import types
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
 from loguru import logger
 
 # Default MCP protocol version.
-MCP_PROTOCOL_VERSION = "2024-11-05"
+MCP_PROTOCOL_VERSION = "2025-03-26"
 
 
 @dataclass(frozen=True)
@@ -32,6 +32,23 @@ class MCPCallResult:
 
     content: str
     is_error: bool = False
+
+
+@runtime_checkable
+class MCPClient(Protocol):
+    """Protocol defining the shared interface for MCP clients."""
+
+    async def connect(self) -> None: ...
+
+    async def list_tools(self) -> tuple[MCPToolSchema, ...]: ...
+
+    async def call_tool(
+        self, name: str, arguments: dict[str, Any]
+    ) -> MCPCallResult: ...
+
+    async def close(self) -> None: ...
+
+    def is_alive(self) -> bool: ...
 
 
 class MCPStdioClient:
@@ -71,11 +88,14 @@ class MCPStdioClient:
         self._stderr_task = asyncio.create_task(self._drain_stderr())
 
         # Initialize the MCP connection
-        await self._send_request("initialize", {
-            "protocolVersion": MCP_PROTOCOL_VERSION,
-            "capabilities": {},
-            "clientInfo": {"name": "hiagent", "version": "0.1.0"},
-        })
+        await self._send_request(
+            "initialize",
+            {
+                "protocolVersion": MCP_PROTOCOL_VERSION,
+                "capabilities": {},
+                "clientInfo": {"name": "hiagent", "version": "0.1.0"},
+            },
+        )
         # Send initialized notification
         await self._send_notification("notifications/initialized", {})
         logger.info("mcp_connected server={}", self._server_name)
@@ -99,10 +119,13 @@ class MCPStdioClient:
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> MCPCallResult:
         """Call a tool on the MCP server."""
         try:
-            result = await self._send_request("tools/call", {
-                "name": name,
-                "arguments": arguments,
-            })
+            result = await self._send_request(
+                "tools/call",
+                {
+                    "name": name,
+                    "arguments": arguments,
+                },
+            )
             content_parts = result.get("content", [])
             text_parts = [
                 p.get("text", "") for p in content_parts if p.get("type") == "text"
@@ -130,6 +153,12 @@ class MCPStdioClient:
                 self._process.kill()
         logger.info("mcp_disconnected server={}", self._server_name)
 
+    def is_alive(self) -> bool:
+        """Return True if the MCP server subprocess is still running."""
+        if self._process is None:
+            return False
+        return self._process.returncode is None
+
     # -- Internal helpers ---------------------------------------------------
 
     def _reject_pending(self, reason: str) -> None:
@@ -140,7 +169,9 @@ class MCPStdioClient:
             if not future.done():
                 future.set_exception(RuntimeError(reason))
 
-    async def _send_request(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
+    async def _send_request(
+        self, method: str, params: dict[str, Any]
+    ) -> dict[str, Any]:
         """Send a JSON-RPC request and wait for the response."""
         req_id = next(self._request_id)
         message = {
@@ -149,7 +180,9 @@ class MCPStdioClient:
             "method": method,
             "params": params,
         }
-        future: asyncio.Future[dict[str, Any]] = asyncio.get_running_loop().create_future()
+        future: asyncio.Future[dict[str, Any]] = (
+            asyncio.get_running_loop().create_future()
+        )
         self._pending[req_id] = future
 
         await self._write_message(message)
@@ -195,9 +228,7 @@ class MCPStdioClient:
                 if req_id is not None and req_id in self._pending:
                     future = self._pending.pop(req_id)
                     if "error" in msg:
-                        future.set_exception(
-                            RuntimeError(f"MCP error: {msg['error']}")
-                        )
+                        future.set_exception(RuntimeError(f"MCP error: {msg['error']}"))
                     else:
                         future.set_result(msg.get("result", {}))
         except asyncio.CancelledError:
@@ -206,9 +237,7 @@ class MCPStdioClient:
             logger.error("mcp_reader_error server={} error={}", self._server_name, exc)
         finally:
             # Reader exited — reject any pending futures so callers don't hang.
-            self._reject_pending(
-                f"MCP reader stopped for server {self._server_name}"
-            )
+            self._reject_pending(f"MCP reader stopped for server {self._server_name}")
 
     async def _drain_stderr(self) -> None:
         """Read and log stderr from the MCP server process to prevent buffer deadlock."""

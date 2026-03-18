@@ -83,6 +83,16 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
  * Falls back to title-casing the snake_case name.
  */
 export function normalizeToolName(rawName: string): string {
+  // MCP tools use server__toolname convention
+  if (rawName.includes("__")) {
+    const [serverName, ...rest] = rawName.split("__");
+    const toolPart = rest.join("__");
+    const formattedTool = toolPart
+      .split("_")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+    return `${formattedTool} (${serverName})`;
+  }
   const mapped = TOOL_DISPLAY_NAMES[rawName];
   if (mapped) return mapped;
   return rawName
@@ -91,7 +101,7 @@ export function normalizeToolName(rawName: string): string {
     .join(" ");
 }
 
-export type ToolCategory = "code" | "file" | "search" | "memory" | "browser" | "preview" | "default";
+export type ToolCategory = "code" | "file" | "search" | "memory" | "browser" | "preview" | "mcp" | "default";
 
 const SEARCH_TOOLS = new Set(["web_search", "web_fetch"]);
 const MEMORY_TOOLS = new Set(["memory_store", "memory_search", "memory_list"]);
@@ -100,6 +110,7 @@ const BROWSER_TOOLS = new Set(["browser_navigate"]);
 const FILE_TOOLS = new Set(["file_read", "file_write"]);
 
 export function getToolCategory(toolName: string): ToolCategory {
+  if (toolName.includes("__")) return "mcp";
   if (CODE_TOOLS.has(toolName) && !FILE_TOOLS.has(toolName)) return "code";
   if (FILE_TOOLS.has(toolName)) return "file";
   if (SEARCH_TOOLS.has(toolName)) return "search";

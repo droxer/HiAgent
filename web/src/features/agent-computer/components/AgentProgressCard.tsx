@@ -22,6 +22,7 @@ import {
   Flag,
   AlertTriangle,
   Wrench,
+  Plug,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
@@ -184,6 +185,7 @@ function toolCategoryIcon(category: ToolCategory) {
     case "memory": return Database;
     case "browser": return Eye;
     case "preview": return Eye;
+    case "mcp": return Plug;
     default: return Wrench;
   }
 }

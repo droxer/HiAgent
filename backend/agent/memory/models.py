@@ -7,20 +7,15 @@ from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, Index, String, Text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import DeclarativeBase
+
+from agent.state.models import Base
 
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-class MemoryBase(DeclarativeBase):
-    """Base class for memory models."""
-
-    pass
-
-
-class MemoryEntry(MemoryBase):
+class MemoryEntry(Base):
     """A persistent memory entry stored per-conversation or globally."""
 
     __tablename__ = "memory_entries"

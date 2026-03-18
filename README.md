@@ -10,7 +10,7 @@ An open-source AI agent platform that turns natural language into sandboxed, mul
 
 **Multi-agent planning** — Complex tasks are automatically decomposed into sub-tasks. A planner agent coordinates multiple worker agents that run concurrently, each with their own sandbox.
 
-**Extensible skill system** — Skills are portable YAML definitions that teach agents new methodologies. Install community skills from GitHub or write your own. Skills define instructions, allowed tools, and sandbox requirements.
+**Extensible skill system** — Skills are portable YAML definitions that teach agents new methodologies. Skills define instructions, allowed tools, and sandbox requirements. Import from GitHub coming soon.
 
 **MCP integration** — Connect external tools via the Model Context Protocol. Add MCP servers to extend agent capabilities with third-party APIs and services.
 

@@ -83,19 +83,18 @@ def _create_app() -> FastAPI:
 
     @asynccontextmanager
     async def _lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
-        # Initialise database tables
+        # Verify database connectivity (Alembic manages schema)
         await init_db(db_engine)
-        from agent.memory.models import MemoryBase
 
-        async with db_engine.begin() as conn:
-            await conn.run_sync(MemoryBase.metadata.create_all)
-
-        # Discover MCP tools
+        # Discover MCP tools from env var
         (
             mcp_state.registry,
             mcp_state.clients,
             mcp_state.configs,
         ) = await mcp._discover_mcp_tools(mcp_state, ToolRegistry())
+
+        # Restore persisted MCP servers from database
+        await mcp._restore_persisted_servers(mcp_state, db_session_factory)
 
         # Start stale-conversation reaper
         asyncio.create_task(conversations._cleanup_stale_conversations(app_state))

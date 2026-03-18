@@ -9,6 +9,7 @@ import {
   FileText,
   FileCode,
   Play,
+  Plug,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
@@ -39,6 +40,7 @@ const CATEGORY_STYLES: Record<ToolCategory, CategoryStyle> = {
   memory:  { border: "border-l-accent-amber/60",   icon: Database,  labelKey: "output.category.memory" },
   browser: { border: "border-l-ai-glow/60",        icon: Monitor,   labelKey: "output.category.browser" },
   preview: { border: "border-l-accent-emerald/60", icon: Play,      labelKey: "output.category.preview" },
+  mcp:     { border: "border-l-user-accent/60",    icon: Plug,      labelKey: "output.category.mcp" },
   default: { border: "border-l-border",            icon: FileText,  labelKey: "" },
 };
 

@@ -10,6 +10,7 @@ import {
   Radio,
   Unplug,
   Wrench,
+  X,
 } from "lucide-react";
 import { TransportToggle } from "./TransportToggle";
 import { Button } from "@/shared/components/ui/button";
@@ -26,6 +27,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/shared/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/shared/components/ui/dialog";
 import { cn } from "@/shared/lib/utils";
 import { useTranslation } from "@/i18n";
 import {
@@ -89,7 +97,7 @@ export function MCPPage() {
   // Add form state
   const [showForm, setShowForm] = useState(false);
   const [formName, setFormName] = useState("");
-  const [formTransport, setFormTransport] = useState<"stdio" | "sse">("stdio");
+  const [formTransport, setFormTransport] = useState<"stdio" | "sse">("sse");
   const [formCommand, setFormCommand] = useState("");
   const [formUrl, setFormUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -221,16 +229,14 @@ export function MCPPage() {
             <h2 className="text-sm font-medium text-muted-foreground">
               {t("mcp.mcpServers")}
             </h2>
-            {!showForm && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowForm(true)}
-              >
-                <Plus className="mr-1.5 h-3.5 w-3.5" />
-                {t("mcp.addServer")}
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowForm(true)}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              {t("mcp.addServer")}
+            </Button>
           </div>
 
           {/* ── Server list ── */}
@@ -304,11 +310,11 @@ export function MCPPage() {
                       <span>
                         {server.tool_count === 1 ? t("mcp.toolCount", { count: 1 }) : t("mcp.toolsCount", { count: server.tool_count })}
                       </span>
-                      {server.command && (
+                      {(server.command || server.url) && (
                         <>
                           <span className="text-border">|</span>
                           <span className="truncate font-mono">
-                            {server.command}
+                            {server.command || server.url}
                           </span>
                         </>
                       )}
@@ -329,91 +335,116 @@ export function MCPPage() {
             </motion.div>
           )}
 
-          {/* ── Add form ── */}
-          {showForm && (
-            <motion.div
-              className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-            >
-              <h3 className="text-sm font-semibold text-foreground">
-                {t("mcp.addFormTitle")}
-              </h3>
+        </div>
+      </div>
 
-              {/* Name */}
+      {/* ── Add server dialog ── */}
+      <Dialog open={showForm} onOpenChange={(open) => { if (!open) resetForm(); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("mcp.addFormTitle")}</DialogTitle>
+            <DialogDescription>{t("mcp.subtitle")}</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Error inside dialog */}
+            {error && (
+              <div className="flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" />
+                <p className="flex-1 text-sm text-destructive">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => setError(null)}
+                  className="rounded-sm p-0.5 text-destructive transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Name */}
+            <div className="space-y-1.5">
+              <Label htmlFor="mcp-name" className="text-xs">
+                {t("mcp.name")}
+              </Label>
+              <Input
+                id="mcp-name"
+                placeholder={t("mcp.namePlaceholder")}
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                className="font-mono"
+                autoFocus
+              />
+            </div>
+
+            {/* Transport toggle */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">{t("mcp.transport")}</Label>
+              <TransportToggle value={formTransport} onChange={setFormTransport} />
+            </div>
+
+            {/* Transport-specific field */}
+            {formTransport === "stdio" ? (
               <div className="space-y-1.5">
-                <Label htmlFor="mcp-name" className="text-xs">
-                  {t("mcp.name")}
+                <Label htmlFor="mcp-command" className="text-xs">
+                  {t("mcp.command")}
                 </Label>
                 <Input
-                  id="mcp-name"
-                  placeholder={t("mcp.namePlaceholder")}
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
+                  id="mcp-command"
+                  placeholder={t("mcp.commandPlaceholder")}
+                  value={formCommand}
+                  onChange={(e) => setFormCommand(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && formName.trim() && !submitting) {
+                      handleAdd();
+                    }
+                  }}
                   className="font-mono"
                 />
               </div>
-
-              {/* Transport toggle */}
+            ) : (
               <div className="space-y-1.5">
-                <Label className="text-xs">{t("mcp.transport")}</Label>
-                <TransportToggle value={formTransport} onChange={setFormTransport} />
+                <Label htmlFor="mcp-url" className="text-xs">
+                  {t("mcp.urlLabel")}
+                </Label>
+                <Input
+                  id="mcp-url"
+                  placeholder={t("mcp.urlPlaceholder")}
+                  value={formUrl}
+                  onChange={(e) => setFormUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && formName.trim() && !submitting) {
+                      handleAdd();
+                    }
+                  }}
+                  className="font-mono"
+                />
               </div>
+            )}
 
-              {/* Transport-specific field */}
-              {formTransport === "stdio" ? (
-                <div className="space-y-1.5">
-                  <Label htmlFor="mcp-command" className="text-xs">
-                    {t("mcp.command")}
-                  </Label>
-                  <Input
-                    id="mcp-command"
-                    placeholder={t("mcp.commandPlaceholder")}
-                    value={formCommand}
-                    onChange={(e) => setFormCommand(e.target.value)}
-                    className="font-mono"
-                  />
-                </div>
-              ) : (
-                <div className="space-y-1.5">
-                  <Label htmlFor="mcp-url" className="text-xs">
-                    {t("mcp.urlLabel")}
-                  </Label>
-                  <Input
-                    id="mcp-url"
-                    placeholder={t("mcp.urlPlaceholder")}
-                    value={formUrl}
-                    onChange={(e) => setFormUrl(e.target.value)}
-                    className="font-mono"
-                  />
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex justify-end gap-2 pt-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={resetForm}
-                >
-                  {t("mcp.cancel")}
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleAdd}
-                  disabled={submitting || !formName.trim()}
-                >
-                  {submitting && (
-                    <span className="mr-1.5 inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  )}
-                  {t("mcp.connect")}
-                </Button>
-              </div>
-            </motion.div>
-          )}
-        </div>
-      </div>
+            {/* Actions */}
+            <div className="flex justify-end gap-2 pt-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={resetForm}
+              >
+                {t("mcp.cancel")}
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleAdd}
+                disabled={submitting || !formName.trim()}
+              >
+                {submitting && (
+                  <span className="mr-1.5 inline-block h-3.5 w-3.5 skeleton-shimmer rounded-sm" />
+                )}
+                {t("mcp.connect")}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Delete confirmation ── */}
       <AlertDialog

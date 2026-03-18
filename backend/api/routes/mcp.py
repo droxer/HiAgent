@@ -9,9 +9,17 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Path
 from loguru import logger
 
+from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+
 from agent.mcp.bridge import MCPBridgedTool
-from agent.mcp.client import MCPStdioClient
+from agent.mcp.client import MCPClient, MCPStdioClient
 from agent.mcp.config import MCPServerConfig
+from agent.mcp.repository import (
+    delete_mcp_server as db_delete_mcp_server,
+    list_mcp_servers as db_list_mcp_servers,
+    save_mcp_server as db_save_mcp_server,
+)
+from agent.mcp.sse_client import MCPSSEClient
 from agent.tools.registry import ToolRegistry
 from api.dependencies import AppState, get_app_state
 from api.models import MCPServerCreateRequest, MCPServerResponse
@@ -23,8 +31,13 @@ from config.settings import get_settings
 # ---------------------------------------------------------------------------
 
 _MCP_BLOCKED_ENV_VARS = {
-    "PATH", "LD_PRELOAD", "LD_LIBRARY_PATH", "PYTHONPATH",
-    "NODE_PATH", "HOME", "USER",
+    "PATH",
+    "LD_PRELOAD",
+    "LD_LIBRARY_PATH",
+    "PYTHONPATH",
+    "NODE_PATH",
+    "HOME",
+    "USER",
 }
 
 _ALLOWED_MCP_COMMANDS = {"npx", "uvx", "node", "python", "python3"}
@@ -63,10 +76,27 @@ def _parse_mcp_configs(raw: str) -> tuple[MCPServerConfig, ...]:
     return tuple(configs)
 
 
+def _create_client_for_config(cfg: MCPServerConfig) -> MCPClient:
+    """Create the appropriate MCP client for a server config."""
+    if cfg.transport == "sse":
+        return MCPSSEClient(
+            url=cfg.url,
+            server_name=cfg.name,
+            timeout=cfg.timeout,
+        )
+    return MCPStdioClient(
+        command=cfg.command,
+        args=cfg.args,
+        env=cfg.env,
+        server_name=cfg.name,
+        timeout=cfg.timeout,
+    )
+
+
 async def _discover_mcp_tools(
     mcp_state: Any,
     registry: ToolRegistry,
-) -> tuple[ToolRegistry, dict[str, MCPStdioClient], dict[str, MCPServerConfig]]:
+) -> tuple[ToolRegistry, dict[str, MCPClient], dict[str, MCPServerConfig]]:
     """Connect to configured MCP servers and register their tools.
 
     Returns the updated registry, a dict of active MCP clients keyed by
@@ -82,22 +112,10 @@ async def _discover_mcp_tools(
         logger.warning("Invalid MCP_SERVERS JSON, skipping MCP discovery")
         return registry, {}, {}
 
-    clients: dict[str, MCPStdioClient] = {}
+    clients: dict[str, MCPClient] = {}
     configs: dict[str, MCPServerConfig] = {}
     for cfg in server_configs:
-        if cfg.transport != "stdio":
-            logger.warning(
-                "Only stdio MCP transport supported, skipping {}", cfg.name
-            )
-            continue
-
-        client = MCPStdioClient(
-            command=cfg.command,
-            args=cfg.args,
-            env=cfg.env,
-            server_name=cfg.name,
-            timeout=cfg.timeout,
-        )
+        client = _create_client_for_config(cfg)
         try:
             await client.connect()
             tools = await client.list_tools()
@@ -117,20 +135,55 @@ async def _discover_mcp_tools(
             clients[cfg.name] = client
             configs[cfg.name] = cfg
         except Exception as exc:
-            logger.error(
-                "mcp_server_connect_failed name={} error={}", cfg.name, exc
-            )
+            logger.error("mcp_server_connect_failed name={} error={}", cfg.name, exc)
             await client.close()
 
     return registry, clients, configs
 
 
-def _client_is_alive(client: MCPStdioClient) -> bool:
-    """Return True if the MCP client's subprocess is still running."""
-    proc = getattr(client, "_process", None)
-    if proc is None:
-        return False
-    return proc.returncode is None
+async def _restore_persisted_servers(
+    mcp_state: Any,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Reconnect MCP servers that were persisted in the database."""
+    async with session_factory() as session:
+        saved_configs = await db_list_mcp_servers(session)
+
+    registry = mcp_state.registry or ToolRegistry()
+    for cfg in saved_configs:
+        if cfg.name in mcp_state.configs:
+            # Already loaded from env var — skip.
+            continue
+        client = _create_client_for_config(cfg)
+        try:
+            await client.connect()
+            tools = await client.list_tools()
+            for schema in tools:
+                bridged = MCPBridgedTool(schema, client)
+                try:
+                    registry = registry.register(bridged)
+                    logger.info(
+                        "mcp_tool_registered name={} server={}",
+                        schema.name,
+                        schema.server_name,
+                    )
+                except ValueError:
+                    logger.warning(
+                        "mcp_tool_skipped name={} (already registered)",
+                        schema.name,
+                    )
+            mcp_state.clients[cfg.name] = client
+            mcp_state.configs[cfg.name] = cfg
+            logger.info("mcp_server_restored name={}", cfg.name)
+        except Exception as exc:
+            logger.error("mcp_server_restore_failed name={} error={}", cfg.name, exc)
+            await client.close()
+    mcp_state.registry = registry
+
+
+def _client_is_alive(client: MCPClient) -> bool:
+    """Return True if the MCP client is still connected."""
+    return client.is_alive()
 
 
 def _build_server_response(mcp_state: Any, name: str) -> MCPServerResponse:
@@ -178,18 +231,18 @@ async def add_server(
     mcp_state = state.mcp_state
 
     if request.name in mcp_state.configs:
-        raise HTTPException(status_code=409, detail=f"Server '{request.name}' already exists")
-
-    if request.transport != "stdio":
-        raise HTTPException(status_code=400, detail="Only stdio transport is currently supported")
-
-    # Validate the command against the allowlist
-    command_basename = os.path.basename(request.command)
-    if command_basename not in _ALLOWED_MCP_COMMANDS:
         raise HTTPException(
-            status_code=403,
-            detail=f"Command '{command_basename}' is not in the allowed MCP commands: {sorted(_ALLOWED_MCP_COMMANDS)}",
+            status_code=409, detail=f"Server '{request.name}' already exists"
         )
+
+    # Validate stdio-specific constraints.
+    if request.transport == "stdio":
+        command_basename = os.path.basename(request.command)
+        if command_basename not in _ALLOWED_MCP_COMMANDS:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Command '{command_basename}' is not in the allowed MCP commands: {sorted(_ALLOWED_MCP_COMMANDS)}",
+            )
 
     # Filter blocked environment variables
     sanitized_env = {
@@ -206,13 +259,7 @@ async def add_server(
         timeout=request.timeout,
     )
 
-    client = MCPStdioClient(
-        command=cfg.command,
-        args=cfg.args,
-        env=cfg.env,
-        server_name=cfg.name,
-        timeout=cfg.timeout,
-    )
+    client = _create_client_for_config(cfg)
 
     async with mcp_state.lock:
         try:
@@ -224,13 +271,24 @@ async def add_server(
                 try:
                     registry = registry.register(bridged)
                 except ValueError:
-                    logger.warning("mcp_tool_skipped name={} (already registered)", schema.name)
+                    logger.warning(
+                        "mcp_tool_skipped name={} (already registered)", schema.name
+                    )
             mcp_state.registry = registry
             mcp_state.clients[cfg.name] = client
             mcp_state.configs[cfg.name] = cfg
         except Exception as exc:
             await client.close()
-            raise HTTPException(status_code=502, detail=f"Failed to connect: {exc}") from exc
+            raise HTTPException(
+                status_code=502, detail=f"Failed to connect: {exc}"
+            ) from exc
+
+    # Persist to database so it survives restarts.
+    try:
+        async with state.db_session_factory() as session:
+            await db_save_mcp_server(session, cfg)
+    except Exception as exc:
+        logger.warning("mcp_server_persist_failed name={} error={}", cfg.name, exc)
 
     return _build_server_response(mcp_state, cfg.name)
 
@@ -255,5 +313,12 @@ async def remove_server(
 
         if mcp_state.registry is not None:
             mcp_state.registry = mcp_state.registry.remove_by_tag(name)
+
+    # Remove from database.
+    try:
+        async with state.db_session_factory() as session:
+            await db_delete_mcp_server(session, name)
+    except Exception as exc:
+        logger.warning("mcp_server_delete_persist_failed name={} error={}", name, exc)
 
     return {"detail": f"Server '{name}' removed"}

@@ -1,7 +1,7 @@
 "use client";
 
-import { Terminal, Radio } from "lucide-react";
-import { Button } from "@/shared/components/ui/button";
+import { cn } from "@/shared/lib/utils";
+import { useTranslation } from "@/i18n";
 
 interface TransportToggleProps {
   readonly value: "stdio" | "sse";
@@ -9,36 +9,29 @@ interface TransportToggleProps {
 }
 
 export function TransportToggle({ value, onChange }: TransportToggleProps) {
+  const { t } = useTranslation();
+
   return (
-    <div className="flex gap-1.5">
-      <Button
-        type="button"
-        variant={value === "stdio" ? "default" : "secondary"}
-        size="sm"
-        onClick={() => onChange("stdio")}
-        className={
-          value === "stdio"
-            ? "bg-foreground text-background hover:bg-foreground/90"
-            : "text-muted-foreground hover:text-foreground"
-        }
-      >
-        <Terminal className="h-3 w-3" />
-        stdio
-      </Button>
-      <Button
-        type="button"
-        variant={value === "sse" ? "default" : "secondary"}
-        size="sm"
-        onClick={() => onChange("sse")}
-        className={
-          value === "sse"
-            ? "bg-foreground text-background hover:bg-foreground/90"
-            : "text-muted-foreground hover:text-foreground"
-        }
-      >
-        <Radio className="h-3 w-3" />
-        sse
-      </Button>
+    <div className="flex gap-1 rounded-md bg-secondary p-1">
+      {(["sse", "stdio"] as const).map((transport) => (
+        <button
+          key={transport}
+          type="button"
+          onClick={() => { if (transport !== "stdio") onChange(transport); }}
+          disabled={transport === "stdio"}
+          className={cn(
+            "flex-1 rounded-sm px-3 py-1.5 text-xs font-medium transition-all duration-150",
+            "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+            value === transport
+              ? "bg-background text-foreground shadow-sm"
+              : transport === "stdio"
+                ? "cursor-not-allowed text-muted-foreground/40"
+                : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {transport === "stdio" ? t("mcp.stdioComingSoon") : "sse"}
+        </button>
+      ))}
     </div>
   );
 }
