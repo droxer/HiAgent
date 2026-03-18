@@ -49,18 +49,18 @@ The palette is built on **warm stone neutrals** — cream backgrounds, warm gray
 
 | Token | Hex | Role |
 |-------|-----|------|
-| `background` | `#1C1917` | Page canvas — warm dark (stone-900) |
+| `background` | `#181614` | Page canvas — warm dark (deeper than stone-900 for better card contrast) |
 | `foreground` | `#EDEDED` | Primary text — soft white |
 | `primary` | `#FFFFFF` | Action buttons, interactive fills |
 | `primary-foreground` | `#1C1917` | Text on primary surfaces |
-| `secondary` | `#292524` | Muted backgrounds (stone-800) |
+| `secondary` | `#2B2826` | Muted backgrounds (slightly lighter than old #292524 for contrast) |
 | `secondary-foreground` | `#EDEDED` | Text on secondary surfaces |
-| `muted` | `#292524` | Inactive/disabled backgrounds |
+| `muted` | `#2B2826` | Inactive/disabled backgrounds |
 | `muted-foreground` | `#A8A29E` | Secondary text (stone-400) |
-| `muted-foreground-dim` | `#78716C` | Tertiary text with WCAG AA contrast (replaces `/60` and `/40` opacity modifiers) |
-| `card` | `#292524` | Card/elevated surfaces |
+| `muted-foreground-dim` | `#8B8580` | Tertiary text with WCAG 3:1 contrast (replaces `/60` and `/40` opacity modifiers) |
+| `card` | `#2B2826` | Card/elevated surfaces |
 | `card-foreground` | `#EDEDED` | Text on cards |
-| `popover` | `#292524` | Dropdown/popover bg |
+| `popover` | `#2B2826` | Dropdown/popover bg |
 | `popover-foreground` | `#EDEDED` | Text in popovers |
 | `destructive` | `#F87171` | Error states, delete actions |
 
@@ -68,10 +68,10 @@ The palette is built on **warm stone neutrals** — cream backgrounds, warm gray
 
 | Token | Light | Dark | Usage |
 |-------|-------|------|-------|
-| `border` | `#E8E5E0` | `#44403C` | Default borders, dividers (1px, warm) |
+| `border` | `#E8E5E0` | `#4A4540` | Default borders, dividers (1px, warm) |
 | `border-strong` | `#D6D3D1` | `#57534E` | Emphasized borders |
 | `border-active` | `#A8A29E` | `#78716C` | Focus state, active input borders |
-| `input` | `#E8E5E0` | `#44403C` | Input field borders |
+| `input` | `#E8E5E0` | `#4A4540` | Input field borders |
 
 ### Accent & Semantic Colors
 
@@ -90,19 +90,19 @@ Used sparingly for status indicators and semantic meaning. Never as dominant sur
 
 | Token | Dark | Light |
 |-------|------|-------|
-| `sidebar-bg` | `#1C1917` | `#F5F0EB` |
-| `sidebar-active` | `#292524` | `#EDE8E3` |
-| `sidebar-hover` | `#292524` | `#EDE8E3` |
+| `sidebar-bg` | `#181614` | `#F5F0EB` |
+| `sidebar-active` | `#2B2826` | `#EDE8E3` |
+| `sidebar-hover` | `#2B2826` | `#EDE8E3` |
 
 ### Terminal (Dark Panel)
 
 | Token | Light | Dark | Usage |
 |-------|-------|------|-------|
-| `terminal-bg` | `#FAF9F6` | `#1C1917` | Panel background |
-| `terminal-surface` | `#F5F0EB` | `#292524` | Elevated surfaces within panel |
-| `terminal-border` | `#E8E5E0` | `#44403C` | Panel borders |
+| `terminal-bg` | `#FAF9F6` | `#181614` | Panel background |
+| `terminal-surface` | `#F5F0EB` | `#2B2826` | Elevated surfaces within panel |
+| `terminal-border` | `#E8E5E0` | `#4A4540` | Panel borders |
 | `terminal-text` | `#2D2D2D` | `#D6D3D1` | Primary terminal text |
-| `terminal-dim` | `#8B8B96` | `#78716C` | Dimmed icons, secondary text in terminal |
+| `terminal-dim` | `#8B8B96` | `#8B8580` | Dimmed icons, secondary text in terminal |
 
 ### Token Rules
 
@@ -123,15 +123,15 @@ Used sparingly for status indicators and semantic meaning. Never as dominant sur
 
 | Role | Font | Variable | Fallback | Usage Scope |
 |------|------|----------|----------|-------------|
-| Body (sans) | Inter | `--font-inter` | system-ui, -apple-system, sans-serif | All body text, UI chrome, labels, headings, panel titles. Designed for screens at small sizes (14px body). |
-| Display (serif) | Instrument Serif | `--font-instrument-serif` | Georgia, serif | **WelcomeScreen hero heading only.** Do not use for panel titles, section headers, or UI chrome. |
+| Body (sans) | Inter | `--font-inter` | system-ui, -apple-system, sans-serif | All body text, UI chrome, labels, headings, panel titles, including WelcomeScreen hero. Designed for screens at small sizes (14px body). |
+| Display (serif) | Instrument Serif | `--font-instrument-serif` | Georgia, serif | **Reserved for future use.** Loaded but not actively used. Do not use for panel titles, section headers, or UI chrome. |
 | Code (mono) | JetBrains Mono | `--font-jetbrains-mono` | SFMono, Menlo, Consolas, monospace | Code blocks, raw data, terminal logs, keyboard shortcut labels |
 
 ### Type Scale
 
 | Name | Size | CSS Token | Tailwind | Line Height | Usage |
 |------|------|-----------|----------|-------------|-------|
-| Hero | `3.75rem` (60px) | `--font-size-hero` | `text-[3.75rem]` | 1.1 | WelcomeScreen hero heading (serif, semi-bold) |
+| Hero | `3.75rem` (60px) | `--font-size-hero` | `text-[3.75rem]` | 1.1 | WelcomeScreen hero heading (sans-serif, semi-bold) |
 | H1 (Canvas Title) | `1.5rem` (24px) | `--font-size-h1` | `text-2xl` | 1.3 | Page/canvas titles |
 | H2 (Section Header) | `1rem` (16px) | `--font-size-h2` | `text-base` | 1.3 | Section headers (semi-bold, subdued) |
 | Body | `0.875rem` (14px) | `--font-size-body` | `text-sm` | 1.5 | Chat messages, UI text, button labels |
@@ -172,11 +172,13 @@ Shadows are warm and soft, using `rgba(28, 25, 23, ...)` (warm stone) instead of
 
 ### Dark Mode
 
+Shadows in dark mode are softer than before — rely more on border contrast (improved via `#4A4540` borders on `#181614` background) than heavy shadows.
+
 | Name | Value | Usage |
 |------|-------|-------|
-| `shadow-card` | `0 1px 3px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.12)` | Card resting state |
-| `shadow-card-hover` | `0 4px 12px rgba(0,0,0,0.25), 0 1px 3px rgba(0,0,0,0.15)` | Card hover lift |
-| `shadow-elevated` | `0 8px 24px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2)` | Floating overlays |
+| `shadow-card` | `0 1px 2px rgba(0,0,0,0.08)` | Card resting state |
+| `shadow-card-hover` | `0 2px 8px rgba(0,0,0,0.12)` | Card hover lift |
+| `shadow-elevated` | `0 8px 24px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.1)` | Floating overlays |
 
 ### Shadow Usage
 
@@ -205,11 +207,13 @@ focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50
 
 ### Command Palette (Cmd+K / Ctrl+K)
 
-The central nervous system of the application.
+The central nervous system of the application. Also accessible via the TopBar search trigger.
 
-- **Visuals**: Floating, center-screen modal with heavy blur backdrop
+- **Visuals**: Floating, center-screen modal with blurred backdrop overlay
 - **Behavior**: Instantly focused search bar. Below: quick AI actions, navigation (Skills, MCP, New Task), recent conversations (from app store, limit 5), and settings
-- **Styling**: `bg-card/90 backdrop-blur-xl border border-border rounded-xl shadow-elevated`
+- **Styling**: `bg-card border border-border rounded-md shadow-elevated` — solid background, no glassmorphism on the dialog itself. Backdrop overlay uses `backdrop-blur-md`.
+- **Animation**: Opacity-only fade (0.12s) — no scale or translate on entry/exit
+- **Selected item**: `bg-secondary` highlight only — no `border-l` accent
 - **Shortcuts**: Display keyboard hints (`⌘N`, `ESC`) on the right side of items using `<kbd>` elements
 - **Global shortcuts**: `Cmd+N` / `Ctrl+N` creates a new task (navigates home)
 
@@ -245,10 +249,12 @@ The log section must have a collapse/expand affordance (chevron header). Complet
 
 ### Timing
 
+Professional developer tools use near-instant transitions. No animation should exceed 200ms except continuous loops.
+
 | Speed | Duration | Usage |
 |-------|----------|-------|
-| Fast | `150ms – 200ms` | Micro-interactions, hover states |
-| Standard | `300ms – 400ms` | Page transitions, fade-ins |
+| Instant | `100ms – 120ms` | Content entry animations, message appear, grid stagger items |
+| Fast | `150ms – 200ms` | Micro-interactions, hover states, expand/collapse |
 | Slow | `1.5s – 3s` | Continuous loops (pulse, shimmer) |
 
 ### Loading States
@@ -260,9 +266,9 @@ The log section must have a collapse/expand affordance (chevron header). Complet
 
 ### Core Patterns
 
-1. **Fade + Slide Up**: `initial={{ opacity: 0, y: 8 }}` → `animate={{ opacity: 1, y: 0 }}`
-2. **Stagger Children**: `staggerChildren: 0.05, delayChildren: 0.3` (max 0.4 — never exceed Standard timing band)
-3. **Spring Physics**: `type: "spring", stiffness: 300, damping: 25`
+1. **Fade + Slide Up**: `initial={{ opacity: 0, y: 4 }}` → `animate={{ opacity: 1, y: 0 }}`, `duration: 0.12`
+2. **Stagger Children**: `staggerChildren: 0.02, delayChildren: 0` — fast, near-instant grid population
+3. **Expand/Collapse**: `duration: 0.15, ease: "easeOut"` — no spring physics for UI chrome
 4. **Shadow Lift (hover)**: Cards use `shadow-sm` at rest, `hover:shadow-md` + `hover:border-border-strong` on hover
 5. **Opacity Pulse (status indicators)**: Use CSS `@keyframes` for pulsing dots (`pulsingDotFade`, `pulsingDotRing` in globals.css). Prefer CSS animations over framer-motion for simple continuous loops.
 
@@ -271,7 +277,7 @@ The log section must have a collapse/expand affordance (chevron header). Complet
 - **No `scale` on content elements** — messages, cards, status indicators, dots, entry animations. Scale is for buttons only. This includes pulsing `scale: [1, 1.4, 1]` on dots, and `scale: 0.98` on entry animations — use opacity + translateY instead.
 - **No glow effects** — `box-shadow: 0 0 Xpx` glow halos, `aiGlow` keyframes, `orbitalPulse` animations, and conic-gradient spinning borders are prohibited. Use subtle shadow lift and opacity pulse instead.
 - **No gradient mesh backgrounds** — animated multi-gradient backgrounds (`meshDrift`) are removed. Use a single subtle radial gradient at most.
-- **No glassmorphism on content** — `backdrop-blur-sm bg-card/80` on inputs and cards is prohibited. Use solid `bg-card` instead. Glassmorphism is allowed only for the command palette overlay.
+- **No glassmorphism** — `backdrop-blur-sm bg-card/80` on inputs, cards, and dialogs is prohibited. Use solid `bg-card` instead. `backdrop-blur-md` is allowed only on modal overlay backdrops (the dimmed layer behind the dialog).
 - **No gratuitous entrance animations** — reserve motion for state changes. Decorative `filter: blur()` on static heading words is prohibited.
 - **Respect `prefers-reduced-motion`** — wrap the app in `<MotionConfig reducedMotion="user">` (Framer Motion). The CSS `prefers-reduced-motion` media query in globals.css does NOT affect JS-driven Framer Motion animations.
 
@@ -320,10 +326,11 @@ WelcomeScreen renders `ChatInput` with `variant="welcome"` — a single componen
 
 ### TopBar
 
-The top bar (`h-12`) displays breadcrumbs on the left and action buttons on the right:
+The top bar (`h-14`) displays breadcrumbs on the left and a command palette trigger on the right:
 - **Left**: Home button, task breadcrumb with step count, connection status dot
-- **Right**: Stop button (visible during `executing`/`planning` states), panel toggle (`PanelRightOpen`/`PanelRightClose`)
-- Props: `taskState`, `isConnected`, `currentIteration`, `onNavigateHome`, `onTogglePanel`, `panelOpen`, `onCancel`, `taskTitle`
+- **Right**: Search trigger button (`Search...` + `⌘K` hint) — dispatches `Cmd+K` to open the command palette
+- **Background**: Solid `bg-background` — no blur or transparency
+- Props: `taskState`, `isConnected`, `currentIteration`, `onNavigateHome`, `taskTitle`
 
 ### Agent Computer Panel Status Bar
 
@@ -335,18 +342,18 @@ A single consolidated status bar at the bottom of the Agent Computer Panel:
 
 | Token | Value | Tailwind | Usage |
 |-------|-------|----------|-------|
-| `--radius-sm` | 4px | `rounded-sm` | Small pills, inline code |
-| `--radius-md` | 8px | `rounded-md` | Sidebar items, small buttons |
-| `--radius-lg` | 12px | `rounded-lg` | Cards, inputs, containers |
-| `--radius-xl` | 16px | `rounded-xl` | Dialogs, command palette |
+| `--radius-sm` | 2px | `rounded-sm` | Small pills, inline code |
+| `--radius-md` | 4px | `rounded-md` | Sidebar items, small buttons, send/cancel buttons |
+| `--radius-lg` | 6px | `rounded-lg` | Cards, inputs, containers, dialogs, chat input |
+| `--radius-xl` | 8px | `rounded-xl` | Reserved — prefer `rounded-lg` for most surfaces |
 
 ### Scrollbar
 
-Width is always **5px** — including Radix `ScrollArea` components (use `w-[5px]`, not the default `w-2.5`).
+Width is always **4px** — including Radix `ScrollArea` components (use `w-[4px]`, not the default `w-2.5`).
 
 ```css
 /* Light mode */
-::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
   background: rgba(120, 113, 108, 0.2);
@@ -456,14 +463,14 @@ These patterns have been found in the codebase and must be avoided:
 | `bg-white/[0.04]`, `bg-black/5` | Use `bg-border/40`, `bg-muted` |
 | `text-white` on colored backgrounds | Use `text-primary-foreground` |
 | `font-bold` on headings | Use `font-semibold` (600) |
-| `font-serif` on panel titles | Serif is for WelcomeScreen hero only |
+| `font-serif` on any UI element | Serif font is loaded but reserved for future use — use `font-sans` everywhere |
 | `scale: [1, 1.4, 1]` on dots/icons | Use `opacity: [0.4, 1, 0.4]` |
 | `shadow-[0_0_6px_var(--color-ai-glow)]` | Remove glow — use `shadow-sm` or nothing |
 | `backdrop-blur-sm bg-card/80` on inputs | Use solid `bg-card` |
 | `box-shadow: 0 0 20px var(--color-input-glow)` | Use `shadow-md` on focus |
-| `background: #FFFFFF` / `#0A0A0A` | Use `#FAF9F6` (cream) / `#1C1917` (warm dark) |
+| `background: #FFFFFF` / `#0A0A0A` | Use `#FAF9F6` (cream) / `#181614` (warm dark) |
 | `#818CF8` (cold indigo) | Use `#8B5CF6` (warm violet) via `accent-purple` / `ai-glow` |
-| `border-radius: 2px–6px` (sharp) | Use `rounded-lg` (12px) for cards, `rounded-md` (8px) for items |
+| `border-radius: 0–2px` (sharp) | Use `rounded-lg` (6px) for cards, `rounded-md` (4px) for items |
 | `animation: conicSpin`, `aiGlow`, `orbitalPulse` | Removed — use CSS `@keyframes` opacity pulse |
 | `animation: meshDrift` on backgrounds | Removed — use static radial gradient |
 | `<Loader2 className="animate-spin">` | Use shimmer skeleton |
@@ -478,3 +485,12 @@ These patterns have been found in the codebase and must be avoided:
 | `scale: 0.98` in entry animations | Remove scale — use only `opacity` + `y` |
 | Separate WelcomeScreen textarea | Use `ChatInput variant="welcome"` |
 | framer-motion for simple CSS loops | Use CSS `@keyframes` (e.g., PulsingDot) |
+| `text-amber-500`, `text-indigo-400` | Use `text-accent-amber`, `text-accent-purple` |
+| `border-red-200 bg-red-50` | Use `border-destructive/20 bg-destructive/5` |
+| `rounded-full` on action buttons | Use `rounded-md` — circular buttons read as consumer-app |
+| `rounded-xl` on dialogs/cards | Use `rounded-lg` (6px) — `rounded-xl` is reserved |
+| `bg-background/80 backdrop-blur-sm` on TopBar | Use solid `bg-background` |
+| `staggerChildren: 0.06` or higher | Use `0.02` max — grid items should appear near-instantly |
+| `duration: 0.25` on content entry | Use `0.12` — content animations should be near-instant |
+| Spring physics on UI chrome | Use `duration + ease` — springs are for drag/physics interactions only |
+| Per-word staggered text reveal | Single fade on the entire heading — word-by-word is too consumer-like |

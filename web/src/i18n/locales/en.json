@@ -1,5 +1,5 @@
 {
-  "welcome.headingWords": ["What", "can", "I", "build", "for", "you?"],
+  "welcome.heading": "What can I build for you?",
 
   "chat.placeholderWorking": "Agent is working...",
   "chat.placeholder": "What can I help you build?",
@@ -11,7 +11,7 @@
   "chat.sendMessage": "Send message",
   "chat.typeToSend": "Type a message to send",
   "chat.attachLabel": "Attach",
-  "chat.skillLabel": "Skill",
+  "chat.skillLabel": "Skills",
   "chat.planLabel": "Plan",
   "chat.planner": "Use planner mode",
   "chat.plannerHint": "Decompose into parallel sub-agents",
@@ -40,6 +40,7 @@
   "topbar.stop": "Stop",
   "topbar.closePanel": "Close panel",
   "topbar.openPanel": "Open panel",
+  "topbar.search": "Search...",
 
   "theme.light": "Light",
   "theme.dark": "Dark",
@@ -166,6 +167,7 @@
   "skills.dropZoneHint": "Accepts .zip, SKILL.md, or a folder",
   "skills.selectedFiles": "{count} file(s) selected",
   "skills.dropZoneActive": "Drop files here...",
+  "skills.clearFilter": "Clear filter",
 
   "mcp.title": "MCP",
   "mcp.subtitle": "Connect MCP servers to extend your agent's capabilities",

@@ -179,17 +179,25 @@ export function Sidebar({
           <>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
+                <button
+                  type="button"
                   onClick={onNewTask}
-                  variant="ghost"
-                  className="w-full border border-border hover:border-border-active hover:bg-secondary transition-all duration-200"
-                  size="icon"
+                  aria-label={t("sidebar.newTask")}
+                  className={cn(
+                    "group/new flex w-full items-center justify-center rounded-lg p-2",
+                    "border border-transparent",
+                    "text-muted-foreground hover:text-foreground",
+                    "transition-all duration-200",
+                    "hover:bg-secondary hover:border-border hover:shadow-md",
+                    "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                  )}
                 >
-                  <Plus className="h-4 w-4" />
-                </Button>
+                  <Plus className="h-4 w-4 transition-transform duration-200 group-hover/new:rotate-90" />
+                </button>
               </TooltipTrigger>
               <TooltipContent side="right">{t("sidebar.newTask")}</TooltipContent>
             </Tooltip>
+            <div className="border-t border-border mx-0.5" />
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link href="/skills">
@@ -227,14 +235,30 @@ export function Sidebar({
           </>
         ) : (
           <div className="space-y-1">
-            <Button
+            <button
+              type="button"
               onClick={onNewTask}
-              variant="outline"
-              className="w-full justify-start gap-2 rounded-md border-border bg-secondary hover:border-border-active hover:bg-secondary"
+              className={cn(
+                "group/new flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5",
+                "border border-transparent",
+                "transition-all duration-200",
+                "hover:bg-secondary hover:border-border hover:shadow-md",
+                "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+              )}
             >
-              <Plus className="h-4 w-4 text-muted-foreground" />
-              {t("sidebar.newTask")}
-            </Button>
+              <div className={cn(
+                "flex h-6 w-6 shrink-0 items-center justify-center rounded-md",
+                "bg-muted text-muted-foreground",
+                "transition-colors duration-200",
+                "group-hover/new:text-foreground",
+              )}>
+                <Plus className="h-3.5 w-3.5 transition-transform duration-200 group-hover/new:rotate-90" />
+              </div>
+              <span className="text-sm font-medium text-foreground">
+                {t("sidebar.newTask")}
+              </span>
+            </button>
+            <div className="border-t border-border" />
             <Link
               href="/skills"
               className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
@@ -253,9 +277,12 @@ export function Sidebar({
         )}
       </div>
 
+      {/* Separator between nav actions and task list */}
+      <div className={cn("border-t border-border", collapsed ? "mx-2" : "mx-4")} />
+
       {/* Task list */}
       {!collapsed && (
-        <div className="px-4 pb-1.5 pt-1">
+        <div className="px-4 pb-1.5 pt-2">
           <span className="text-xs font-medium text-muted-foreground-dim">{t("sidebar.recentTasks")}</span>
         </div>
       )}
@@ -347,13 +374,27 @@ export function Sidebar({
       </div>
 
 
-      {/* Footer: language + theme toggle */}
-      <div className={cn(
-        "shrink-0 border-t border-border",
-        collapsed ? "flex flex-col items-center gap-1 px-2 py-2" : "space-y-1 px-4 py-3",
-      )}>
-        <LanguageSwitcher collapsed={collapsed} />
-        <ThemeToggle collapsed={collapsed} />
+      {/* Footer: language + theme settings bar */}
+      <div
+        className={cn(
+          "shrink-0 border-t border-border",
+          collapsed
+            ? "flex flex-col items-center gap-1 px-2 py-2"
+            : "px-4 py-3",
+        )}
+      >
+        {collapsed ? (
+          <>
+            <LanguageSwitcher collapsed />
+            <ThemeToggle collapsed />
+          </>
+        ) : (
+          <div className="flex items-center gap-1 rounded-lg bg-secondary p-1">
+            <LanguageSwitcher />
+            <div className="h-4 w-px shrink-0 bg-border" />
+            <ThemeToggle />
+          </div>
+        )}
       </div>
 
       {/* Delete confirmation dialog */}

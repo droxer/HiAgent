@@ -18,7 +18,6 @@ import {
   Globe,
   Database,
   Eye,
-  Sparkles,
   Bot,
   Flag,
   AlertTriangle,
@@ -193,7 +192,7 @@ function kindIcon(kind: StepKind, rawToolName?: string) {
   switch (kind) {
     case "start": return Play;
     case "thinking": return Brain;
-    case "skill": return Sparkles;
+    case "skill": return Lightbulb;
     case "agent": return Bot;
     case "complete": return Flag;
     case "error": return AlertTriangle;
@@ -357,7 +356,7 @@ export function AgentProgressCard({
           </span>
           <motion.span
             animate={{ rotate: expanded ? 180 : 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
             className="flex items-center"
           >
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
@@ -391,7 +390,7 @@ export function AgentProgressCard({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 28 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
             className="overflow-hidden"
           >
             <div className="px-4 pb-3">
@@ -405,8 +404,8 @@ export function AgentProgressCard({
                         initial={{ opacity: 0, x: -4 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{
-                          delay: index * 0.03,
-                          duration: 0.2,
+                          delay: index * 0.015,
+                          duration: 0.12,
                           ease: "easeOut",
                         }}
                         className={cn(

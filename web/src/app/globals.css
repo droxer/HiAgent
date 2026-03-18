@@ -20,10 +20,10 @@
   --color-card-foreground: #EDEDED;
   --color-popover: #292524;
   --color-popover-foreground: #EDEDED;
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
+  --radius-sm: 0.125rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.375rem;
+  --radius-xl: 0.5rem;
 
   /* Custom border colors */
   --color-border-strong: #57534E;
@@ -62,7 +62,7 @@
   --color-terminal-dim: #78716C;
 
   /* Font families */
-  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-sans: var(--font-inter), "PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
   --font-serif: var(--font-instrument-serif), Georgia, "Times New Roman", serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 
@@ -103,6 +103,11 @@
   @keyframes slideInRight {
     0% { opacity: 0; transform: translateX(12px); }
     100% { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes themeSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
   }
 
   @keyframes shimmer {
@@ -175,26 +180,26 @@
 /* ─── Dark mode ─── */
 
 .dark {
-  --color-background: #1C1917;
+  --color-background: #181614;
   --color-foreground: #EDEDED;
   --color-primary: #FFFFFF;
   --color-primary-foreground: #1C1917;
-  --color-secondary: #292524;
+  --color-secondary: #2B2826;
   --color-secondary-foreground: #EDEDED;
-  --color-muted: #292524;
+  --color-muted: #2B2826;
   --color-muted-foreground: #A8A29E;
   --color-destructive: #F87171;
-  --color-border: #44403C;
-  --color-input: #44403C;
+  --color-border: #4A4540;
+  --color-input: #4A4540;
   --color-ring: #EDEDED;
-  --color-card: #292524;
+  --color-card: #2B2826;
   --color-card-foreground: #EDEDED;
-  --color-popover: #292524;
+  --color-popover: #2B2826;
   --color-popover-foreground: #EDEDED;
   --color-border-strong: #57534E;
   --color-border-active: #78716C;
-  --color-placeholder: #78716C;
-  --color-muted-foreground-dim: #78716C;
+  --color-placeholder: #8B8580;
+  --color-muted-foreground-dim: #8B8580;
   --color-accent-emerald: #34D399;
   --color-accent-amber: #D97706;
   --color-accent-rose: #F87171;
@@ -205,17 +210,17 @@
   --color-ai-surface: rgba(139, 92, 246, 0.04);
   --color-ai-border: rgba(139, 92, 246, 0.12);
   --color-input-glow: rgba(139, 92, 246, 0.12);
-  --color-sidebar-bg: #1C1917;
-  --color-sidebar-active: #292524;
-  --color-sidebar-hover: #292524;
-  --color-terminal-bg: #1C1917;
-  --color-terminal-surface: #292524;
-  --color-terminal-border: #44403C;
+  --color-sidebar-bg: #181614;
+  --color-sidebar-active: #2B2826;
+  --color-sidebar-hover: #2B2826;
+  --color-terminal-bg: #181614;
+  --color-terminal-surface: #2B2826;
+  --color-terminal-border: #4A4540;
   --color-terminal-text: #D6D3D1;
-  --color-terminal-dim: #78716C;
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.15);
-  --shadow-card-hover: 0 2px 8px rgba(0, 0, 0, 0.2);
-  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --color-terminal-dim: #8B8580;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-card-hover: 0 2px 8px rgba(0, 0, 0, 0.12);
+  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* ─── Custom Tailwind Utilities ─── */
@@ -223,6 +228,19 @@
 @utility text-micro {
   font-size: var(--font-size-micro);
   line-height: var(--font-size-micro--line-height);
+}
+
+@utility skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-muted-foreground) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    var(--color-muted-foreground) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+  opacity: 0.08;
+  border-radius: 0.25rem;
 }
 
 @utility text-caption {
@@ -255,8 +273,8 @@ body {
 /* ─── Scrollbar ─── */
 
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -363,7 +381,7 @@ body {
 .markdown-body pre {
   margin: 0.5em 0;
   background: var(--color-secondary);
-  border-radius: 0.5rem;
+  border-radius: 0.375rem;
   padding: 0.75em 1em;
 }
 
@@ -373,7 +391,7 @@ body {
 
 .markdown-body :not(pre) > code {
   background: rgba(120, 113, 108, 0.08);
-  border-radius: 0.25rem;
+  border-radius: 0.125rem;
   padding: 0.15em 0.4em;
   font-size: 0.9em;
 }
@@ -384,7 +402,7 @@ body {
 
 .markdown-body img {
   max-width: 100%;
-  border-radius: 0.5rem;
+  border-radius: 0.375rem;
 }
 
 /* KaTeX overrides for inline math */
@@ -483,8 +501,3 @@ body {
   }
 }
 
-/* Override Next.js dev overlay portal positioning */
-nextjs-portal {
-  left: unset;
-  top: unset;
-}

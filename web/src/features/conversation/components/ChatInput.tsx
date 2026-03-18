@@ -150,7 +150,7 @@ export function ChatInput({ onSendMessage, disabled = false, onCancel, isAgentRu
 
         <div
           className={cn(
-            "relative rounded-xl bg-card border transition-all duration-200",
+            "relative rounded-lg bg-card border transition-all duration-200",
             isFocused
               ? "border-border-active shadow-sm"
               : "border-border shadow-sm",
@@ -226,7 +226,6 @@ export function ChatInput({ onSendMessage, disabled = false, onCancel, isAgentRu
                 )}
               >
                 <Paperclip className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t("chat.attachLabel")}</span>
               </Button>
 
               <SkillSelector
@@ -293,7 +292,7 @@ export function ChatInput({ onSendMessage, disabled = false, onCancel, isAgentRu
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.15 }}
                   className={cn(
-                    "group flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                    "group flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
                     "bg-muted text-muted-foreground",
                     "transition-colors duration-200 ease-out",
                     "hover:bg-destructive/10 hover:text-destructive",
@@ -318,7 +317,7 @@ export function ChatInput({ onSendMessage, disabled = false, onCancel, isAgentRu
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.15 }}
                   className={cn(
-                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
                     "transition-colors duration-200 ease-out",
                     "focus-visible:ring-[3px] focus-visible:ring-ring/50 outline-none",
                     hasContent

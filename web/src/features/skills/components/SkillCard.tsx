@@ -30,53 +30,61 @@ export function SkillCard({ skill, onDelete }: SkillCardProps) {
   const config = sourceStyle[skill.source_type] ?? sourceStyle.bundled;
   const Icon = config.icon;
   const labelKey = SOURCE_LABEL_KEY[skill.source_type] ?? SOURCE_LABEL_KEY.bundled;
+  const showDelete = skill.source_type === "user" && onDelete;
 
   return (
-    <div className="group relative flex gap-3.5 rounded-lg border border-border bg-card px-4 py-3.5 shadow-sm transition-all duration-200 hover:border-border-strong hover:shadow-md">
-      {/* Icon */}
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary">
-        <Lightbulb className="h-4 w-4 text-muted-foreground" />
-      </div>
-
-      {/* Content */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-foreground">
-            {normalizeSkillName(skill.name)}
-          </span>
+    <div className="group flex h-full flex-col rounded-lg border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:border-border-strong hover:shadow-md">
+      {/* Top row: icon + badge + optional delete */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary">
+          <Lightbulb className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <div className="flex items-center gap-1.5">
           <Badge
             variant="secondary"
-            className={cn("text-micro font-medium px-1.5 py-0", config.className)}
+            className={cn("text-micro font-medium px-1.5 py-0 shrink-0", config.className)}
           >
             <Icon className="mr-1 h-2.5 w-2.5" />
             {t(labelKey)}
           </Badge>
-        </div>
-        {skill.description && (
-          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-            {skill.description}
-          </p>
-        )}
-        <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground-dim">
-          <span className="font-mono text-xs">{skill.name}</span>
+          {showDelete && (
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              aria-label={`${t("skills.uninstall")} ${normalizeSkillName(skill.name)}`}
+              className={cn(
+                "shrink-0 text-muted-foreground/0 transition-colors",
+                "group-hover:text-muted-foreground group-focus-within:text-muted-foreground",
+                "hover:text-destructive hover:bg-destructive/10",
+              )}
+              onClick={() => onDelete(skill.name)}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Delete — only for user-installed skills */}
-      {skill.source_type === "user" && onDelete && (
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className={cn(
-            "absolute right-3 top-3 shrink-0 text-muted-foreground/0 transition-colors",
-            "group-hover:text-muted-foreground group-focus-within:text-muted-foreground",
-            "hover:text-destructive hover:bg-destructive/10",
-          )}
-          onClick={() => onDelete(skill.name)}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
-      )}
+      {/* Name */}
+      <h3 className="mt-3 text-sm font-semibold leading-snug text-foreground">
+        {normalizeSkillName(skill.name)}
+      </h3>
+
+      {/* Description — clamp to 2 lines, min-h for uniform grid cells */}
+      <div className="mt-1.5 min-h-[2.5rem]">
+        {skill.description && (
+          <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+            {skill.description}
+          </p>
+        )}
+      </div>
+
+      {/* Slug / identifier — pushed to bottom */}
+      <div className="mt-auto pt-3">
+        <span className="font-mono text-micro text-muted-foreground-dim">
+          {skill.name}
+        </span>
+      </div>
     </div>
   );
 }

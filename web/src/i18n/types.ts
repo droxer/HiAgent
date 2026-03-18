@@ -1,12 +1,13 @@
-export type Locale = "en" | "zh-CN";
+export type Locale = "en" | "zh-CN" | "zh-TW";
 
 export const DEFAULT_LOCALE: Locale = "en";
 
-export const LOCALES: readonly Locale[] = ["en", "zh-CN"] as const;
+export const LOCALES: readonly Locale[] = ["en", "zh-CN", "zh-TW"] as const;
 
 export const LOCALE_LABELS: Record<Locale, string> = {
   en: "English",
-  "zh-CN": "中文",
+  "zh-CN": "简体中文",
+  "zh-TW": "繁體中文",
 };
 
 export const COOKIE_NAME = "hiagent-locale";

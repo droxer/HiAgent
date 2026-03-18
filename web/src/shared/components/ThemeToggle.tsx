@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { Moon, Sun, Monitor } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
@@ -17,14 +17,17 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
+import { cn } from "@/shared/lib/utils";
+
+type ThemeValue = "light" | "dark" | "system";
 
 const THEME_OPTIONS = [
-  { value: "light", icon: Sun, labelKey: "theme.light" },
-  { value: "dark", icon: Moon, labelKey: "theme.dark" },
-  { value: "system", icon: Monitor, labelKey: "theme.system" },
+  { value: "light" as const, icon: Sun, labelKey: "theme.light" },
+  { value: "dark" as const, icon: Moon, labelKey: "theme.dark" },
+  { value: "system" as const, icon: Monitor, labelKey: "theme.system" },
 ] as const;
 
-const TRIGGER_ICON: Record<string, typeof Moon> = {
+const TRIGGER_ICON: Partial<Record<ThemeValue, typeof Moon>> = {
   dark: Moon,
   light: Sun,
   system: Monitor,
@@ -38,19 +41,34 @@ export function ThemeToggle({ collapsed = false }: ThemeToggleProps) {
   const { theme, setTheme } = useTheme();
   const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
+  const prevThemeRef = useRef<string | undefined>(undefined);
+  const [spinClass, setSpinClass] = useState("");
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  /* Trigger a one-shot spin animation when theme changes */
+  useEffect(() => {
+    if (!mounted) return;
+    if (prevThemeRef.current !== undefined && prevThemeRef.current !== theme) {
+      setSpinClass("animate-[themeSpin_500ms_ease-out]");
+      const timer = setTimeout(() => setSpinClass(""), 500);
+      return () => clearTimeout(timer);
+    }
+    prevThemeRef.current = theme;
+  }, [theme, mounted]);
+
   if (!mounted) {
     return <div className={collapsed ? "h-8 w-8" : "h-8"} />;
   }
 
-  const current = theme ?? "dark";
+  const current = (theme ?? "dark") as ThemeValue;
   const Icon = TRIGGER_ICON[current] ?? Moon;
   const currentOption = THEME_OPTIONS.find((o) => o.value === current);
-  const currentLabel = currentOption ? t(currentOption.labelKey) : t("theme.toggle");
+  const currentLabel = currentOption
+    ? t(currentOption.labelKey)
+    : t("theme.toggle");
 
   const trigger = collapsed ? (
     <Tooltip>
@@ -58,9 +76,10 @@ export function ThemeToggle({ collapsed = false }: ThemeToggleProps) {
         <Button
           variant="ghost"
           size="icon-sm"
-          className="text-muted-foreground transition-colors duration-150 hover:text-foreground hover:bg-sidebar-hover"
+          aria-label={t("theme.toggle")}
+          className="transition-colors duration-200 hover:bg-sidebar-hover"
         >
-          <Icon className="h-3.5 w-3.5" />
+          <Icon className={cn("h-3.5 w-3.5", spinClass)} />
           <span className="sr-only">{t("theme.toggle")}</span>
         </Button>
       </TooltipTrigger>
@@ -69,19 +88,18 @@ export function ThemeToggle({ collapsed = false }: ThemeToggleProps) {
   ) : (
     <Button
       variant="ghost"
-      className="w-full justify-start gap-2.5 text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground hover:bg-sidebar-hover"
+      aria-label={t("theme.toggle")}
+      className="flex-1 justify-start gap-2 text-sm transition-colors duration-200 hover:bg-sidebar-hover"
       size="sm"
     >
-      <Icon className="h-4 w-4" />
+      <Icon className={cn("h-4 w-4", spinClass)} />
       {currentLabel}
     </Button>
   );
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        {trigger}
-      </DropdownMenuTrigger>
+      <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
       <DropdownMenuContent
         side={collapsed ? "right" : "top"}
         align="start"

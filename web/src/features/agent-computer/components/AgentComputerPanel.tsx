@@ -212,7 +212,7 @@ export function AgentComputerPanel({
             tabIndex={activeTab === "activity" ? 0 : -1}
             onClick={() => setActiveTab("activity")}
             className={cn(
-              "flex items-center gap-1.5 rounded-t-md px-3 py-2 text-xs font-medium transition-colors",
+              "flex items-center gap-1.5 rounded-t-md px-2.5 py-1.5 text-xs font-medium transition-colors",
               activeTab === "activity"
                 ? "border-b-2 border-foreground text-foreground"
                 : "text-muted-foreground hover:text-foreground",
@@ -230,7 +230,7 @@ export function AgentComputerPanel({
             tabIndex={activeTab === "files" ? 0 : -1}
             onClick={() => setActiveTab("files")}
             className={cn(
-              "flex items-center gap-1.5 rounded-t-md px-3 py-2 text-xs font-medium transition-colors",
+              "flex items-center gap-1.5 rounded-t-md px-2.5 py-1.5 text-xs font-medium transition-colors",
               activeTab === "files"
                 ? "border-b-2 border-foreground text-foreground"
                 : "text-muted-foreground hover:text-foreground",
@@ -363,7 +363,7 @@ export function AgentComputerPanel({
           </div>
 
           {/* ── Consolidated status bar ── */}
-          <div className="flex shrink-0 items-center gap-3 border-t border-border px-4 py-2.5">
+          <div className="flex shrink-0 items-center gap-3 border-t border-border px-4 py-2">
             <Progress value={progressValue} className="flex-1 h-1.5" />
 
             <div className="flex items-center gap-1.5">

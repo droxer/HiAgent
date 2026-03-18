@@ -1,6 +1,7 @@
 "use client";
 
-import { LayoutGrid } from "lucide-react";
+import { useCallback } from "react";
+import { LayoutGrid, Search } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { useTranslation } from "@/i18n";
 import type { TaskState } from "@/shared/types";
@@ -22,8 +23,15 @@ export function TopBar({
 }: TopBarProps) {
   const { t } = useTranslation();
 
+  const handleOpenCommandPalette = useCallback(() => {
+    // Dispatch the same Cmd+K event the CommandPalette listens for
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }),
+    );
+  }, []);
+
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-sm">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4">
       {/* Left: Breadcrumb */}
       <div className="flex items-center gap-1.5">
         <Button
@@ -48,8 +56,16 @@ export function TopBar({
         )}
       </div>
 
-      {/* Right: spacer */}
-      <div />
+      {/* Right: Command palette trigger */}
+      <button
+        type="button"
+        onClick={handleOpenCommandPalette}
+        className="flex items-center gap-2 rounded-md border border-border bg-secondary/50 px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+      >
+        <Search className="h-3 w-3" />
+        <span>{t("topbar.search")}</span>
+        <kbd className="font-mono text-micro text-muted-foreground-dim">⌘K</kbd>
+      </button>
     </header>
   );
 }

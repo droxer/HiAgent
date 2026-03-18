@@ -208,7 +208,7 @@ export function ToolOutputRenderer({ output, toolName, contentType, conversation
 
   // Category-aware rendering for all other tools (markdown fallback)
   return (
-    <div className={cn("mt-2.5 rounded-md border-l-2 bg-muted/60 px-3 py-2", style.border)}>
+    <div className={cn("mt-2.5 rounded-md border-l-2 bg-muted/60 px-2.5 py-1.5", style.border)}>
       <div className="mb-1.5 flex items-center justify-end">
         {style.labelKey && (
           <span className="flex items-center gap-1 text-micro text-muted-foreground-dim">

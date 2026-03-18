@@ -176,9 +176,9 @@ export function ConversationWorkspace({
                     {msg.role === "user" ? (
                       /* ─── User message ─── right-aligned command surface */
                       <motion.div
-                        initial={{ opacity: 0, x: 16 }}
+                        initial={{ opacity: 0, x: 8 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        transition={{ duration: 0.12, ease: "easeOut" }}
                         className="flex justify-end"
                       >
                         <div className="max-w-[80%] min-w-[120px]">
@@ -214,9 +214,9 @@ export function ConversationWorkspace({
                     ) : (
                       /* ─── Assistant message ─── left-aligned, bounded width */
                       <motion.div
-                        initial={{ opacity: 0, y: 6 }}
+                        initial={{ opacity: 0, y: 4 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.25, ease: "easeOut" }}
+                        transition={{ duration: 0.12, ease: "easeOut" }}
                         className={cn(
                           "group relative max-w-[85%]",
                           isStreamingThis && "border-l-2 border-ai-border pl-4",

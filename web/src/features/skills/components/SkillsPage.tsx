@@ -24,6 +24,7 @@ import {
   DialogDescription,
 } from "@/shared/components/ui/dialog";
 import { SkillCard } from "./SkillCard";
+import { cn } from "@/shared/lib/utils";
 import { useSkillsCache } from "../hooks/use-skills-cache";
 import { normalizeSkillName } from "../lib/normalize-skill-name";
 import {
@@ -37,7 +38,7 @@ import { useTranslation } from "@/i18n";
 const listContainer = {
   hidden: {},
   show: {
-    transition: { staggerChildren: 0.06, delayChildren: 0.15 },
+    transition: { staggerChildren: 0.02, delayChildren: 0 },
   },
 };
 
@@ -46,22 +47,25 @@ const listItem = {
   show: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.25, ease: "easeOut" as const },
+    transition: { duration: 0.12, ease: "easeOut" as const },
   },
 };
 
-/* ── skeleton ── */
+/* ── skeleton (matches grid card layout) ── */
 function SkillSkeleton() {
   return (
-    <div className="flex gap-3.5 rounded-lg border border-border bg-card px-4 py-3.5 shadow-sm">
-      <div className="h-9 w-9 shrink-0 rounded-lg bg-muted-foreground/10 animate-shimmer" />
-      <div className="flex-1 space-y-2.5 pt-0.5">
-        <div className="flex items-center gap-2">
-          <div className="h-3.5 w-28 rounded bg-muted-foreground/10 animate-shimmer" />
-          <div className="h-4 w-16 rounded bg-muted-foreground/8 animate-shimmer" />
-        </div>
-        <div className="h-3 w-full max-w-xs rounded bg-muted-foreground/8 animate-shimmer" />
-        <div className="h-3 w-20 rounded bg-muted-foreground/6 animate-shimmer" />
+    <div className="flex flex-col rounded-lg border border-border bg-card p-4 shadow-sm">
+      <div className="flex items-start justify-between">
+        <div className="h-9 w-9 shrink-0 rounded-lg skeleton-shimmer" />
+        <div className="h-4 w-14 skeleton-shimmer" />
+      </div>
+      <div className="mt-3 h-4 w-28 skeleton-shimmer" />
+      <div className="mt-2 min-h-[2.5rem] space-y-1.5">
+        <div className="h-3 w-full skeleton-shimmer" />
+        <div className="h-3 w-3/4 skeleton-shimmer" />
+      </div>
+      <div className="mt-auto pt-3">
+        <div className="h-2.5 w-24 skeleton-shimmer" />
       </div>
     </div>
   );
@@ -180,7 +184,7 @@ export function SkillsPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25, ease: "easeOut" }}
       >
-        <div className="mx-auto flex max-w-2xl items-start justify-between">
+        <div className="mx-auto flex max-w-5xl items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary">
               <Lightbulb className="h-4 w-4 text-muted-foreground" />
@@ -208,7 +212,7 @@ export function SkillsPage() {
 
       {/* ── Content ── */}
       <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
-        <div className="mx-auto max-w-2xl space-y-5">
+        <div className="mx-auto max-w-5xl space-y-5">
           {/* Error banner */}
           {error && (
             <motion.div
@@ -248,6 +252,7 @@ export function SkillsPage() {
                 {filter && (
                   <button
                     type="button"
+                    aria-label={t("skills.clearFilter")}
                     onClick={() => setFilter("")}
                     className="rounded-sm p-0.5 text-muted-foreground-dim hover:text-muted-foreground"
                   >
@@ -266,9 +271,12 @@ export function SkillsPage() {
             </Button>
           </div>
 
-          {/* ── Skill list ── */}
+          {/* ── Skill grid ── */}
           {isLoading && skills.length === 0 ? (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <SkillSkeleton />
+              <SkillSkeleton />
+              <SkillSkeleton />
               <SkillSkeleton />
               <SkillSkeleton />
               <SkillSkeleton />
@@ -306,13 +314,13 @@ export function SkillsPage() {
             </motion.div>
           ) : (
             <motion.div
-              className="space-y-3"
+              className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
               variants={listContainer}
               initial="hidden"
               animate="show"
             >
               {displaySkills.map((skill) => (
-                <motion.div key={skill.name} variants={listItem}>
+                <motion.div key={skill.name} variants={listItem} className="h-full">
                   <SkillCard
                     skill={skill}
                     onDelete={setSkillToDelete}
@@ -341,7 +349,7 @@ export function SkillsPage() {
                 <button
                   type="button"
                   onClick={() => setError(null)}
-                  className="rounded-sm p-0.5 text-destructive/60 transition-colors hover:text-destructive"
+                  className="rounded-sm p-0.5 text-destructive transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -351,17 +359,19 @@ export function SkillsPage() {
             {/* Source toggle */}
             <div className="space-y-1.5">
               <Label className="text-xs">{t("skills.source")}</Label>
-              <div className="flex gap-1 rounded-lg bg-secondary p-1">
+              <div className="flex gap-1 rounded-md bg-secondary p-1">
                 {(["git", "upload"] as const).map((src) => (
                   <button
                     key={src}
                     type="button"
                     onClick={() => setInstallSource(src)}
-                    className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                    className={cn(
+                      "flex-1 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors duration-150",
+                      "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                       installSource === src
                         ? "bg-background text-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
                   >
                     {src === "git" ? t("skills.gitRepo") : t("skills.upload")}
                   </button>
@@ -398,17 +408,27 @@ export function SkillsPage() {
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
                     onClick={() => fileInputRef.current?.click()}
-                    className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-8 transition-colors ${
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        fileInputRef.current?.click();
+                      }
+                    }}
+                    className={cn(
+                      "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-8 transition-colors duration-150",
+                      "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                       isDragging
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-muted-foreground/40 hover:bg-secondary/50"
-                    }`}
+                        ? "border-border-active bg-secondary"
+                        : "border-border hover:border-border-strong hover:bg-secondary",
+                    )}
                   >
                     <Upload className="h-6 w-6 text-muted-foreground" />
                     <p className="text-sm text-muted-foreground">
                       {isDragging ? t("skills.dropZoneActive") : t("skills.dropZone")}
                     </p>
-                    <p className="text-xs text-muted-foreground/70">
+                    <p className="text-xs text-muted-foreground-dim">
                       {t("skills.dropZoneHint")}
                     </p>
                   </div>
@@ -433,7 +453,7 @@ export function SkillsPage() {
                       <button
                         type="button"
                         onClick={() => setSelectedFiles(null)}
-                        className="rounded-sm p-0.5 text-muted-foreground hover:text-foreground"
+                        className="rounded-sm p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                       >
                         <X className="h-3 w-3" />
                       </button>

@@ -36,7 +36,7 @@ const QUICK_ACTION_KEYS = [
 ] as const;
 
 const ITEM_CLASS =
-  "flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm text-foreground transition-colors data-[selected=true]:bg-secondary data-[selected=true]:text-foreground data-[selected=true]:border-l-2 data-[selected=true]:border-ai-glow";
+  "flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm text-foreground transition-colors data-[selected=true]:bg-secondary data-[selected=true]:text-foreground";
 
 const GROUP_HEADING_CLASS =
   "[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground";
@@ -138,13 +138,13 @@ export function CommandPalette({ onNewTask, onNavigateHome, onNavigateSkills, on
             role="dialog"
             aria-label={t("command.ariaLabel")}
             className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] sm:pt-[20vh]"
-            initial={{ opacity: 0, scale: 0.96, y: -10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: -10 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12, ease: "easeOut" }}
           >
             <Command
-              className="w-[calc(100%-2rem)] max-w-[560px] overflow-hidden rounded-md border border-border bg-card/90 shadow-elevated backdrop-blur-xl"
+              className="w-[calc(100%-2rem)] max-w-[560px] overflow-hidden rounded-md border border-border bg-card shadow-elevated"
               loop
             >
               {/* Search input */}

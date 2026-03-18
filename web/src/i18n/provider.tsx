@@ -28,7 +28,12 @@ function readLocale(): Locale {
   // 3. navigator.language
   if (typeof navigator !== "undefined") {
     const lang = navigator.language;
-    if (lang.startsWith("zh")) return "zh-CN";
+    if (lang.startsWith("zh")) {
+      if (lang === "zh-TW" || lang === "zh-HK" || lang.includes("Hant")) {
+        return "zh-TW";
+      }
+      return "zh-CN";
+    }
   }
 
   return DEFAULT_LOCALE;
@@ -53,7 +58,9 @@ async function loadDict(locale: Locale): Promise<TranslationDict> {
   if (cached) return cached;
 
   let dict: TranslationDict;
-  if (locale === "zh-CN") {
+  if (locale === "zh-TW") {
+    dict = (await import("./locales/zh-TW.json")).default as TranslationDict;
+  } else if (locale === "zh-CN") {
     dict = (await import("./locales/zh-CN.json")).default as TranslationDict;
   } else {
     dict = (await import("./locales/en.json")).default as TranslationDict;

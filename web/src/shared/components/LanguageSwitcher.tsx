@@ -1,20 +1,21 @@
 "use client";
 
-import { Globe } from "lucide-react";
+import { useRef, useCallback } from "react";
 import { Button } from "@/shared/components/ui/button";
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
 } from "@/shared/components/ui/tooltip";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
+import { cn } from "@/shared/lib/utils";
 import { useTranslation, LOCALES, LOCALE_LABELS, type Locale } from "@/i18n";
+
+/** Short script-based labels for the segmented toggle */
+const LOCALE_SHORT: Record<Locale, string> = {
+  en: "EN",
+  "zh-CN": "\u7B80",
+  "zh-TW": "\u7E41",
+};
 
 interface LanguageSwitcherProps {
   readonly collapsed?: boolean;
@@ -22,54 +23,96 @@ interface LanguageSwitcherProps {
 
 export function LanguageSwitcher({ collapsed = false }: LanguageSwitcherProps) {
   const { locale, setLocale } = useTranslation();
+  const groupRef = useRef<HTMLDivElement>(null);
 
-  const trigger = collapsed ? (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="text-muted-foreground transition-colors duration-150 hover:text-foreground hover:bg-sidebar-hover"
-        >
-          <Globe className="h-3.5 w-3.5" />
-          <span className="sr-only">{LOCALE_LABELS[locale]}</span>
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent side="right">{LOCALE_LABELS[locale]}</TooltipContent>
-    </Tooltip>
-  ) : (
-    <Button
-      variant="ghost"
-      className="w-full justify-start gap-2.5 text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground hover:bg-sidebar-hover"
-      size="sm"
-    >
-      <Globe className="h-4 w-4" />
-      {LOCALE_LABELS[locale]}
-    </Button>
+  /** Arrow-key roving tabindex handler for the radiogroup */
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+      let nextIndex: number | null = null;
+
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        nextIndex = (index + 1) % LOCALES.length;
+      } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        nextIndex = (index - 1 + LOCALES.length) % LOCALES.length;
+      }
+
+      if (nextIndex !== null) {
+        const nextLocale = LOCALES[nextIndex];
+        setLocale(nextLocale);
+        const buttons = groupRef.current?.querySelectorAll<HTMLButtonElement>(
+          '[role="radio"]',
+        );
+        buttons?.[nextIndex]?.focus();
+      }
+    },
+    [setLocale],
   );
 
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        {trigger}
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        side={collapsed ? "right" : "top"}
-        align="start"
-        className="min-w-[7rem] rounded-lg border-border bg-popover shadow-elevated"
-      >
-        <DropdownMenuRadioGroup value={locale} onValueChange={(v) => setLocale(v as Locale)}>
-          {LOCALES.map((loc) => (
-            <DropdownMenuRadioItem
-              key={loc}
-              value={loc}
-              className="gap-2 rounded-md text-xs"
+  /* ── Collapsed: single button showing current script char, tap cycles ── */
+  if (collapsed) {
+    const nextLocale =
+      LOCALES[(LOCALES.indexOf(locale) + 1) % LOCALES.length];
+
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setLocale(nextLocale)}
+            className="text-muted-foreground transition-colors duration-200 hover:text-foreground hover:bg-sidebar-hover"
+            aria-label={`Switch to ${LOCALE_LABELS[nextLocale]}`}
+          >
+            <span
+              className="text-xs font-semibold leading-none"
+              lang={locale}
             >
-              {LOCALE_LABELS[loc]}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+              {LOCALE_SHORT[locale]}
+            </span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          <span lang={nextLocale}>{LOCALE_LABELS[nextLocale]}</span>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  /* ── Expanded: inline segmented toggle with roving tabindex ── */
+  return (
+    <div
+      ref={groupRef}
+      className="flex items-center gap-0.5 rounded-md p-0.5"
+      role="radiogroup"
+      aria-label="Language"
+    >
+      {LOCALES.map((loc, index) => {
+        const isActive = loc === locale;
+        return (
+          <button
+            key={loc}
+            type="button"
+            role="radio"
+            aria-checked={isActive}
+            aria-label={LOCALE_LABELS[loc]}
+            tabIndex={isActive ? 0 : -1}
+            lang={loc}
+            onClick={() => setLocale(loc)}
+            onKeyDown={(e) => handleKeyDown(e, index)}
+            className={cn(
+              "flex-1 rounded-sm px-2.5 py-1 text-xs font-medium transition-colors duration-150",
+              "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+              isActive
+                ? "text-muted-foreground"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {LOCALE_SHORT[loc]}
+          </button>
+        );
+      })}
+    </div>
   );
 }

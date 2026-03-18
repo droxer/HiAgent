@@ -57,8 +57,8 @@ export function SkillSelector({
           /* Active skill pill — morphs in-place to show selection */
           <div className={cn(
             "group flex items-center gap-1 rounded-lg border transition-colors",
-            "border-accent-purple/20 bg-accent-purple/10 text-accent-purple",
-            "hover:bg-accent-purple/15",
+            "border-border bg-secondary text-accent-purple",
+            "hover:border-border-strong hover:shadow-sm",
             variant === "welcome" ? "h-8 pl-2.5 pr-1" : "h-7 pl-2 pr-0.5",
           )}>
             <PopoverTrigger asChild>
@@ -81,7 +81,7 @@ export function SkillSelector({
               aria-label={t("skills.selector.remove", { name: normalizeSkillName(selectedSkill) })}
               className={cn(
                 "flex items-center justify-center rounded-md transition-colors",
-                "text-accent-purple/60 hover:text-accent-purple hover:bg-accent-purple/15",
+                "text-muted-foreground hover:text-foreground hover:bg-secondary",
                 "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                 variant === "welcome" ? "h-6 w-6" : "h-5 w-5",
               )}
@@ -126,17 +126,9 @@ export function SkillSelector({
         <PopoverContent
           side="top"
           align="start"
-          className="w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-border bg-popover p-0"
+          className="w-[min(28rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-border bg-popover p-0"
           style={{ boxShadow: "var(--shadow-elevated)" }}
         >
-          {/* Header */}
-          <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
-            <Lightbulb className="h-3.5 w-3.5 text-accent-purple" />
-            <span className="text-xs font-semibold tracking-wide text-foreground">
-              {t("skills.selector.title")}
-            </span>
-          </div>
-
           {/* Search filter */}
           {skills.length > 4 && (
             <div className="border-b border-border px-3 py-2">
@@ -153,8 +145,8 @@ export function SkillSelector({
             </div>
           )}
 
-          {/* Skill list */}
-          <div className="max-h-64 overflow-y-auto p-1.5">
+          {/* Skill grid */}
+          <div className="max-h-72 overflow-y-auto p-2">
             {filtered.length === 0 ? (
               <div className="px-3 py-6 text-center text-xs text-muted-foreground">
                 {skills.length === 0
@@ -162,75 +154,58 @@ export function SkillSelector({
                   : t("skills.selector.noMatching")}
               </div>
             ) : (
-              filtered.map((skill) => {
-                const isSelected = selectedSkill === skill.name;
-                return (
-                  <button
-                    key={skill.name}
-                    type="button"
-                    onClick={() => handleSelect(skill.name)}
-                    className={cn(
-                      "group flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
-                      "hover:bg-secondary/60",
-                      "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-                      isSelected && "bg-accent-purple/10",
-                    )}
-                  >
-                    {/* Skill icon */}
-                    <div
+              <div className="grid grid-cols-2 gap-1.5">
+                {filtered.map((skill) => {
+                  const isSelected = selectedSkill === skill.name;
+                  return (
+                    <button
+                      key={skill.name}
+                      type="button"
+                      onClick={() => handleSelect(skill.name)}
                       className={cn(
-                        "flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors",
-                        isSelected
-                          ? "bg-accent-purple/15 text-accent-purple"
-                          : "bg-secondary/80 text-muted-foreground group-hover:bg-secondary group-hover:text-foreground",
+                        "group relative flex cursor-pointer flex-col gap-1 rounded-lg px-2.5 py-2 text-left transition-colors",
+                        "hover:bg-secondary/60",
+                        "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                        isSelected && "bg-secondary ring-1 ring-border-strong",
                       )}
                     >
-                      <Lightbulb className="h-3.5 w-3.5" />
-                    </div>
+                      {/* Selected indicator */}
+                      {isSelected && (
+                        <div className="absolute top-1.5 right-1.5">
+                          <Check className="h-3.5 w-3.5 text-accent-purple" strokeWidth={2.5} />
+                        </div>
+                      )}
 
-                    {/* Skill info */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      {/* Skill name + source badge */}
+                      <div className="flex items-center gap-1.5 pr-4">
+                        <div
+                          className={cn(
+                            "flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors",
+                            isSelected
+                              ? "bg-secondary text-accent-purple"
+                              : "bg-secondary/80 text-muted-foreground group-hover:text-foreground",
+                          )}
+                        >
+                          <Lightbulb className="h-3 w-3" />
+                        </div>
                         <span className={cn(
-                          "text-sm font-medium",
+                          "truncate text-xs font-medium",
                           isSelected ? "text-accent-purple" : "text-foreground",
                         )}>
                           {normalizeSkillName(skill.name)}
                         </span>
-                        <span
-                          className={cn(
-                            "shrink-0 rounded px-1.5 py-0.5 text-micro font-medium",
-                            skill.source_type === "bundled" &&
-                              "bg-secondary text-muted-foreground",
-                            skill.source_type === "user" &&
-                              "bg-accent-emerald/10 text-accent-emerald",
-                            skill.source_type === "project" &&
-                              "bg-accent-purple/10 text-accent-purple",
-                          )}
-                        >
-                          {skill.source_type === "bundled"
-                            ? t("skills.source.bundled")
-                            : skill.source_type === "user"
-                              ? t("skills.source.user")
-                              : t("skills.source.project")}
-                        </span>
                       </div>
+
+                      {/* Description */}
                       {skill.description && (
-                        <div className="mt-0.5 line-clamp-1 text-xs leading-relaxed text-muted-foreground">
+                        <div className="line-clamp-2 pl-6.5 text-xs leading-snug text-muted-foreground">
                           {skill.description}
                         </div>
                       )}
-                    </div>
-
-                    {/* Selected checkmark */}
-                    <div className="flex h-5 w-5 shrink-0 items-center justify-center">
-                      {isSelected && (
-                        <Check className="h-4 w-4 text-accent-purple" strokeWidth={2.5} />
-                      )}
-                    </div>
-                  </button>
-                );
-              })
+                    </button>
+                  );
+                })}
+              </div>
             )}
           </div>
         </PopoverContent>

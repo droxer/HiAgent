@@ -1,5 +1,5 @@
 {
-  "welcome.headingWords": ["我能", "为你", "构建", "什么？"],
+  "welcome.heading": "我能为你构建什么？",
 
   "chat.placeholderWorking": "智能体工作中...",
   "chat.placeholder": "我能帮你构建什么？",
@@ -40,6 +40,7 @@
   "topbar.stop": "停止",
   "topbar.closePanel": "关闭面板",
   "topbar.openPanel": "打开面板",
+  "topbar.search": "搜索...",
 
   "theme.light": "浅色",
   "theme.dark": "深色",
@@ -166,6 +167,7 @@
   "skills.dropZoneHint": "支持 .zip、SKILL.md 或文件夹",
   "skills.selectedFiles": "已选择 {count} 个文件",
   "skills.dropZoneActive": "将文件拖放到此处...",
+  "skills.clearFilter": "清除筛选",
 
   "mcp.title": "MCP",
   "mcp.subtitle": "连接 MCP 服务器以扩展智能体的能力",
