@@ -12,6 +12,7 @@ import { ChatInput } from "@/features/conversation";
 import { AssistantLoadingSkeleton } from "./AssistantLoadingSkeleton";
 import { StreamingCursor } from "./StreamingCursor";
 import { cn } from "@/shared/lib/utils";
+import { useTranslation } from "@/i18n";
 import type {
   AgentEvent,
   ArtifactInfo,
@@ -40,7 +41,7 @@ interface ConversationWorkspaceProps {
   reasoningSteps: string[];
   currentIteration: number;
   isConnected: boolean;
-  onSendMessage: (message: string, files?: File[]) => void;
+  onSendMessage: (message: string, files?: File[], skills?: string[]) => void;
   onNavigateHome?: () => void;
   isWaitingForAgent?: boolean;
   userCancelled?: boolean;
@@ -69,6 +70,7 @@ export function ConversationWorkspace({
   onCancel,
   onRetry,
 }: ConversationWorkspaceProps) {
+  const { t } = useTranslation();
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const autoOpenedRef = useRef(false);
@@ -130,7 +132,10 @@ export function ConversationWorkspace({
     : assistantPhase;
 
   return (
-    <div className="flex h-screen flex-col">
+    <div
+      className="flex h-screen flex-col"
+      aria-busy={taskState === "executing" || taskState === "planning"}
+    >
       <TopBar
         taskState={taskState}
         isConnected={isConnected}
@@ -138,17 +143,17 @@ export function ConversationWorkspace({
         onNavigateHome={onNavigateHome}
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
         {/* Left pane: Conversation */}
-        <div className={cn("flex flex-col", panelOpen ? "w-1/2 border-r border-border" : "w-full")}>
-          <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-6 py-6">
+        <div className={cn("flex flex-col", panelOpen ? "w-full border-b border-border md:w-1/2 md:border-b-0 md:border-r" : "w-full")}>
+          <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-6">
             {messages.length === 0 && (
               <div className="flex h-full items-center justify-center">
-                <p className="text-sm text-muted-foreground">Waiting for response...</p>
+                <p className="text-sm text-muted-foreground">{t("conversation.waiting")}</p>
               </div>
             )}
 
-            <div className={cn("mx-auto", !panelOpen && "max-w-3xl")}>
+            <div className={cn("mx-auto", !panelOpen && "max-w-3xl")} aria-live="polite" aria-relevant="additions">
               {messages.map((msg, i) => {
                 const isLastAssistant = msg.role === "assistant" && i === messages.length - 1;
                 const isStreamingThis = isStreaming && isLastAssistant;
@@ -170,7 +175,7 @@ export function ConversationWorkspace({
                       >
                         <div className="max-w-[80%] min-w-[120px]">
                           {/* Frosted card surface */}
-                          <div className="rounded-2xl rounded-br-md bg-[var(--color-user-accent-dim)] px-4 py-3 border border-[var(--color-user-accent)]/10">
+                          <div className="rounded-md rounded-br-sm bg-[var(--color-user-accent-dim)] px-4 py-3 border border-[var(--color-user-accent)]/10">
                             <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
                               {msg.content}
                             </p>
@@ -179,7 +184,7 @@ export function ConversationWorkspace({
                                 {msg.attachments.map((att, idx) => (
                                   <span
                                     key={idx}
-                                    className="inline-flex items-center gap-1 rounded-md bg-[var(--color-user-accent)]/10 px-2 py-0.5 text-xs text-foreground/70"
+                                    className="inline-flex items-center gap-1 rounded-md bg-[var(--color-user-accent)]/10 px-2 py-0.5 text-xs text-muted-foreground"
                                   >
                                     <Paperclip className="h-3 w-3" />
                                     {att.name}
@@ -191,7 +196,7 @@ export function ConversationWorkspace({
                           {/* Timestamp below, right-aligned */}
                           {msg.timestamp && (
                             <div className="mt-1.5 flex items-center justify-end gap-1.5 pr-1">
-                              <span className="text-xs text-muted-foreground/60 tabular-nums">
+                              <span className="text-xs text-muted-foreground-dim tabular-nums">
                                 {formatTime(msg.timestamp)}
                               </span>
                             </div>
@@ -209,7 +214,7 @@ export function ConversationWorkspace({
                         {/* Atmospheric background on hover / during streaming */}
                         <div
                           className={cn(
-                            "pointer-events-none absolute -inset-x-4 -inset-y-3 rounded-xl transition-colors duration-300",
+                            "pointer-events-none absolute -inset-x-4 -inset-y-3 rounded-md transition-colors duration-300",
                             isStreamingThis
                               ? "bg-[var(--color-ai-surface)]"
                               : "bg-transparent group-hover:bg-[var(--color-ai-surface)]",
@@ -218,7 +223,7 @@ export function ConversationWorkspace({
 
                         <div className="relative">
                           {/* Message body */}
-                          <div className="text-sm leading-[1.5] text-foreground/90">
+                          <div className="text-sm leading-[1.5] text-foreground">
                             <MarkdownRenderer content={msg.content} />
                             <AnimatePresence>
                               {isStreamingThis && <StreamingCursor />}
@@ -232,8 +237,8 @@ export function ConversationWorkspace({
                                   <img
                                     key={url}
                                     src={url}
-                                    alt="Generated image"
-                                    className="max-h-72 rounded-lg border border-border object-contain shadow-sm"
+                                    alt={t("conversation.imageAlt")}
+                                    className="max-h-72 rounded-md border border-border object-contain"
                                     onError={(e) => {
                                       (e.currentTarget as HTMLImageElement).style.display = "none";
                                     }}
@@ -246,12 +251,7 @@ export function ConversationWorkspace({
 
                           {/* Message action bar */}
                           {isLastAssistant && !isStreaming && (taskState === "idle" || taskState === "complete") && (
-                            <motion.div
-                              initial={{ opacity: 0, y: 4 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.15, ease: "easeOut", delay: 0.2 }}
-                              className="mt-2 flex items-center gap-0.5"
-                            >
+                            <div className="mt-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150">
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
@@ -259,7 +259,7 @@ export function ConversationWorkspace({
                                     variant="ghost"
                                     size="icon-xs"
                                     onClick={() => handleCopy(msg.content)}
-                                    className="text-muted-foreground/60 hover:text-foreground hover:bg-secondary active:translate-y-[0.5px]"
+                                    className="text-muted-foreground-dim hover:text-foreground hover:bg-secondary active:translate-y-[0.5px]"
                                   >
                                     {copied
                                       ? <Check className="h-3.5 w-3.5 text-accent-emerald" />
@@ -267,7 +267,7 @@ export function ConversationWorkspace({
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent side="bottom" sideOffset={4}>
-                                  {copied ? "Copied" : "Copy"}
+                                  {copied ? t("conversation.copied") : t("conversation.copy")}
                                 </TooltipContent>
                               </Tooltip>
 
@@ -279,17 +279,17 @@ export function ConversationWorkspace({
                                       variant="ghost"
                                       size="icon-xs"
                                       onClick={onRetry}
-                                      className="text-muted-foreground/60 hover:text-foreground hover:bg-secondary active:translate-y-[0.5px]"
+                                      className="text-muted-foreground-dim hover:text-foreground hover:bg-secondary active:translate-y-[0.5px]"
                                     >
                                       <RotateCcw className="h-3.5 w-3.5" />
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent side="bottom" sideOffset={4}>
-                                    Retry
+                                    {t("conversation.retry")}
                                   </TooltipContent>
                                 </Tooltip>
                               )}
-                            </motion.div>
+                            </div>
                           )}
                         </div>
                       </motion.div>
@@ -336,7 +336,7 @@ export function ConversationWorkspace({
         {/* Right pane: HiAgent's Computer */}
         {panelOpen && (
           <motion.div
-            className="flex w-1/2 flex-col"
+            className="flex w-full flex-col md:w-1/2"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.2, ease: "easeOut" }}

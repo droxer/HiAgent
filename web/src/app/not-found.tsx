@@ -1,18 +1,22 @@
+"use client";
+
 import Link from "next/link";
 import { Button } from "@/shared/components/ui/button";
+import { useTranslation } from "@/i18n";
 
 export default function NotFound() {
+  const { t } = useTranslation();
   return (
     <div className="flex h-screen w-screen items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-4 text-center">
         <h1 className="text-xl font-semibold text-foreground">
-          Page not found
+          {t("notFound.title")}
         </h1>
         <p className="text-sm text-muted-foreground">
-          The page you&apos;re looking for doesn&apos;t exist.
+          {t("notFound.message")}
         </p>
         <Button asChild>
-          <Link href="/">Back to home</Link>
+          <Link href="/">{t("notFound.backHome")}</Link>
         </Button>
       </div>
     </div>

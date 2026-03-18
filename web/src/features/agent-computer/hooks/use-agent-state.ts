@@ -117,7 +117,7 @@ export function useAgentState(events: AgentEvent[]) {
         const entry: ToolCallInfo = {
           id: toolId,
           name: String(e.data.name ?? e.data.tool_name ?? "unknown"),
-          input: (e.data.input ?? e.data.arguments ?? {}) as Record<string, unknown>,
+          input: (e.data.input ?? e.data.tool_input ?? e.data.arguments ?? {}) as Record<string, unknown>,
           timestamp: e.timestamp,
         };
         callMap.set(toolId, entry);

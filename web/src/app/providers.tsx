@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { ThemeProvider } from "next-themes";
 import { MotionConfig } from "framer-motion";
 import { TooltipProvider } from "@/shared/components/ui/tooltip";
+import { I18nProvider } from "@/i18n";
 
 interface ProvidersProps {
   readonly children: ReactNode;
@@ -12,9 +13,11 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps) {
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-      <MotionConfig reducedMotion="user">
-        <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
-      </MotionConfig>
+      <I18nProvider>
+        <MotionConfig reducedMotion="user">
+          <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
+        </MotionConfig>
+      </I18nProvider>
     </ThemeProvider>
   );
 }

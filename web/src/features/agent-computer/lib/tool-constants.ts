@@ -73,6 +73,9 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
   agent_send: "Send Message",
   agent_receive: "Receive Message",
   agent_wait: "Wait for Agents",
+  // Skills
+  activate_skill: "Load Skill",
+  load_skill: "Load Skill",
 };
 
 /**

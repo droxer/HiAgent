@@ -3,11 +3,15 @@ import { API_BASE } from "@/shared/constants";
 export async function createConversation(
   message: string,
   files?: File[],
+  skills?: string[],
 ): Promise<{ conversation_id: string }> {
   let res: Response;
   if (files && files.length > 0) {
     const formData = new FormData();
     formData.append("message", message);
+    for (const skill of skills ?? []) {
+      formData.append("skills", skill);
+    }
     for (const file of files) {
       formData.append("files", file);
     }
@@ -19,7 +23,7 @@ export async function createConversation(
     res = await fetch(`${API_BASE}/conversations`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, skills: skills ?? [] }),
     });
   }
 
@@ -34,11 +38,15 @@ export async function sendFollowUpMessage(
   conversationId: string,
   message: string,
   files?: File[],
+  skills?: string[],
 ): Promise<void> {
   let res: Response;
   if (files && files.length > 0) {
     const formData = new FormData();
     formData.append("message", message);
+    for (const skill of skills ?? []) {
+      formData.append("skills", skill);
+    }
     for (const file of files) {
       formData.append("files", file);
     }
@@ -55,7 +63,7 @@ export async function sendFollowUpMessage(
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, skills: skills ?? [] }),
       },
     );
   }

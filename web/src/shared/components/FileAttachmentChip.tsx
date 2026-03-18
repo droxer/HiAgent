@@ -3,6 +3,7 @@
 import { Paperclip, X } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { formatFileSize } from "@/shared/lib/utils";
+import { useTranslation } from "@/i18n";
 
 interface FileAttachmentChipProps {
   readonly name: string;
@@ -12,8 +13,9 @@ interface FileAttachmentChipProps {
 }
 
 export function FileAttachmentChip({ name, size, previewUrl, onRemove }: FileAttachmentChipProps) {
+  const { t } = useTranslation();
   return (
-    <div className="flex items-center gap-2 rounded-lg bg-secondary/80 px-2.5 py-1.5 text-xs text-foreground">
+    <div className="flex items-center gap-2 rounded-md bg-secondary/80 px-2.5 py-1.5 text-xs text-foreground">
       {previewUrl ? (
         /* eslint-disable-next-line @next/next/no-img-element */
         <img src={previewUrl} alt={name} className="h-8 w-8 rounded object-cover" />
@@ -28,6 +30,7 @@ export function FileAttachmentChip({ name, size, previewUrl, onRemove }: FileAtt
           variant="ghost"
           size="icon-xs"
           onClick={onRemove}
+          aria-label={t("chat.removeFile", { name })}
           className="ml-0.5 h-5 w-5 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
         >
           <X className="h-3 w-3" />

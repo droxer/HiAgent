@@ -9,9 +9,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
+import { useTranslation } from "@/i18n";
 import { PulsingDot } from "@/shared/components/PulsingDot";
 import type { AgentEvent, TaskState, ToolCallInfo, AgentStatus } from "@/shared/types";
 import { normalizeToolName } from "@/features/agent-computer/lib/tool-constants";
+import { normalizeSkillName } from "@/features/skills/lib/normalize-skill-name";
 
 interface AgentProgressCardProps {
   events: AgentEvent[];
@@ -29,11 +31,14 @@ interface TimelineStep {
   readonly status: "running" | "complete" | "error";
 }
 
+type TFn = (key: string, params?: Record<string, string | number>) => string;
+
 function buildSteps(
   events: AgentEvent[],
   toolCalls: ToolCallInfo[],
   taskState: TaskState,
   thinkingContent: string,
+  t: TFn,
 ): TimelineStep[] {
   let steps: readonly TimelineStep[] = [];
   const seenTools = new Set<string>();
@@ -43,7 +48,7 @@ function buildSteps(
       case "task_start":
         steps = [...steps, {
           id: `start-${event.timestamp}`,
-          title: "Task Started",
+          title: t("progress.taskStarted"),
           status: "complete",
         }];
         break;
@@ -51,7 +56,7 @@ function buildSteps(
       case "thinking":
         steps = [...steps, {
           id: `think-${event.timestamp}`,
-          title: "Reasoning",
+          title: t("progress.reasoning"),
           status: "complete",
         }];
         break;
@@ -62,9 +67,14 @@ function buildSteps(
         if (!seenTools.has(toolId)) {
           seenTools.add(toolId);
           const tc = toolCalls.find((t) => t.id === toolId);
+          const isSkill = toolName === "activate_skill" || toolName === "load_skill";
+          const input = (event.data.input ?? event.data.tool_input ?? event.data.arguments ?? {}) as Record<string, unknown>;
+          const stepTitle = isSkill
+            ? t("progress.loadingSkill", { name: normalizeSkillName(String(input.name ?? "skill")) })
+            : t("progress.usingTool", { name: normalizeToolName(toolName) });
           steps = [...steps, {
             id: `tool-${toolId}`,
-            title: `Using ${normalizeToolName(toolName)}`,
+            title: stepTitle,
             status: tc?.output !== undefined ? "complete" : "running",
           }];
         }
@@ -74,7 +84,7 @@ function buildSteps(
       case "agent_spawn":
         steps = [...steps, {
           id: `agent-${event.data.agent_id ?? event.data.id}-${event.timestamp}`,
-          title: `Sub-agent: ${String(event.data.description ?? "working")}`.slice(0, 60),
+          title: t("progress.subAgent", { description: String(event.data.description ?? "working") }).slice(0, 60),
           status: "running",
         }];
         break;
@@ -93,7 +103,7 @@ function buildSteps(
       case "task_complete":
         steps = [...steps, {
           id: `complete-${event.timestamp}`,
-          title: "Task Complete",
+          title: t("progress.taskComplete"),
           status: "complete",
         }];
         break;
@@ -101,7 +111,7 @@ function buildSteps(
       case "task_error":
         steps = [...steps, {
           id: `error-${event.timestamp}`,
-          title: "Error",
+          title: t("progress.error"),
           status: "error",
         }];
         break;
@@ -109,11 +119,11 @@ function buildSteps(
   }
 
   if (thinkingContent && taskState === "executing") {
-    const hasLive = steps.some((s) => s.title === "Reasoning" && s.status === "running");
+    const hasLive = steps.some((s) => s.title === t("progress.reasoning") && s.status === "running");
     if (!hasLive) {
       steps = [...steps, {
         id: "thinking-live",
-        title: "Reasoning...",
+        title: t("progress.reasoningLive"),
         status: "running",
       }];
     }
@@ -149,11 +159,12 @@ export function AgentProgressCard({
   onClick,
   panelOpen = false,
 }: AgentProgressCardProps) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(true);
 
   const steps = useMemo(
-    () => buildSteps(events, toolCalls, taskState, thinkingContent),
-    [events, toolCalls, taskState, thinkingContent],
+    () => buildSteps(events, toolCalls, taskState, thinkingContent, t),
+    [events, toolCalls, taskState, thinkingContent, t],
   );
 
   const completedCount = steps.filter((s) => s.status === "complete").length;
@@ -162,7 +173,7 @@ export function AgentProgressCard({
   const progressRatio = totalCount > 0 ? completedCount / totalCount : 0;
 
   const subtitle = useMemo(() => {
-    if (!isRunning) return "Complete";
+    if (!isRunning) return t("progress.complete");
     const runningStep = [...steps].reverse().find((s) => s.status === "running");
     return runningStep ? runningStep.title : undefined;
   }, [steps, isRunning]);
@@ -171,11 +182,10 @@ export function AgentProgressCard({
 
   return (
     <motion.div
-      className="overflow-hidden rounded-xl border border-border bg-card"
-      style={{ boxShadow: "var(--shadow-card)" }}
+      className="overflow-hidden rounded-lg border border-border bg-card"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ boxShadow: "var(--shadow-card-hover)", borderColor: "var(--color-border-strong)" }}
+      whileHover={{ borderColor: "var(--color-border-strong)" }}
       transition={{ type: "spring", stiffness: 300, damping: 24 }}
     >
       {/* Progress bar — gradient with glow */}
@@ -185,13 +195,12 @@ export function AgentProgressCard({
         aria-valuenow={Math.round(progressRatio * 100)}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={`Task progress: ${Math.round(progressRatio * 100)}%`}
+        aria-label={t("progress.taskProgress", { percent: Math.round(progressRatio * 100) })}
       >
         <motion.div
           className="h-full"
           style={{
-            background: "linear-gradient(90deg, var(--color-ai-glow), var(--color-accent-purple))",
-            boxShadow: "0 0 8px color-mix(in srgb, var(--color-ai-glow) 30%, transparent)",
+            background: "linear-gradient(90deg, var(--color-accent-purple), var(--color-accent-emerald))",
           }}
           initial={{ width: 0 }}
           animate={{ width: `${progressRatio * 100}%` }}
@@ -210,7 +219,7 @@ export function AgentProgressCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold tracking-tight text-foreground">
-                HiAgent&apos;s Computer
+                {t("progress.title")}
               </span>
               {isRunning && <PulsingDot size="sm" />}
             </div>
@@ -244,7 +253,7 @@ export function AgentProgressCard({
           type="button"
           variant="ghost"
           size="icon-xs"
-          aria-label={panelOpen ? "Close computer panel" : "Open computer panel"}
+          aria-label={panelOpen ? t("progress.closePanel") : t("progress.openPanel")}
           onClick={(e) => {
             e.stopPropagation();
             onClick?.();

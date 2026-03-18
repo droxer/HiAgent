@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { IconButton } from "@/shared/components/IconButton";
+import { useTranslation } from "@/i18n";
 import type { ArtifactInfo } from "@/shared/types";
 
 function formatFileSize(bytes: number): string {
@@ -43,18 +44,20 @@ function fileIcon(contentType: string) {
   return File;
 }
 
-function fileCategory(contentType: string): string {
-  if (contentType.startsWith("image/")) return "Image";
-  if (contentType === "application/pdf") return "PDF";
-  if (contentType.includes("wordprocessingml")) return "Document";
-  if (contentType.includes("spreadsheet")) return "Spreadsheet";
-  if (contentType.includes("presentationml")) return "Presentation";
+type TFn = (key: string) => string;
+
+function fileCategory(contentType: string, t: TFn): string {
+  if (contentType.startsWith("image/")) return t("artifacts.categoryImage");
+  if (contentType === "application/pdf") return t("artifacts.categoryPdf");
+  if (contentType.includes("wordprocessingml")) return t("artifacts.categoryDocument");
+  if (contentType.includes("spreadsheet")) return t("artifacts.categorySpreadsheet");
+  if (contentType.includes("presentationml")) return t("artifacts.categoryPresentation");
   if (contentType.startsWith("text/x-") || contentType === "text/javascript" || contentType === "application/json")
-    return "Code";
-  if (contentType === "text/csv") return "Data";
-  if (contentType === "text/html") return "HTML";
-  if (contentType.startsWith("text/")) return "Text";
-  return "File";
+    return t("artifacts.categoryCode");
+  if (contentType === "text/csv") return t("artifacts.categoryData");
+  if (contentType === "text/html") return t("artifacts.categoryHtml");
+  if (contentType.startsWith("text/")) return t("artifacts.categoryText");
+  return t("artifacts.categoryFile");
 }
 
 interface ArtifactFilesPanelProps {
@@ -63,6 +66,7 @@ interface ArtifactFilesPanelProps {
 }
 
 export function ArtifactFilesPanel({ artifacts, conversationId }: ArtifactFilesPanelProps) {
+  const { t } = useTranslation();
   const getArtifactUrl = useCallback(
     (artifactId: string) =>
       conversationId
@@ -97,11 +101,11 @@ export function ArtifactFilesPanel({ artifacts, conversationId }: ArtifactFilesP
   if (artifacts.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 px-5">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted">
-          <FolderOpen className="h-5 w-5 text-muted-foreground/50" />
+        <div className="flex h-12 w-12 items-center justify-center rounded-md bg-muted">
+          <FolderOpen className="h-5 w-5 text-muted-foreground-dim" />
         </div>
         <p className="text-xs text-muted-foreground">
-          No files generated yet
+          {t("artifacts.noFiles")}
         </p>
       </div>
     );
@@ -110,11 +114,11 @@ export function ArtifactFilesPanel({ artifacts, conversationId }: ArtifactFilesP
   return (
     <div className="space-y-2 px-5 py-4">
       <p className="mb-3 text-xs font-medium text-muted-foreground">
-        {artifacts.length} file{artifacts.length !== 1 ? "s" : ""} generated
+        {artifacts.length === 1 ? t("artifacts.fileCount", { count: 1 }) : t("artifacts.filesCount", { count: artifacts.length })}
       </p>
       {artifacts.map((artifact, i) => {
         const Icon = fileIcon(artifact.contentType);
-        const category = fileCategory(artifact.contentType);
+        const category = fileCategory(artifact.contentType, t);
         const isPreviewable =
           artifact.contentType.startsWith("image/") ||
           artifact.contentType === "application/pdf" ||
@@ -123,7 +127,7 @@ export function ArtifactFilesPanel({ artifacts, conversationId }: ArtifactFilesP
         return (
           <motion.div
             key={artifact.id}
-            className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-muted/50"
+            className="group flex items-center gap-3 rounded-md border border-border bg-card p-3 transition-colors hover:bg-muted/50"
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.15, delay: i * 0.03 }}
@@ -145,14 +149,14 @@ export function ArtifactFilesPanel({ artifacts, conversationId }: ArtifactFilesP
               {isPreviewable && (
                 <IconButton
                   icon={Eye}
-                  label="Preview in new tab"
+                  label={t("artifacts.preview")}
                   size="icon-xs"
                   onClick={() => handlePreview(artifact)}
                 />
               )}
               <IconButton
                 icon={Download}
-                label="Download"
+                label={t("artifacts.download")}
                 size="icon-xs"
                 onClick={() => handleDownload(artifact)}
               />

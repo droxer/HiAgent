@@ -13,6 +13,9 @@ from loguru import logger
 
 from agent.artifacts.storage import create_storage_backend
 from agent.llm.client import ClaudeClient
+from agent.skills.discovery import SkillDiscoverer
+from agent.skills.installer import SkillInstaller
+from agent.skills.loader import SkillRegistry
 from agent.state.database import get_engine, get_session_factory, init_db
 from agent.state.repository import ConversationRepository
 from agent.tools.registry import ToolRegistry
@@ -20,7 +23,7 @@ from api.builders import _build_sandbox_provider
 from api.db_subscriber import PendingWrites
 from api.dependencies import AppState
 from api.models import MCPState
-from api.routes import artifacts, conversations, mcp
+from api.routes import artifacts, conversations, mcp, skills
 from config.settings import get_settings
 
 
@@ -53,6 +56,16 @@ def _create_app() -> FastAPI:
     # MCP state container
     mcp_state = MCPState()
 
+    # Discover and register skills
+    skill_registry: SkillRegistry | None = None
+    skill_installer: SkillInstaller | None = None
+    if settings.SKILLS_ENABLED:
+        discoverer = SkillDiscoverer(trust_project=settings.SKILLS_TRUST_PROJECT)
+        discovered_skills = discoverer.discover_all()
+        skill_registry = SkillRegistry(discovered_skills)
+        skill_installer = SkillInstaller()
+        logger.info("Skills system initialized with {} skills", len(discovered_skills))
+
     # Build the shared AppState container
     app_state = AppState(
         claude_client=claude_client,
@@ -64,6 +77,8 @@ def _create_app() -> FastAPI:
         db_pending_writes=db_pending_writes,
         mcp_state=mcp_state,
         sandbox_pool=sandbox_pool,
+        skill_registry=skill_registry,
+        skill_installer=skill_installer,
     )
 
     @asynccontextmanager
@@ -76,9 +91,11 @@ def _create_app() -> FastAPI:
             await conn.run_sync(MemoryBase.metadata.create_all)
 
         # Discover MCP tools
-        mcp_state.registry, mcp_state.clients, mcp_state.configs = (
-            await mcp._discover_mcp_tools(mcp_state, ToolRegistry())
-        )
+        (
+            mcp_state.registry,
+            mcp_state.clients,
+            mcp_state.configs,
+        ) = await mcp._discover_mcp_tools(mcp_state, ToolRegistry())
 
         # Start stale-conversation reaper
         asyncio.create_task(conversations._cleanup_stale_conversations(app_state))
@@ -126,6 +143,7 @@ def _create_app() -> FastAPI:
     application.include_router(conversations.router)
     application.include_router(mcp.router)
     application.include_router(artifacts.router)
+    application.include_router(skills.router)
 
     return application
 

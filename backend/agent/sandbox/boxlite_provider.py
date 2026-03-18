@@ -21,10 +21,12 @@ from loguru import logger
 
 from agent.sandbox.base import (
     SANDBOX_HOME_DIR,
+    CodeResult,
     ExecResult,
     SandboxConfig,
     SandboxProvider,
     SandboxSession,
+    StreamCallback,
 )
 
 # ---------------------------------------------------------------------------
@@ -95,11 +97,11 @@ class BoxliteSession:
                 stderr="Boxlite execution timeout exceeded",
                 exit_code=124,
             )
-        except boxlite.ResourceError as exc:
+        except boxlite.BoxliteError as exc:
             return ExecResult(
                 stdout="",
-                stderr=f"Resource limit exceeded: {exc}",
-                exit_code=137,
+                stderr=f"Boxlite error: {exc}",
+                exit_code=1,
             )
 
         return ExecResult(
@@ -176,24 +178,94 @@ class BoxliteSession:
                 f"{fallback.stderr}"
             )
 
+    async def _file_exists(self, path: str) -> bool:
+        """Return True when *path* exists as a regular file in the VM."""
+        result = await self.exec(f"test -f {shlex.quote(path)}")
+        return result.success
+
+    async def _upload_file_via_base64(
+        self, local_path: str, remote_path: str
+    ) -> None:
+        """Fallback upload path that does not rely on ``copy_in``."""
+        with open(local_path, "rb") as fh:
+            encoded = base64.b64encode(fh.read()).decode("ascii")
+
+        encoded_path = f"/tmp/.upload_{os.path.basename(remote_path)}.b64"
+        cleanup = await self.exec(f"rm -f {shlex.quote(encoded_path)}")
+        if not cleanup.success:
+            raise OSError(
+                f"Failed to prepare Boxlite fallback upload path: "
+                f"{cleanup.stderr or cleanup.stdout}"
+            )
+
+        chunk_size = 65536
+        for idx in range(0, len(encoded), chunk_size):
+            chunk = encoded[idx : idx + chunk_size]
+            append = await self.exec(
+                f"printf %s {shlex.quote(chunk)} >> {shlex.quote(encoded_path)}"
+            )
+            if not append.success:
+                raise OSError(
+                    f"Failed to stage upload chunk for '{remote_path}': "
+                    f"{append.stderr or append.stdout}"
+                )
+
+        decode = await self.exec(
+            f"base64 -d {shlex.quote(encoded_path)} > {shlex.quote(remote_path)} "
+            f"&& rm -f {shlex.quote(encoded_path)}"
+        )
+        if not decode.success:
+            raise OSError(
+                f"Failed to decode fallback upload for '{remote_path}': "
+                f"{decode.stderr or decode.stdout}"
+            )
+
     async def upload_file(self, local_path: str, remote_path: str) -> None:
         """Upload a host file into the micro-VM via ``copy_in``."""
         if not os.path.isfile(local_path):
             raise FileNotFoundError(f"Local file not found: {local_path}")
 
         dir_path = os.path.dirname(remote_path) or "/"
-        await self.exec(f"mkdir -p {shlex.quote(dir_path)}")
-
-        await self._box.copy_in(local_path, dir_path)
-
-        # Rename if the base names differ
         uploaded_name = os.path.basename(local_path)
         target_name = os.path.basename(remote_path)
-        if uploaded_name != target_name:
-            await self.exec(
-                f"mv {shlex.quote(os.path.join(dir_path, uploaded_name))} "
-                f"{shlex.quote(remote_path)}"
+        uploaded_path = os.path.join(dir_path, uploaded_name)
+
+        mkdir_result = await self.exec(f"mkdir -p {shlex.quote(dir_path)}")
+        if not mkdir_result.success:
+            raise OSError(
+                f"Failed to prepare upload directory '{dir_path}': "
+                f"{mkdir_result.stderr or mkdir_result.stdout}"
             )
+
+        try:
+            await self._upload_file_via_base64(local_path, remote_path)
+            if await self._file_exists(remote_path):
+                return
+        except Exception:
+            logger.warning(
+                "Boxlite base64 upload failed for %s, falling back to copy_in",
+                remote_path,
+            )
+
+        copy_succeeded = False
+        try:
+            await self._box.copy_in(local_path, dir_path)
+            copy_succeeded = await self._file_exists(uploaded_path)
+        except Exception:
+            copy_succeeded = False
+
+        if copy_succeeded:
+            if uploaded_name != target_name:
+                mv_result = await self.exec(
+                    f"mv {shlex.quote(uploaded_path)} {shlex.quote(remote_path)}"
+                )
+                if mv_result.success and await self._file_exists(remote_path):
+                    return
+            elif await self._file_exists(remote_path):
+                return
+
+        if not await self._file_exists(remote_path):
+            raise OSError(f"Uploaded file did not appear at '{remote_path}'")
 
     async def download_file(self, remote_path: str, local_path: str) -> None:
         """Download a file from the micro-VM via ``copy_out``."""
@@ -214,6 +286,61 @@ class BoxliteSession:
         if downloaded_name != target_name:
             downloaded_path = os.path.join(local_dir or ".", downloaded_name)
             await asyncio.to_thread(os.rename, downloaded_path, local_path)
+
+    # -- code interpreter (ExtendedSandboxSession) ---------------------------
+
+    async def run_code(
+        self, code: str, language: str = "python"
+    ) -> CodeResult:
+        """Execute code via the shell and return a ``CodeResult``.
+
+        This is a lightweight code-interpreter implementation for Boxlite
+        that writes the code to a temp file and runs it.  Rich outputs
+        (matplotlib images saved to disk) are not automatically captured —
+        the calling tool can extract artifacts separately.
+        """
+        _ext_map = {"python": ".py", "javascript": ".js", "bash": ".sh", "sh": ".sh"}
+        _rt_map = {"python": "python3", "javascript": "node", "bash": "bash", "sh": "sh"}
+
+        ext = _ext_map.get(language, ".py")
+        runtime = _rt_map.get(language, "python3")
+        target = f"/tmp/_code_interpret{ext}"
+
+        try:
+            await self.write_file(target, code)
+        except Exception as exc:
+            return CodeResult(
+                stdout="", stderr=str(exc), error=str(exc), results=()
+            )
+
+        result = await self.exec(f"{runtime} {shlex.quote(target)}", timeout=120)
+
+        error_text: str | None = None
+        if not result.success:
+            error_text = result.stderr or f"exit code {result.exit_code}"
+
+        return CodeResult(
+            stdout=result.stdout,
+            stderr=result.stderr,
+            error=error_text,
+            results=(),
+        )
+
+    async def exec_stream(
+        self,
+        command: str,
+        on_stdout: StreamCallback | None = None,
+        on_stderr: StreamCallback | None = None,
+        timeout: int | None = None,
+        workdir: str | None = None,
+    ) -> ExecResult:
+        """Execute a command — streaming not supported, falls back to exec."""
+        return await self.exec(command, timeout=timeout, workdir=workdir)
+
+    @property
+    def sandbox_id(self) -> str | None:
+        """Return the Boxlite box identifier."""
+        return getattr(self._box, "id", None)
 
     # -- lifecycle -----------------------------------------------------------
 
@@ -250,8 +377,12 @@ class BoxliteProvider(SandboxProvider):
 
         await box.start()
 
-        # Create the canonical home directory
+        # Create the canonical home directory and a /workspace symlink so
+        # that sandbox tools (which default to /workspace paths) resolve
+        # correctly.
         await box.exec("mkdir", "-p", SANDBOX_HOME_DIR)
+        await box.exec("mkdir", "-p", f"{SANDBOX_HOME_DIR}/uploads")
+        await box.exec("ln", "-sfn", SANDBOX_HOME_DIR, "/workspace")
 
         # Set environment variables if provided
         if config.env_vars:

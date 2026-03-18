@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { Moon, Sun, Monitor } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { useTranslation } from "@/i18n";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/shared/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,9 +19,9 @@ import {
 } from "@/shared/components/ui/dropdown-menu";
 
 const THEME_OPTIONS = [
-  { value: "light", icon: Sun, label: "Light" },
-  { value: "dark", icon: Moon, label: "Dark" },
-  { value: "system", icon: Monitor, label: "System" },
+  { value: "light", icon: Sun, labelKey: "theme.light" },
+  { value: "dark", icon: Moon, labelKey: "theme.dark" },
+  { value: "system", icon: Monitor, labelKey: "theme.system" },
 ] as const;
 
 const TRIGGER_ICON: Record<string, typeof Moon> = {
@@ -24,8 +30,13 @@ const TRIGGER_ICON: Record<string, typeof Moon> = {
   system: Monitor,
 };
 
-export function ThemeToggle() {
+interface ThemeToggleProps {
+  readonly collapsed?: boolean;
+}
+
+export function ThemeToggle({ collapsed = false }: ThemeToggleProps) {
   const { theme, setTheme } = useTheme();
+  const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -33,37 +44,58 @@ export function ThemeToggle() {
   }, []);
 
   if (!mounted) {
-    return <div className="h-9 w-9" />;
+    return <div className={collapsed ? "h-8 w-8" : "h-8"} />;
   }
 
   const current = theme ?? "dark";
   const Icon = TRIGGER_ICON[current] ?? Moon;
+  const currentOption = THEME_OPTIONS.find((o) => o.value === current);
+  const currentLabel = currentOption ? t(currentOption.labelKey) : t("theme.toggle");
+
+  const trigger = collapsed ? (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="text-muted-foreground transition-colors duration-150 hover:text-foreground hover:bg-sidebar-hover"
+        >
+          <Icon className="h-3.5 w-3.5" />
+          <span className="sr-only">{t("theme.toggle")}</span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="right">{currentLabel}</TooltipContent>
+    </Tooltip>
+  ) : (
+    <Button
+      variant="ghost"
+      className="w-full justify-start gap-2.5 text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground hover:bg-sidebar-hover"
+      size="sm"
+    >
+      <Icon className="h-4 w-4" />
+      {currentLabel}
+    </Button>
+  );
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-        >
-          <Icon className="h-3.5 w-3.5" />
-          <span className="sr-only">Toggle theme</span>
-        </Button>
+        {trigger}
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        align="end"
-        className="min-w-[7rem] rounded-xl border-border bg-card/90 shadow-elevated backdrop-blur-xl"
+        side={collapsed ? "right" : "top"}
+        align="start"
+        className="min-w-[7rem] rounded-lg border-border bg-popover shadow-elevated"
       >
         <DropdownMenuRadioGroup value={current} onValueChange={setTheme}>
-          {THEME_OPTIONS.map(({ value, icon: ItemIcon, label }) => (
+          {THEME_OPTIONS.map(({ value, icon: ItemIcon, labelKey }) => (
             <DropdownMenuRadioItem
               key={value}
               value={value}
-              className="gap-2 rounded-lg text-xs"
+              className="gap-2 rounded-md text-xs"
             >
               <ItemIcon className="h-3.5 w-3.5 text-muted-foreground" />
-              {label}
+              {t(labelKey)}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>

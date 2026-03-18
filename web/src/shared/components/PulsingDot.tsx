@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { cn } from "@/shared/lib/utils";
 
 interface PulsingDotProps {
@@ -13,15 +12,8 @@ export function PulsingDot({ size = "sm", className }: PulsingDotProps) {
 
   return (
     <span className={cn("relative shrink-0", sizeClass, className)}>
-      <motion.span
-        className={cn("absolute inset-0 rounded-full bg-ai-glow")}
-        animate={{ opacity: [1, 0.4, 1] }}
-        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <span
-        className="absolute inset-0 rounded-full bg-ai-glow"
-        style={{ animation: "orbitalPulse 2s ease-out infinite" }}
-      />
+      <span className={cn("absolute inset-0 rounded-full bg-accent-purple animate-[pulsingDotFade_2s_ease-in-out_infinite]")} />
+      <span className="absolute inset-0 rounded-full bg-accent-purple animate-[pulsingDotRing_2s_ease-out_infinite]" />
     </span>
   );
 }

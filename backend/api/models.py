@@ -49,7 +49,12 @@ class FileAttachment:
 class Runnable(Protocol):
     """Protocol for orchestrators that can run a turn."""
 
-    async def run(self, user_message: str, attachments: tuple[FileAttachment, ...] = ()) -> str: ...
+    async def run(
+        self,
+        user_message: str,
+        attachments: tuple[FileAttachment, ...] = (),
+        selected_skills: tuple[str, ...] = (),
+    ) -> str: ...
 
 
 class Cancellable(Protocol):
@@ -76,6 +81,8 @@ class ConversationEntry:
         "executor",
         "turn_task",
         "created_at",
+        "last_attachments",
+        "last_selected_skills",
     )
 
     def __init__(
@@ -94,6 +101,8 @@ class ConversationEntry:
         self.subscriber: Any = None
         self.turn_task: asyncio.Task[str] | None = None
         self.created_at: float = _time.monotonic()
+        self.last_attachments: tuple[FileAttachment, ...] = ()
+        self.last_selected_skills: tuple[str, ...] = ()
 
 
 @dataclass
@@ -110,6 +119,7 @@ class MessageRequest(BaseModel):
     """Request body for creating a conversation or sending a message."""
 
     message: str = Field(max_length=100_000)
+    skills: list[str] = Field(default_factory=list)
     use_planner: bool = Field(
         default=False,
         description="When True, use PlannerOrchestrator to decompose into sub-tasks.",

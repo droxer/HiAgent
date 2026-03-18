@@ -8,7 +8,7 @@ export default function Loading() {
         alt="HiAgent"
         width={48}
         height={48}
-        className="animate-pulse rounded-lg"
+        className="animate-pulse rounded-md"
         priority
       />
     </div>

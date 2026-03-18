@@ -67,6 +67,9 @@ class TestAcquire:
 
         fake_sandbox = MagicMock()
         fake_sandbox.sandbox_id = "good-1"
+        fake_sandbox.commands.run.return_value = MagicMock(
+            exit_code=0, stdout="", stderr=""
+        )
 
         with patch(
             "agent.sandbox.e2b_provider._import_e2b"
@@ -78,6 +81,7 @@ class TestAcquire:
             result = await pool.acquire(config)
             assert result is not None
             assert result.sandbox_id == "good-1"
+            fake_sandbox.commands.run.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_skips_failed_connect(
@@ -101,6 +105,36 @@ class TestAcquire:
 
             result = await pool.acquire(config)
             assert result is None
+
+    @pytest.mark.asyncio
+    async def test_scrubs_uploads_before_reuse(
+        self, pool: SandboxPool, config: SandboxConfig
+    ) -> None:
+        key = pool._key_for(config)
+        pool._entries[key].append(
+            _PoolEntry(
+                sandbox_id="clean-1",
+                paused_at=time.monotonic(),
+                config=config,
+            )
+        )
+
+        fake_sandbox = MagicMock()
+        fake_sandbox.sandbox_id = "clean-1"
+        fake_sandbox.commands.run.return_value = MagicMock(
+            exit_code=0, stdout="", stderr=""
+        )
+
+        with patch("agent.sandbox.e2b_provider._import_e2b") as mock_import:
+            mock_cls = MagicMock()
+            mock_cls.connect.return_value = fake_sandbox
+            mock_import.return_value = mock_cls
+
+            await pool.acquire(config)
+
+        scrub_command = fake_sandbox.commands.run.call_args.args[0]
+        assert "rm -rf /home/user/uploads" in scrub_command
+        assert "mkdir -p /home/user/uploads" in scrub_command
 
 
 class TestRelease:

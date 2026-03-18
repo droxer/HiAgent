@@ -15,6 +15,7 @@ from pathlib import Path
 from loguru import logger
 
 from agent.sandbox.base import (
+    SANDBOX_HOME_DIR,
     ExecResult,
     SandboxConfig,
     SandboxProvider,
@@ -22,6 +23,7 @@ from agent.sandbox.base import (
 )
 
 _DEFAULT_WORKDIR = "/tmp/hiagent-workspace"
+_SANDBOX_WORKSPACE_DIR = "/workspace"
 
 
 class LocalSession:
@@ -97,12 +99,16 @@ class LocalSession:
         resolved.write_text(content, encoding="utf-8")
 
     async def upload_file(self, local_path: str, remote_path: str) -> None:
-        """Copy a file from host into the workspace."""
+        """Copy a file from host into the target path.
+
+        Absolute sandbox paths are mapped into the local workspace so file
+        tools behave like BoxLite/E2B during development.
+        """
         if not os.path.isfile(local_path):
             raise FileNotFoundError(f"Local file not found: {local_path}")
-        resolved = self._resolve_path(remote_path)
-        resolved.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(local_path, resolved)
+        target = self._resolve_path(remote_path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(local_path, target)
 
     async def download_file(self, remote_path: str, local_path: str) -> None:
         """Copy a file from the workspace to a host path."""
@@ -127,7 +133,22 @@ class LocalSession:
         """
         workdir = Path(self._workdir).resolve()
         if os.path.isabs(path):
-            resolved = Path(path).resolve()
+            sandbox_roots = (SANDBOX_HOME_DIR, _SANDBOX_WORKSPACE_DIR)
+            mapped: Path | None = None
+            for root in sandbox_roots:
+                if path == root:
+                    mapped = workdir
+                    break
+                prefix = f"{root}/"
+                if path.startswith(prefix):
+                    mapped = (workdir / path[len(prefix) :]).resolve()
+                    break
+            if mapped is None:
+                raise ValueError(
+                    f"Path '{path}' is outside the sandbox roots "
+                    f"'{SANDBOX_HOME_DIR}' and '{_SANDBOX_WORKSPACE_DIR}'"
+                )
+            resolved = mapped
         else:
             resolved = (workdir / path).resolve()
 

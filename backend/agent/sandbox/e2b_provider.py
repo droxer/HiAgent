@@ -148,10 +148,10 @@ class E2BSession:
         try:
             with open(local_path, "rb") as fh:
                 file_bytes = fh.read()
-            # E2B files.write expects str; decode bytes for text upload
-            file_content = file_bytes.decode("utf-8", errors="replace")
+            # E2B files.write accepts both str and bytes; pass raw bytes
+            # to preserve binary content (images, Excel, Parquet, etc.)
             await asyncio.to_thread(
-                self._sandbox.files.write, remote_path, file_content
+                self._sandbox.files.write, remote_path, file_bytes
             )
         except FileNotFoundError:
             raise
@@ -357,9 +357,18 @@ class E2BProvider(SandboxProvider):
                 f"Failed to create E2B sandbox (template={template_id}): {exc}"
             ) from exc
 
-        # Ensure the canonical home directory exists
+        # Ensure the canonical home directory exists and create a /workspace
+        # symlink so that sandbox tools (which default to /workspace paths)
+        # resolve correctly.
         await asyncio.to_thread(
-            sandbox.commands.run, f"mkdir -p {SANDBOX_HOME_DIR}"
+            sandbox.commands.run,
+            " && ".join(
+                (
+                    f"mkdir -p {SANDBOX_HOME_DIR}",
+                    f"mkdir -p {SANDBOX_HOME_DIR}/uploads",
+                    f"ln -sfn {SANDBOX_HOME_DIR} /workspace",
+                )
+            ),
         )
 
         logger.info("Created E2B sandbox (template=%s)", template_id)

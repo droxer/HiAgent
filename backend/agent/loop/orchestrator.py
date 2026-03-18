@@ -15,6 +15,8 @@ from agent.loop.helpers import (
     process_tool_calls,
 )
 from agent.loop.observer import Observer
+from agent.sandbox.base import SANDBOX_HOME_DIR
+from agent.skills.loader import SkillRegistry
 from agent.tools.executor import ToolExecutor
 from agent.tools.registry import ToolRegistry
 from api.events import EventEmitter, EventType
@@ -69,10 +71,12 @@ class AgentOrchestrator:
         observer: Observer | None = None,
         initial_messages: tuple[dict[str, Any], ...] = (),
         thinking_budget: int = 0,
+        skill_registry: SkillRegistry | None = None,
     ) -> None:
         if not system_prompt:
             raise ValueError("system_prompt must not be empty")
         self._client = claude_client
+        self._base_registry = tool_registry
         self._registry = tool_registry
         self._executor = tool_executor
         self._emitter = event_emitter
@@ -83,6 +87,8 @@ class AgentOrchestrator:
         self._task_complete_summary: str | None = None
         self._cancel_event = asyncio.Event()
         self._state = AgentState(messages=initial_messages)
+        self._skill_registry = skill_registry
+        self._auto_injected_skill: str | None = None
 
     async def on_task_complete(self, summary: str) -> None:
         """Callback for the task_complete tool."""
@@ -122,8 +128,92 @@ class AgentOrchestrator:
                 )
                 return
 
+    async def _upload_attachments(
+        self, attachments: tuple[Any, ...]
+    ) -> tuple[str, ...]:
+        """Upload file attachments to the sandbox.
+
+        Called after skill matching so the correct sandbox template is
+        already configured on the executor.
+        """
+        import os
+        import shlex
+        import tempfile
+
+        upload_dir = f"{SANDBOX_HOME_DIR}/uploads"
+        session = await self._executor.get_sandbox_session()
+        sandbox_id = getattr(session, "sandbox_id", None)
+        logger.info(
+            "upload_session_ready sandbox_id={} upload_dir={}",
+            sandbox_id or "unknown",
+            upload_dir,
+        )
+        mkdir_result = await session.exec(f"mkdir -p {shlex.quote(upload_dir)}")
+        if not mkdir_result.success:
+            raise RuntimeError(
+                f"Failed to prepare upload directory '{upload_dir}': "
+                f"{mkdir_result.stderr or mkdir_result.stdout}"
+            )
+
+        uploaded_paths: list[str] = []
+
+        for att in attachments:
+            safe_name = self._safe_display_name(att.filename)
+            remote_path = f"{upload_dir}/{safe_name}"
+            try:
+                with tempfile.NamedTemporaryFile(
+                    delete=False, suffix=f"_{safe_name}"
+                ) as tmp:
+                    tmp.write(att.data)
+                    tmp_path = tmp.name
+                try:
+                    await session.upload_file(tmp_path, remote_path)
+                finally:
+                    os.unlink(tmp_path)
+                verify_result = await session.exec(
+                    f"test -f {shlex.quote(remote_path)}"
+                )
+                if not verify_result.success:
+                    raise RuntimeError(
+                        f"Uploaded file was not found at '{remote_path}'"
+                    )
+                uploaded_paths.append(remote_path)
+                logger.info(
+                    "uploaded_file sandbox_id={} remote_path={} filename={} size={}",
+                    sandbox_id or "unknown",
+                    remote_path,
+                    safe_name,
+                    att.size,
+                )
+            except Exception as exc:
+                logger.error(
+                    "file_upload_failed sandbox_id={} remote_path={} filename={} error={}",
+                    sandbox_id or "unknown",
+                    remote_path,
+                    att.filename,
+                    exc,
+                )
+                raise RuntimeError(
+                    f"Failed to upload '{safe_name}' to the sandbox"
+                ) from exc
+
+        return tuple(uploaded_paths)
+
+    @staticmethod
+    def _safe_display_name(filename: str) -> str:
+        """Return a display-safe filename stripped of path separators."""
+        import os
+        import re
+
+        name = os.path.basename(filename)
+        name = re.sub(r"[^\w.\- ]", "_", name)
+        return name.strip() or "unnamed"
+
     def _build_message_content(
-        self, user_message: str, attachments: tuple[Any, ...]
+        self,
+        user_message: str,
+        attachments: tuple[Any, ...],
+        uploaded_paths: tuple[str, ...] = (),
     ) -> str | list[dict[str, Any]]:
         """Build user message content, adding multimodal blocks for attachments."""
         if not attachments:
@@ -134,44 +224,50 @@ class AgentOrchestrator:
         from api.models import VISION_MIME_TYPES
 
         blocks: list[dict[str, Any]] = []
-        sandbox_files: list[str] = []
+        sandbox_files = list(uploaded_paths)
 
         for att in attachments:
             if att.content_type in VISION_MIME_TYPES:
                 encoded = base64.standard_b64encode(att.data).decode("ascii")
                 if att.content_type == "application/pdf":
-                    blocks.append({
-                        "type": "document",
-                        "source": {
-                            "type": "base64",
-                            "media_type": att.content_type,
-                            "data": encoded,
-                        },
-                    })
+                    blocks.append(
+                        {
+                            "type": "document",
+                            "source": {
+                                "type": "base64",
+                                "media_type": att.content_type,
+                                "data": encoded,
+                            },
+                        }
+                    )
                 else:
-                    blocks.append({
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": att.content_type,
-                            "data": encoded,
-                        },
-                    })
-            sandbox_files.append(
-                f"/home/user/uploads/{att.filename} ({att.size // 1024}KB)"
-            )
+                    blocks.append(
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": att.content_type,
+                                "data": encoded,
+                            },
+                        }
+                    )
 
         # Add user text + file listing
         text = user_message
         if sandbox_files:
-            listing = "\n".join(f"  - {f}" for f in sandbox_files)
+            listing = "\n".join(f"  - {path}" for path in sandbox_files)
             text += f"\n\n[Uploaded files in sandbox:\n{listing}]"
 
         blocks.append({"type": "text", "text": text})
         return blocks
 
     # NOTE: orchestrator is not re-entrant — do not call run() concurrently
-    async def run(self, user_message: str, attachments: tuple[Any, ...] = ()) -> str:
+    async def run(
+        self,
+        user_message: str,
+        attachments: tuple[Any, ...] = (),
+        selected_skills: tuple[str, ...] = (),
+    ) -> str:
         """Execute the agent loop and return the final text response."""
         if not user_message.strip():
             raise ValueError("user_message must not be empty")
@@ -183,24 +279,114 @@ class AgentOrchestrator:
             {"message": user_message},
         )
 
-        # Build message content - multimodal if attachments present
-        content = self._build_message_content(user_message, attachments)
+        self._executor.reset_sandbox_template()
+        self._registry = self._base_registry
 
         # Append user message to existing state (preserves conversation history)
+        self._task_complete_summary = None
+
+        # Auto-match skill for this turn
+        effective_prompt = self._system_prompt
+        self._auto_injected_skill = None
+        matched = None
+        if self._skill_registry is not None:
+            explicit_skill_name = next(
+                (skill for skill in selected_skills if skill.strip()),
+                None,
+            )
+            if explicit_skill_name is not None:
+                matched = self._skill_registry.find_by_name(explicit_skill_name)
+                if matched is None:
+                    error = f"Selected skill '{explicit_skill_name}' is not available."
+                    await self._emitter.emit(
+                        EventType.TASK_ERROR,
+                        {"error": error},
+                    )
+                    return f"Error: {error}"
+                logger.info("explicit_skill_selected name={}", explicit_skill_name)
+            else:
+                matched = self._skill_registry.match_description(user_message)
+            if matched is not None:
+                self._auto_injected_skill = matched.metadata.name
+                effective_prompt = (
+                    self._system_prompt
+                    + f'\n\n<skill_content name="{matched.metadata.name}">\n'
+                    + matched.instructions
+                    + "\n</skill_content>"
+                )
+                logger.info(
+                    "auto_injected_skill name={}",
+                    matched.metadata.name,
+                )
+                # Replace ActivateSkill tool with active skill name (copy-on-write)
+                from agent.tools.local.activate_skill import ActivateSkill
+
+                self._registry = self._registry.replace_tool(
+                    ActivateSkill(
+                        skill_registry=self._skill_registry,
+                        active_skill_name=matched.metadata.name,
+                    )
+                )
+
+        # Apply skill's sandbox template (e.g. data_science) so that
+        # both file uploads and tool execution target the correct image.
+        if (
+            self._auto_injected_skill is not None
+            and matched is not None
+            and matched.metadata.sandbox_template
+        ):
+            self._executor.set_sandbox_template(matched.metadata.sandbox_template)
+            logger.info(
+                "skill_sandbox_template name={} template={}",
+                matched.metadata.name,
+                matched.metadata.sandbox_template,
+            )
+
+        uploaded_paths: tuple[str, ...] = ()
+        if attachments:
+            try:
+                # Upload files to the sandbox AFTER skill matching so they land
+                # in the correct sandbox template (e.g. data_science, not default).
+                uploaded_paths = await self._upload_attachments(attachments)
+            except Exception as exc:
+                error = f"Failed to upload attached files to the sandbox: {exc}"
+                await self._emitter.emit(
+                    EventType.TASK_ERROR,
+                    {"error": error},
+                )
+                return f"Error: {error}"
+
+        # Build message content only after uploads are verified.
+        content = self._build_message_content(
+            user_message,
+            attachments,
+            uploaded_paths=uploaded_paths,
+        )
+
         self._state = self._state.add_message(
             {"role": "user", "content": content},
         )
-        # Reset completion flags for the new turn
-        self._task_complete_summary = None
         self._state = replace(self._state, completed=False, error=None, iteration=0)
 
-        tools = self._registry.to_anthropic_tools()
+        # Filter tools to skill's allowed set (if specified)
+        effective_registry = self._registry
+        if (
+            self._auto_injected_skill is not None
+            and matched is not None
+            and matched.metadata.allowed_tools
+        ):
+            allowed = set(matched.metadata.allowed_tools) | {"activate_skill"}
+            effective_registry = self._registry.filter_by_names(allowed)
+
+        tools = effective_registry.to_anthropic_tools()
 
         while not self._state.completed and self._state.error is None:
             if self._cancel_event.is_set():
                 break
             self._state = self._state.increment_iteration()
-            self._state = await self._run_iteration(self._state, tools)
+            self._state = await self._run_iteration(
+                self._state, tools, effective_prompt
+            )
 
         logger.info("turn_complete iterations={}", self._state.iteration)
 
@@ -233,6 +419,7 @@ class AgentOrchestrator:
         self,
         state: AgentState,
         tools: list[dict[str, Any]],
+        system_prompt: str | None = None,
     ) -> AgentState:
         """Run a single iteration of the ReAct loop."""
         # Compact message history before the LLM call if needed
@@ -256,6 +443,7 @@ class AgentOrchestrator:
             )
 
         try:
+
             async def _on_text_delta(delta: str) -> None:
                 await self._emitter.emit(
                     EventType.TEXT_DELTA,
@@ -263,8 +451,9 @@ class AgentOrchestrator:
                     iteration=state.iteration,
                 )
 
+            effective_prompt = system_prompt or self._system_prompt
             response = await self._client.create_message_stream(
-                system=self._system_prompt,
+                system=effective_prompt,
                 messages=list(state.messages),
                 tools=tools if tools else None,
                 on_text_delta=_on_text_delta,

@@ -2,7 +2,7 @@
 
 ## Brand Identity
 
-HiAgent is an intelligent AI agent platform. The brand communicates **capability**, **clarity**, and **calm confidence** through a premium dark-mode-first aesthetic with purposeful glassmorphic depth.
+HiAgent is an intelligent AI agent platform. The brand communicates **capability**, **warmth**, and **approachable confidence** through a warm cream-first aesthetic with organic softness, generous whitespace, and professional polish.
 
 ## Voice & Tone
 
@@ -12,39 +12,44 @@ HiAgent is an intelligent AI agent platform. The brand communicates **capability
 
 ## Colors
 
+### Design Direction
+
+The palette is warm and approachable, built on **stone neutrals** — cream backgrounds, warm gray text, and a warm violet accent. Avoid cold grays (zinc, slate), pure white/black backgrounds, and cold indigo accents.
+
 ### Core Palette
 
 | Token | Dark | Light | Usage |
 |-------|------|-------|-------|
-| `background` | `#0A0A0A` | `#FFFFFF` | Page background |
-| `foreground` | `#EDEDED` | `#1A1A1A` | Primary text |
-| `card` | `#141414` | `#FFFFFF` | Card surfaces |
-| `border` | `#2A2A2A` | `#E4E4E7` | Default borders |
-| `muted-foreground` | `#A1A1AA` | `#71717A` | Secondary text |
+| `background` | `#1C1917` | `#FAF9F6` | Page background (warm dark / warm cream) |
+| `foreground` | `#EDEDED` | `#1C1917` | Primary text |
+| `card` | `#292524` | `#FFFFFF` | Card surfaces |
+| `border` | `#44403C` | `#E8E5E0` | Default borders (warm stone) |
+| `muted-foreground` | `#A8A29E` | `#78716C` | Secondary text (stone-400 / stone-500) |
 
 ### Accent Colors
 
 | Token | Dark | Light | Usage |
 |-------|------|-------|-------|
-| `ai-glow` | `#818CF8` (Indigo 400) | `#818CF8` | AI activity indicator, primary brand signal |
+| `ai-glow` | `#8B5CF6` (Violet 500) | `#8B5CF6` | AI activity indicator, primary brand signal |
+| `accent-purple` | `#8B5CF6` | `#8B5CF6` | AI accent, tool execution |
 | `user-accent` | `#3B82F6` (Blue 500) | `#3B82F6` | User messages, input focus |
 | `accent-emerald` | `#34D399` | `#10B981` | Success, completion |
 | `accent-amber` | `#D97706` | `#B45309` | Warnings, caution |
 | `accent-rose` | `#F87171` | `#EF4444` | Errors, destructive actions |
-| `accent-purple` | `#7C3AED` | `#7C3AED` | Secondary AI accent |
 
-### AI Glow Usage
+### AI Accent Usage
 
-The indigo `ai-glow` is the signature brand color. Use it for:
-- Pulsing activity dots (agent running)
+The warm violet `accent-purple` / `ai-glow` (`#8B5CF6`) is the signature brand color. Use it for:
+- Pulsing activity dots (agent running) — via opacity animation, not glow
 - Progress bar gradients
-- Orbital pulse animations on active states
+- Active sidebar indicators (solid bar, no glow)
 - Status indicators for AI activity
 
 Do NOT use `ai-glow` for:
 - Static decorative elements
 - User-initiated actions
 - Error states
+- Glow/halo box-shadow effects (removed from design system)
 
 ## Typography
 
@@ -52,7 +57,7 @@ Do NOT use `ai-glow` for:
 
 | Family | Font | Usage |
 |--------|------|-------|
-| `--font-sans` | Inter | Body text, UI labels, buttons |
+| `--font-sans` | Montserrat | Body text, UI labels, buttons — warm geometric sans |
 | `--font-serif` | Instrument Serif | Hero headings (WelcomeScreen) |
 | `--font-mono` | JetBrains Mono | Code, terminal output, technical values |
 
@@ -78,12 +83,15 @@ Do NOT use `ai-glow` for:
 
 ### Border Radius
 
+Radii are generous and soft, creating an approachable feel:
+
 | Element Type | Radius | Tailwind |
 |-------------|--------|----------|
-| Interactive elements (buttons, inputs) | 8px | `rounded-lg` |
-| Containers (cards, panels, dialogs) | 12px | `rounded-xl` |
+| Sidebar items, small buttons | 8px | `rounded-md` |
+| Cards, inputs, containers | 12px | `rounded-lg` |
+| Dialogs, command palette | 16px | `rounded-xl` |
 | Pills, tags, chips | 9999px | `rounded-full` |
-| User message bubble (bottom-right) | 6px | `rounded-br-md` |
+| User message bubble (bottom-right) | 8px | `rounded-br-md` |
 
 ### Padding Convention
 
@@ -96,13 +104,20 @@ Do NOT use `ai-glow` for:
 
 ## Shadows
 
-Use CSS variable-based shadows exclusively (never inline `style` for shadows):
+**Warm shadows:** All shadows use warm stone rgba values, never pure black.
 
 | Token | Usage |
 |-------|-------|
-| `shadow-card` | Default card elevation |
-| `shadow-card-hover` | Card hover state |
-| `shadow-elevated` | Modals, command palette, dropdowns |
+| `shadow-sm` / `shadow-card` | Card resting state, content elements |
+| `shadow-md` / `shadow-card-hover` | Card hover, input focus |
+| `shadow-elevated` | Floating overlays ONLY (modals, command palette, dropdowns) |
+
+Card/content depth uses subtle shadow + border:
+- Rest: `border border-border shadow-sm`
+- Hover: `hover:border-border-strong hover:shadow-md`
+- Focus/active: `border-border-active shadow-md`
+
+**Glow effects are prohibited.** No `box-shadow: 0 0 Xpx` halos, no `aiGlow` keyframes, no `orbitalPulse` animations.
 
 ## Animations
 
@@ -112,20 +127,28 @@ Use CSS variable-based shadows exclusively (never inline `style` for shadows):
 - Use spring physics for interactive elements
 - Use `ease-out` for enter animations, `ease-in` for exits
 - Standard duration: 200ms for micro-interactions, 300ms for reveals
+- Keep animations minimal and restrained — the interface should feel calm
 
 ### Standard Animations
 
 | Name | Duration | Usage |
 |------|----------|-------|
-| `orbitalPulse` | 2s | AI activity dots (running state) |
 | `shimmer` | 2s | Loading skeleton placeholders |
-| `conicSpin` | 3s | Cancel button border animation |
 | `fadeIn` | 0.3s | General element entry |
 | `slideUp` | 0.4s | Bottom-up reveal |
+| `gradientShift` | 3s | Subtle gradient animation |
+
+### Removed Animations
+
+The following have been removed from the design system:
+- `aiGlow` — replaced by opacity pulse via framer-motion
+- `orbitalPulse` — replaced by framer-motion scale animation in `<PulsingDot>`
+- `conicSpin` — conic-gradient spinning borders removed
+- `meshDrift` — animated gradient mesh backgrounds removed
 
 ### AI Pulsing Dot
 
-Use the shared `<PulsingDot>` component for all AI activity indicators. Available sizes: `sm` (1.5px) and `md` (2px). Always use 2s duration for consistency.
+Use the shared `<PulsingDot>` component for all AI activity indicators. Uses framer-motion for both opacity pulse and scale animation. Available sizes: `sm` (1.5px) and `md` (2px). Always use 2s duration for consistency.
 
 ## Components
 
@@ -139,10 +162,26 @@ Standardize all focus indicators: `focus-visible:ring-[3px] focus-visible:ring-r
 
 ### Touch Targets
 
-All interactive elements must have a minimum 44px touch target (WCAG). Use padding or `min-w`/`min-h` to achieve this for small icon buttons.
+All interactive elements must have a minimum 44px touch target (WCAG). Use padding or `min-w`/`min-h` to achieve this for small icon buttons. Touch target sizing is enforced via CSS `@media (hover: none) and (pointer: coarse)` rules in `globals.css`.
+
+### Cards
+
+All card-like containers use:
+- `rounded-lg` (12px radius)
+- `border border-border`
+- `shadow-sm` at rest
+- `hover:border-border-strong hover:shadow-md` on hover
+- Solid `bg-card` background (no glassmorphism)
+
+### Inputs
+
+- `rounded-lg` border radius
+- Solid `bg-card` background
+- Focus: `border-border-active shadow-md` (no glow)
+- No `backdrop-blur` or transparency
 
 ## Logo & Favicon
 
 - Master logo: `public/logo.png`
 - All favicon variants (`favicon.ico`, `favicon-16.png`, `favicon-32.png`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`) should be generated from the master logo
-- PWA manifest colors: `theme_color: "#0A0A0A"`, `background_color: "#0A0A0A"`
+- PWA manifest colors: `theme_color: "#1C1917"`, `background_color: "#FAF9F6"`

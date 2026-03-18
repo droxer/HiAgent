@@ -1,17 +1,19 @@
-"""Skill system: loading, registry, and execution."""
+"""Skill system: discovery, registry, parsing, and installation."""
 
-from agent.skills.executor import SkillExecutor
-from agent.skills.loader import (
-    SkillLoader,
-    SkillManifest,
-    SkillRegistry,
-    SkillStep,
-)
+from agent.skills.discovery import SkillDiscoverer
+from agent.skills.installer import SkillInstaller
+from agent.skills.loader import SkillRegistry
+from agent.skills.models import SkillCatalogEntry, SkillContent, SkillMetadata
+from agent.skills.parser import parse_skill_md
+from agent.skills.registry_client import SkillRegistryClient
 
 __all__ = [
-    "SkillExecutor",
-    "SkillLoader",
-    "SkillManifest",
+    "SkillCatalogEntry",
+    "SkillContent",
+    "SkillDiscoverer",
+    "SkillInstaller",
+    "SkillMetadata",
     "SkillRegistry",
-    "SkillStep",
+    "SkillRegistryClient",
+    "parse_skill_md",
 ]

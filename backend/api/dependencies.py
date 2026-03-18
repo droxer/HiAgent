@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 
     from agent.artifacts.storage import StorageBackend
     from agent.llm.client import ClaudeClient
+    from agent.skills.installer import SkillInstaller
+    from agent.skills.loader import SkillRegistry
     from agent.state.repository import ConversationRepository
     from api.db_subscriber import PendingWrites
     from api.models import ConversationEntry, MCPState
@@ -34,6 +36,8 @@ class AppState:
     conversations: dict[str, ConversationEntry] = field(default_factory=dict)
     mcp_state: MCPState | None = None
     sandbox_pool: Any = None  # Optional E2B pool
+    skill_registry: SkillRegistry | None = None
+    skill_installer: SkillInstaller | None = None
 
 
 def get_app_state(request: Request) -> AppState:

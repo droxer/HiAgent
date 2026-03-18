@@ -1,6 +1,6 @@
 "use client";
 
-import { inter, instrumentSerif, jetbrainsMono } from "./fonts";
+import { inter, jetbrainsMono, instrumentSerif } from "./fonts";
 
 interface GlobalErrorProps {
   error: Error & { digest?: string };
@@ -11,7 +11,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable}`}
+      className={`${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable}`}
     >
       <body className="font-sans antialiased bg-background text-foreground">
         <div className="flex h-screen w-screen items-center justify-center">

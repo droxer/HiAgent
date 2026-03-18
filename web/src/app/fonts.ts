@@ -6,15 +6,15 @@ export const inter = Inter({
   display: "swap",
 });
 
+export const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
+});
+
 export const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
   weight: "400",
   variable: "--font-instrument-serif",
-  display: "swap",
-});
-
-export const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-jetbrains-mono",
   display: "swap",
 });

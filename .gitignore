@@ -47,3 +47,4 @@ uv.lock
 
 # Artifacts (generated images, etc.)
 backend/artifacts/
+docs/superpowers

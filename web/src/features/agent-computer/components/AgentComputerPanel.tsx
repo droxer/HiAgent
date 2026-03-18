@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useMemo, useState } from "react";
+import { useEffect, useRef, useMemo, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Monitor,
@@ -13,52 +13,26 @@ import { Button } from "@/shared/components/ui/button";
 import { Progress } from "@/shared/components/ui/progress";
 import { formatInput, formatToolPreview } from "../lib/format-tools";
 import { HIDDEN_ACTIVITY_TOOLS, normalizeToolName } from "../lib/tool-constants";
+import { normalizeSkillName } from "@/features/skills/lib/normalize-skill-name";
 import { ToolOutputRenderer } from "./ToolOutputRenderer";
+import { SkillActivityEntry } from "./SkillActivityEntry";
 import { AgentStatusRow } from "./AgentStatusRow";
 import { ArtifactFilesPanel } from "./ArtifactFilesPanel";
 import { cn } from "@/shared/lib/utils";
+import { useTranslation } from "@/i18n";
 import { PulsingDot } from "@/shared/components/PulsingDot";
 import type { ToolCallInfo, AgentStatus, TaskState, ArtifactInfo } from "@/shared/types";
 
-/* ── tool name → friendly verb mapping for status bar ── */
-const TOOL_VERBS: Record<string, string> = {
-  web_search: "searching the web",
-  web_fetch: "reading a webpage",
-  code_run: "running code",
-  code_interpret: "running code",
-  shell_exec: "running a command",
-  user_ask: "asking you",
-  memory_store: "saving to memory",
-  memory_search: "searching memory",
-  memory_list: "listing memories",
-  image_generate: "generating an image",
-  agent_spawn: "spawning an agent",
-  agent_wait: "waiting for agents",
-  file_read: "reading a file",
-  file_write: "writing a file",
-  file_edit: "editing a file",
-  browser_navigate: "browsing the web",
-  browser_click: "clicking an element",
-  browser_type: "typing in browser",
-  browser_scroll: "scrolling page",
-  browser_extract: "extracting content",
-  document_create_pdf: "creating a PDF",
-  document_create_docx: "creating a document",
-  document_create_xlsx: "creating a spreadsheet",
-  document_create_pptx: "creating a presentation",
-  document_read: "reading a document",
-  database_query: "querying database",
-  database_create: "creating database",
-  database_schema: "inspecting schema",
-  preview_start: "starting preview",
-  preview_stop: "stopping preview",
-  computer_screenshot: "taking a screenshot",
-  computer_action: "performing action",
-  package_install: "installing packages",
-};
+const SKILL_TOOL_NAMES = new Set(["activate_skill", "load_skill"]);
 
-function toolLabel(name: string): string {
-  return TOOL_VERBS[name] ?? `using ${normalizeToolName(name).toLowerCase()}`;
+type TFn = (key: string, params?: Record<string, string | number>) => string;
+
+function getToolVerb(name: string, t: TFn): string {
+  const key = `tools.verb.${name}`;
+  const translated = t(key);
+  // If key returns itself, fall back to generic
+  if (translated === key) return t("computer.usingToolGeneric", { name: normalizeToolName(name) });
+  return translated;
 }
 
 /* ── status symbol for terminal-style logs ── */
@@ -95,8 +69,34 @@ export function AgentComputerPanel({
   taskState,
   onClose,
 }: AgentComputerPanelProps) {
+  const { t } = useTranslation();
   const contentRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<PanelTab>("activity");
+  const tabListRef = useRef<HTMLDivElement>(null);
+
+  const TABS: PanelTab[] = ["activity", "files"];
+
+  const handleTabKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      e.preventDefault();
+
+      const currentIndex = TABS.indexOf(activeTab);
+      const nextIndex =
+        e.key === "ArrowRight"
+          ? (currentIndex + 1) % TABS.length
+          : (currentIndex - 1 + TABS.length) % TABS.length;
+
+      const nextTab = TABS[nextIndex];
+      setActiveTab(nextTab);
+
+      const nextButton = tabListRef.current?.querySelector<HTMLElement>(
+        `#tab-${nextTab}`,
+      );
+      nextButton?.focus();
+    },
+    [activeTab],
+  );
 
   const visibleToolCalls = useMemo(
     () => toolCalls.filter((t) => !HIDDEN_ACTIVITY_TOOLS.has(t.name)),
@@ -129,7 +129,7 @@ export function AgentComputerPanel({
       <div className="shrink-0 border-b border-border">
         <div className="flex items-center justify-between px-4 pt-3 pb-0">
           <span className="text-sm font-semibold tracking-tight text-foreground">
-            HiAgent&apos;s Computer
+            {t("computer.title")}
           </span>
           <div className="flex items-center gap-1">
             {onClose && (
@@ -137,7 +137,7 @@ export function AgentComputerPanel({
                 type="button"
                 variant="ghost"
                 size="icon-xs"
-                aria-label="Close panel"
+                aria-label={t("computer.closePanel")}
                 onClick={onClose}
                 className="text-muted-foreground hover:text-foreground"
               >
@@ -146,9 +146,14 @@ export function AgentComputerPanel({
             )}
           </div>
         </div>
-        <div className="flex gap-1 px-4 pt-2">
+        <div ref={tabListRef} className="flex gap-1 px-3 pt-2 sm:px-4" role="tablist" aria-label={t("computer.tabsLabel")} onKeyDown={handleTabKeyDown}>
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === "activity"}
+            aria-controls="panel-activity"
+            id="tab-activity"
+            tabIndex={activeTab === "activity" ? 0 : -1}
             onClick={() => setActiveTab("activity")}
             className={cn(
               "flex items-center gap-1.5 rounded-t-md px-3 py-1.5 text-xs font-medium transition-colors",
@@ -158,10 +163,15 @@ export function AgentComputerPanel({
             )}
           >
             <Monitor className="h-3 w-3" />
-            Activity
+            {t("computer.activity")}
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === "files"}
+            aria-controls="panel-files"
+            id="tab-files"
+            tabIndex={activeTab === "files" ? 0 : -1}
             onClick={() => setActiveTab("files")}
             className={cn(
               "flex items-center gap-1.5 rounded-t-md px-3 py-1.5 text-xs font-medium transition-colors",
@@ -171,9 +181,9 @@ export function AgentComputerPanel({
             )}
           >
             <FolderOpen className="h-3 w-3" />
-            Artifacts
+            {t("computer.artifacts")}
             {artifacts.length > 0 && (
-              <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground/10 px-1 text-[10px] font-semibold">
+              <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-muted px-1 text-[0.625rem] font-semibold">
                 {artifacts.length}
               </span>
             )}
@@ -183,21 +193,22 @@ export function AgentComputerPanel({
 
       {/* ── Files tab ── */}
       {activeTab === "files" && (
-        <div className="flex-1 overflow-y-auto">
+        <div id="panel-files" role="tabpanel" aria-labelledby="tab-files" className="flex-1 overflow-y-auto">
           <ArtifactFilesPanel artifacts={artifacts} conversationId={conversationId} />
         </div>
       )}
 
       {/* ── Activity tab ── */}
-      {/* ── Activity status bar ── */}
       {activeTab === "activity" && isRunning && latestToolCall && (
         <div className="flex shrink-0 items-center gap-2 border-b border-border bg-secondary/50 px-4 py-2" role="status" aria-live="polite">
           <PulsingDot size="sm" />
           <span className="text-xs text-muted-foreground">
-            HiAgent is {toolLabel(latestToolCall.name)}
+            {SKILL_TOOL_NAMES.has(latestToolCall.name)
+              ? t("computer.loadingSkill", { name: normalizeSkillName(String(latestToolCall.input.name ?? "skill")) })
+              : t("computer.usingTool", { verb: getToolVerb(latestToolCall.name, t) })}
           </span>
-          {latestToolCall.output === undefined && (
-            <span className="ml-auto max-w-[240px] truncate font-mono text-xs text-muted-foreground/70">
+          {latestToolCall.output === undefined && !SKILL_TOOL_NAMES.has(latestToolCall.name) && (
+            <span className="ml-auto max-w-[240px] truncate font-mono text-xs text-muted-foreground-dim">
               {formatToolPreview(latestToolCall.input)}
             </span>
           )}
@@ -206,70 +217,74 @@ export function AgentComputerPanel({
 
       {/* ── Activity content area — terminal-style logs ── */}
       {activeTab === "activity" && (
-        <>
+        <div id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" className="flex min-h-0 flex-1 flex-col">
           <div
             ref={contentRef}
-            className="flex-1 overflow-y-auto px-6 py-4"
+            className="flex-1 overflow-y-auto px-3 py-4 sm:px-6"
           >
             {/* Empty state */}
             {visibleToolCalls.length === 0 && (
               <div className="flex h-full flex-col items-center justify-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary">
-                  <Monitor className="h-5 w-5 text-muted-foreground/50" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-md bg-secondary">
+                  <Monitor className="h-5 w-5 text-muted-foreground-dim" />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Waiting for agent activity...
+                  {t("computer.waitingActivity")}
                 </p>
               </div>
             )}
 
             {/* Terminal-style tool call entries */}
             <div className="space-y-1 font-mono text-xs">
-              {visibleToolCalls.map((tc) => (
-                <motion.div
-                  key={tc.id}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.15, ease: "easeOut" }}
-                >
-                  {/* Log line */}
-                  <div className="flex items-start gap-2 py-1">
-                    <span className={cn("shrink-0", statusColor(tc))}>
-                      [{statusSymbol(tc)}]
-                    </span>
-                    <span className="text-foreground/90">
-                      {normalizeToolName(tc.name)}
-                    </span>
-                    {Object.keys(tc.input).length > 0 && (
-                      <span className="text-muted-foreground/60">
-                        — {formatInput(tc.input)}
+              {visibleToolCalls.map((tc) =>
+                SKILL_TOOL_NAMES.has(tc.name) ? (
+                  <SkillActivityEntry key={tc.id} toolCall={tc} />
+                ) : (
+                  <motion.div
+                    key={tc.id}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                  >
+                    {/* Log line */}
+                    <div className="flex items-start gap-2 py-1">
+                      <span className={cn("shrink-0", statusColor(tc))}>
+                        [{statusSymbol(tc)}]
                       </span>
-                    )}
-                    {tc.output === undefined && (
-                      <motion.span
-                        className="text-ai-glow"
-                        animate={{ opacity: [0.3, 1, 0.3] }}
-                        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                      >
-                        running...
-                      </motion.span>
-                    )}
-                  </div>
-
-                  {/* Output (collapsible) */}
-                  {tc.output !== undefined && (
-                    <div className="ml-6 mb-2">
-                      <ToolOutputRenderer
-                        output={tc.output}
-                        toolName={tc.name}
-                        contentType={tc.contentType}
-                        conversationId={conversationId}
-                        artifactIds={tc.artifactIds}
-                      />
+                      <span className="text-foreground">
+                        {normalizeToolName(tc.name)}
+                      </span>
+                      {Object.keys(tc.input).length > 0 && (
+                        <span className="text-muted-foreground-dim">
+                          — {formatInput(tc.input)}
+                        </span>
+                      )}
+                      {tc.output === undefined && (
+                        <motion.span
+                          className="text-ai-glow"
+                          animate={{ opacity: [0.3, 1, 0.3] }}
+                          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                        >
+                          {t("computer.running")}
+                        </motion.span>
+                      )}
                     </div>
-                  )}
-                </motion.div>
-              ))}
+
+                    {/* Output (collapsible) */}
+                    {tc.output !== undefined && (
+                      <div className="ml-6 mb-2">
+                        <ToolOutputRenderer
+                          output={tc.output}
+                          toolName={tc.name}
+                          contentType={tc.contentType}
+                          conversationId={conversationId}
+                          artifactIds={tc.artifactIds}
+                        />
+                      </div>
+                    )}
+                  </motion.div>
+                ),
+              )}
             </div>
 
             {/* Agent statuses */}
@@ -282,53 +297,34 @@ export function AgentComputerPanel({
             )}
           </div>
 
-          {/* ── Bottom progress bar ── */}
+          {/* ── Consolidated status bar ── */}
           <div className="flex shrink-0 items-center gap-3 border-t border-border px-4 py-2.5">
             <Progress value={progressValue} className="flex-1 h-1.5" />
 
-            {/* Live / Done indicator */}
-            {isRunning && (
-              <div className="flex items-center gap-1.5">
-                <PulsingDot size="md" />
-                <span className="text-xs font-medium text-muted-foreground">
-                  live
-                </span>
-              </div>
-            )}
-
-            {taskState === "complete" && (
-              <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-accent-emerald opacity-40" />
-                <span className="text-xs font-medium text-muted-foreground">
-                  done
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* ── Task summary footer ── */}
-          {visibleToolCalls.length > 0 && (
-            <div className="flex shrink-0 items-center gap-2 border-t border-border bg-secondary/40 px-4 py-2">
-              {taskState === "complete" ? (
+            <div className="flex items-center gap-1.5">
+              {isRunning ? (
+                <PulsingDot size="sm" />
+              ) : taskState === "complete" ? (
                 <CircleCheck className="h-3.5 w-3.5 text-accent-emerald" />
               ) : taskState === "error" ? (
                 <CircleX className="h-3.5 w-3.5 text-accent-rose" />
-              ) : isRunning ? (
-                <PulsingDot size="md" />
               ) : null}
-              <span className="flex-1 truncate text-xs text-muted-foreground">
+              <span className="text-xs font-medium text-muted-foreground">
                 {taskState === "complete"
-                  ? "Task completed"
+                  ? t("computer.statusDone")
                   : isRunning
-                    ? `Processing step ${completedCount + 1}...`
-                    : "Idle"}
-              </span>
-              <span className="text-xs font-mono font-medium text-muted-foreground">
-                {completedCount} / {visibleToolCalls.length}
+                    ? t("computer.statusLive")
+                    : taskState === "error"
+                      ? t("computer.statusError")
+                      : t("computer.statusIdle")}
               </span>
             </div>
-          )}
-        </>
+
+            <span className="text-xs font-mono font-medium text-muted-foreground tabular-nums">
+              {completedCount}/{visibleToolCalls.length}
+            </span>
+          </div>
+        </div>
       )}
     </div>
   );

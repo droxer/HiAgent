@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { ArrowUp } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
+import { useTranslation } from "@/i18n";
 
 interface SendButtonProps {
   readonly disabled?: boolean;
@@ -10,10 +11,12 @@ interface SendButtonProps {
 }
 
 export function SendButton({ disabled = false, hasContent = false }: SendButtonProps) {
+  const { t } = useTranslation();
   return (
     <motion.button
       type="submit"
       disabled={disabled || !hasContent}
+      aria-label={hasContent ? t("chat.sendMessage") : t("chat.typeToSend")}
       initial={{ scale: 0.85, opacity: 0 }}
       animate={{
         scale: hasContent ? 1 : 0.85,
@@ -22,15 +25,14 @@ export function SendButton({ disabled = false, hasContent = false }: SendButtonP
       exit={{ scale: 0.85, opacity: 0 }}
       transition={{ type: "spring", stiffness: 400, damping: 20 }}
       className={cn(
-        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
-        "transition-colors transition-shadow transition-transform duration-200 ease-out",
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
+        "transition-colors transition-transform duration-200 ease-out",
         "focus-visible:ring-[3px] focus-visible:ring-ring/50 outline-none",
         hasContent
           ? [
               "bg-primary text-primary-foreground",
-              "shadow-card",
-              "hover:shadow-card-hover hover:translate-y-[-1px]",
-              "active:translate-y-[1px] active:shadow-none",
+              "hover:bg-primary/90",
+              "active:scale-95",
             ]
           : "bg-transparent text-placeholder/40 cursor-default",
       )}

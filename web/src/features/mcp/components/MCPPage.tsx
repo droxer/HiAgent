@@ -27,6 +27,7 @@ import {
   AlertDialogTitle,
 } from "@/shared/components/ui/alert-dialog";
 import { cn } from "@/shared/lib/utils";
+import { useTranslation } from "@/i18n";
 import {
   fetchMCPServers,
   addMCPServer,
@@ -54,7 +55,7 @@ const listItem = {
 /* ── shimmer skeleton for loading state ── */
 function ServerSkeleton() {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
+    <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-sm">
       <div className="h-2 w-2 shrink-0 rounded-full bg-muted-foreground/20 animate-shimmer" />
       <div className="flex-1 space-y-2">
         <div className="h-3.5 w-28 rounded bg-muted-foreground/10 animate-shimmer" />
@@ -79,7 +80,8 @@ function TransportIcon({
   );
 }
 
-export function IntegrationsPage() {
+export function MCPPage() {
+  const { t } = useTranslation();
   const [servers, setServers] = useState<readonly MCPServer[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -161,7 +163,7 @@ export function IntegrationsPage() {
     <div className="flex h-full flex-col bg-background">
       {/* ── Header ── */}
       <motion.div
-        className="shrink-0 border-b border-border px-6 py-5"
+        className="shrink-0 border-b border-border px-4 py-5 sm:px-6"
         initial={{ opacity: 0, y: -4 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25, ease: "easeOut" }}
@@ -173,10 +175,10 @@ export function IntegrationsPage() {
             </div>
             <div>
               <h1 className="text-base font-semibold tracking-tight text-foreground">
-                Integrations
+                {t("mcp.title")}
               </h1>
               <p className="text-xs text-muted-foreground">
-                Connect MCP servers to extend your agent&apos;s capabilities
+                {t("mcp.subtitle")}
               </p>
             </div>
           </div>
@@ -199,12 +201,12 @@ export function IntegrationsPage() {
       </motion.div>
 
       {/* ── Content ── */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
+      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
         <div className="mx-auto max-w-2xl space-y-5">
           {/* Error banner */}
           {error && (
             <motion.div
-              className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-2.5"
+              className="flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/5 px-4 py-2.5"
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
@@ -217,7 +219,7 @@ export function IntegrationsPage() {
           {/* Section header */}
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium text-muted-foreground">
-              MCP Servers
+              {t("mcp.mcpServers")}
             </h2>
             {!showForm && (
               <Button
@@ -226,7 +228,7 @@ export function IntegrationsPage() {
                 onClick={() => setShowForm(true)}
               >
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
-                Add Server
+                {t("mcp.addServer")}
               </Button>
             )}
           </div>
@@ -244,15 +246,15 @@ export function IntegrationsPage() {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3, delay: 0.1 }}
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary">
-                <Unplug className="h-5 w-5 text-muted-foreground/50" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-secondary">
+                <Unplug className="h-5 w-5 text-muted-foreground-dim" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-foreground/80">
-                  No servers connected
+                <p className="text-sm font-medium text-foreground">
+                  {t("mcp.noServers")}
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Add an MCP server to extend your agent with new tools
+                  {t("mcp.noServersHint")}
                 </p>
               </div>
             </motion.div>
@@ -267,7 +269,7 @@ export function IntegrationsPage() {
                 <motion.div
                   key={server.name}
                   variants={listItem}
-                  className="group flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-shadow duration-200 hover:shadow-card-hover"
+                  className="group flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-sm transition-all duration-200 hover:border-border-strong hover:shadow-md"
                 >
                   {/* Status dot */}
                   <span
@@ -277,7 +279,11 @@ export function IntegrationsPage() {
                         ? "bg-accent-emerald"
                         : "bg-muted-foreground/30",
                     )}
+                    aria-hidden="true"
                   />
+                  <span className="sr-only">
+                    {server.status === "connected" ? t("mcp.connected") : t("mcp.disconnected")}
+                  </span>
 
                   {/* Server info */}
                   <div className="min-w-0 flex-1">
@@ -296,8 +302,7 @@ export function IntegrationsPage() {
                     <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Wrench className="h-3 w-3" />
                       <span>
-                        {server.tool_count} tool
-                        {server.tool_count !== 1 ? "s" : ""}
+                        {server.tool_count === 1 ? t("mcp.toolCount", { count: 1 }) : t("mcp.toolsCount", { count: server.tool_count })}
                       </span>
                       {server.command && (
                         <>
@@ -327,23 +332,23 @@ export function IntegrationsPage() {
           {/* ── Add form ── */}
           {showForm && (
             <motion.div
-              className="space-y-4 rounded-lg border border-border bg-card p-5"
+              className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
             >
               <h3 className="text-sm font-semibold text-foreground">
-                Add MCP Server
+                {t("mcp.addFormTitle")}
               </h3>
 
               {/* Name */}
               <div className="space-y-1.5">
                 <Label htmlFor="mcp-name" className="text-xs">
-                  Name
+                  {t("mcp.name")}
                 </Label>
                 <Input
                   id="mcp-name"
-                  placeholder="my-server"
+                  placeholder={t("mcp.namePlaceholder")}
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   className="font-mono"
@@ -352,7 +357,7 @@ export function IntegrationsPage() {
 
               {/* Transport toggle */}
               <div className="space-y-1.5">
-                <Label className="text-xs">Transport</Label>
+                <Label className="text-xs">{t("mcp.transport")}</Label>
                 <TransportToggle value={formTransport} onChange={setFormTransport} />
               </div>
 
@@ -360,11 +365,11 @@ export function IntegrationsPage() {
               {formTransport === "stdio" ? (
                 <div className="space-y-1.5">
                   <Label htmlFor="mcp-command" className="text-xs">
-                    Command
+                    {t("mcp.command")}
                   </Label>
                   <Input
                     id="mcp-command"
-                    placeholder="npx -y @modelcontextprotocol/server-example"
+                    placeholder={t("mcp.commandPlaceholder")}
                     value={formCommand}
                     onChange={(e) => setFormCommand(e.target.value)}
                     className="font-mono"
@@ -373,11 +378,11 @@ export function IntegrationsPage() {
               ) : (
                 <div className="space-y-1.5">
                   <Label htmlFor="mcp-url" className="text-xs">
-                    URL
+                    {t("mcp.urlLabel")}
                   </Label>
                   <Input
                     id="mcp-url"
-                    placeholder="http://localhost:3001/sse"
+                    placeholder={t("mcp.urlPlaceholder")}
                     value={formUrl}
                     onChange={(e) => setFormUrl(e.target.value)}
                     className="font-mono"
@@ -392,7 +397,7 @@ export function IntegrationsPage() {
                   size="sm"
                   onClick={resetForm}
                 >
-                  Cancel
+                  {t("mcp.cancel")}
                 </Button>
                 <Button
                   size="sm"
@@ -402,7 +407,7 @@ export function IntegrationsPage() {
                   {submitting && (
                     <span className="mr-1.5 inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
                   )}
-                  Connect
+                  {t("mcp.connect")}
                 </Button>
               </div>
             </motion.div>
@@ -419,24 +424,20 @@ export function IntegrationsPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove server</AlertDialogTitle>
+            <AlertDialogTitle>{t("mcp.removeTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Disconnect and remove{" "}
-              <span className="font-mono font-medium text-foreground">
-                {serverToDelete}
-              </span>
-              ? Its tools will no longer be available.
+              {t("mcp.removeDesc", { name: serverToDelete ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>
-              Cancel
+              {t("mcp.cancel")}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-primary-foreground hover:bg-destructive/90"
             >
-              Remove
+              {t("mcp.remove")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

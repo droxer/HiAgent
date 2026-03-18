@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { inter, instrumentSerif, jetbrainsMono } from "./fonts";
+import { inter, jetbrainsMono, instrumentSerif } from "./fonts";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -25,10 +25,11 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${inter.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable}`}
+      /* I18nProvider sets lang attribute client-side based on locale */
+      className={`${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable}`}
     >
       <body className="font-sans antialiased">
-        <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground">
+        <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground">
           Skip to main content
         </a>
         <Providers>{children}</Providers>

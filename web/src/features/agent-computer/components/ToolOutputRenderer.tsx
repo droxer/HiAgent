@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
+import { useTranslation } from "@/i18n";
 import { MarkdownRenderer } from "@/shared/components";
 import { TerminalWindow, stripAnsi } from "@/shared/components/ui/terminal-window";
 import { WebLinks, type WebLink } from "@/shared/components/ui/web-links";
@@ -28,17 +29,17 @@ const COLLAPSE_THRESHOLD = 500;
 interface CategoryStyle {
   readonly border: string;
   readonly icon: LucideIcon;
-  readonly label: string;
+  readonly labelKey: string;
 }
 
 const CATEGORY_STYLES: Record<ToolCategory, CategoryStyle> = {
-  code:    { border: "border-l-accent-emerald/60", icon: Terminal,  label: "Code" },
-  file:    { border: "border-l-user-accent/60",    icon: FileCode,  label: "File" },
-  search:  { border: "border-l-accent-purple/60",  icon: Globe,     label: "Search" },
-  memory:  { border: "border-l-accent-amber/60",   icon: Database,  label: "Memory" },
-  browser: { border: "border-l-ai-glow/60",        icon: Monitor,   label: "Browser" },
-  preview: { border: "border-l-accent-emerald/60", icon: Play,      label: "Preview" },
-  default: { border: "border-l-border",            icon: FileText,  label: "" },
+  code:    { border: "border-l-accent-emerald/60", icon: Terminal,  labelKey: "output.category.code" },
+  file:    { border: "border-l-user-accent/60",    icon: FileCode,  labelKey: "output.category.file" },
+  search:  { border: "border-l-accent-purple/60",  icon: Globe,     labelKey: "output.category.search" },
+  memory:  { border: "border-l-accent-amber/60",   icon: Database,  labelKey: "output.category.memory" },
+  browser: { border: "border-l-ai-glow/60",        icon: Monitor,   labelKey: "output.category.browser" },
+  preview: { border: "border-l-accent-emerald/60", icon: Play,      labelKey: "output.category.preview" },
+  default: { border: "border-l-border",            icon: FileText,  labelKey: "" },
 };
 
 interface SearchPayload {
@@ -86,6 +87,7 @@ interface ToolOutputRendererProps {
 }
 
 export function ToolOutputRenderer({ output, toolName, contentType, conversationId, artifactIds }: ToolOutputRendererProps) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const isLong = output.length > COLLAPSE_THRESHOLD;
   const isCode = CODE_TOOLS.has(toolName) || contentType?.startsWith("text/x-") || contentType?.startsWith("text/javascript");
@@ -142,7 +144,7 @@ export function ToolOutputRenderer({ output, toolName, contentType, conversation
         {/* Command line */}
         <div className="flex gap-2">
           <span className="text-accent-emerald">$</span>
-          <span className="text-[var(--color-terminal-text)]">server start</span>
+          <span className="text-[var(--color-terminal-text)]">{t("output.preview.serverStart")}</span>
         </div>
 
         {/* Output */}
@@ -157,13 +159,13 @@ export function ToolOutputRenderer({ output, toolName, contentType, conversation
                 <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent-emerald" />
               </span>
               <span className="text-accent-emerald">
-                Listening on port {preview.port ?? "..."}
+                {t("output.preview.listening", { port: preview.port ?? "..." })}
               </span>
             </>
           ) : (
             <>
               <span className="inline-flex h-2.5 w-2.5 rounded-full bg-[var(--color-terminal-dim)]" />
-              <span className="text-[var(--color-terminal-dim)]">Server stopped</span>
+              <span className="text-[var(--color-terminal-dim)]">{t("output.preview.stopped")}</span>
             </>
           )}
         </div>
@@ -174,7 +176,7 @@ export function ToolOutputRenderer({ output, toolName, contentType, conversation
   // Shell exec — terminal-style renderer
   if (toolName === "shell_exec") {
     return (
-      <TerminalWindow title="shell" className="mt-2.5">
+      <TerminalWindow title={t("output.shell.title")} className="mt-2.5">
         {/* Output */}
         <pre className="whitespace-pre-wrap text-[var(--color-terminal-text)]">
           {stripAnsi(displayText)}
@@ -198,7 +200,7 @@ export function ToolOutputRenderer({ output, toolName, contentType, conversation
       <CodeOutput
         output={output}
         icon={style.icon}
-        label={style.label}
+        label={style.labelKey ? t(style.labelKey) : ""}
         className="mt-2.5"
       />
     );
@@ -208,10 +210,10 @@ export function ToolOutputRenderer({ output, toolName, contentType, conversation
   return (
     <div className={cn("mt-2.5 rounded-md border-l-2 bg-muted/60 px-3 py-2", style.border)}>
       <div className="mb-1.5 flex items-center justify-end">
-        {style.label && (
-          <span className="flex items-center gap-1 text-[10px] text-muted-foreground/70">
+        {style.labelKey && (
+          <span className="flex items-center gap-1 text-[0.625rem] text-muted-foreground-dim">
             <CategoryIcon className="h-3 w-3" />
-            {style.label}
+            {t(style.labelKey)}
           </span>
         )}
       </div>
@@ -219,7 +221,7 @@ export function ToolOutputRenderer({ output, toolName, contentType, conversation
       <div className="prose-sm text-xs leading-relaxed text-muted-foreground [&_a]:text-user-accent [&_a]:underline [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-xs [&_h1]:text-sm [&_h1]:font-semibold [&_h2]:text-xs [&_h2]:font-semibold [&_h3]:text-xs [&_h3]:font-medium [&_li]:my-0.5 [&_ol]:my-1 [&_ol]:pl-4 [&_p]:my-1 [&_pre]:my-1 [&_pre]:rounded [&_pre]:bg-muted [&_pre]:p-2 [&_pre]:text-xs [&_ul]:my-1 [&_ul]:pl-4">
         <MarkdownRenderer content={displayText} />
         {isLong && !expanded && (
-          <span className="text-muted-foreground/50">...</span>
+          <span className="text-muted-foreground-dim">...</span>
         )}
       </div>
 

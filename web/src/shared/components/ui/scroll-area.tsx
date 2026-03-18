@@ -8,10 +8,14 @@ import { cn } from "@/shared/lib/utils"
 function ScrollArea({
   className,
   children,
+  ref,
   ...props
-}: React.ComponentProps<typeof ScrollAreaPrimitive.Root>) {
+}: React.ComponentProps<typeof ScrollAreaPrimitive.Root> & {
+  ref?: React.Ref<HTMLDivElement>;
+}) {
   return (
     <ScrollAreaPrimitive.Root
+      ref={ref}
       data-slot="scroll-area"
       className={cn("relative", className)}
       {...props}

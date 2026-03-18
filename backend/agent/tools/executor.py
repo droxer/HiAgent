@@ -33,6 +33,21 @@ class ToolExecutor:
         self._event_emitter = event_emitter
         self._artifact_manager = artifact_manager or ArtifactManager()
 
+    def set_sandbox_template(self, template: str) -> None:
+        """Override the default sandbox template.
+
+        Called by the orchestrator after skill matching so that tools
+        and file uploads target the correct sandbox image (e.g.
+        ``data_science`` instead of ``default``).
+        """
+        from agent.sandbox.base import SandboxConfig
+
+        self._sandbox_config = SandboxConfig(template=template)
+
+    def reset_sandbox_template(self) -> None:
+        """Clear any per-turn sandbox template override."""
+        self._sandbox_config = None
+
     def _resolve_template(self, tool_tags: tuple[str, ...] = ()) -> str:
         """Determine the sandbox template from config or tool tags."""
         if self._sandbox_config is not None:
@@ -73,8 +88,22 @@ class ToolExecutor:
 
         session = await self._sandbox_provider.create_session(config)
         self._sandbox_sessions[template] = session
-        logger.info("Sandbox session created (template=%s)", template)
+        logger.info(
+            "Sandbox session created (template=%s, sandbox_id=%s)",
+            template,
+            getattr(session, "sandbox_id", None) or "unknown",
+        )
         return session
+
+    async def get_sandbox_session(
+        self, tool_tags: tuple[str, ...] = ()
+    ) -> Any:
+        """Public accessor for obtaining a sandbox session.
+
+        Delegates to the internal ``_get_sandbox_session`` so that callers
+        (e.g. the file-upload route) don't need to reach into private API.
+        """
+        return await self._get_sandbox_session(tool_tags)
 
     @property
     def artifact_manager(self) -> ArtifactManager:

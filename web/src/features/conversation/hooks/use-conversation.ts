@@ -22,15 +22,13 @@ export function useConversation(
   const [userCancelled, setUserCancelled] = useState(false);
   const eventCountAtSendRef = useRef(events.length);
 
-  const {
-    conversationId,
-    isLiveConversation,
-    startConversation,
-    switchConversation,
-    resumeConversation,
-    updateConversationTitle,
-    resetConversation,
-  } = useAppStore();
+  const conversationId = useAppStore((s) => s.conversationId);
+  const isLiveConversation = useAppStore((s) => s.isLiveConversation);
+  const startConversation = useAppStore((s) => s.startConversation);
+  const switchConversation = useAppStore((s) => s.switchConversation);
+  const resumeConversation = useAppStore((s) => s.resumeConversation);
+  const updateConversationTitle = useAppStore((s) => s.updateConversationTitle);
+  const resetConversation = useAppStore((s) => s.resetConversation);
 
   // Clear waiting state only when NEW events arrive (after send) and
   // the assistant has actually started responding. This prevents the
@@ -65,12 +63,14 @@ export function useConversation(
   }, [conversationId]);
 
   // Update conversation title when the LLM generates one
+  const lastTitleRef = useRef<string | null>(null);
   useEffect(() => {
     if (!conversationId) return;
     const titleEvent = events.find((e) => e.type === "conversation_title");
     if (titleEvent) {
       const title = titleEvent.data.title as string;
-      if (title) {
+      if (title && title !== lastTitleRef.current) {
+        lastTitleRef.current = title;
         updateConversationTitle(conversationId, title);
       }
     }
@@ -90,7 +90,7 @@ export function useConversation(
   }, [userMessages, transcriptMessages]);
 
   const handleCreateConversation = useCallback(
-    async (message: string, files?: File[]) => {
+    async (message: string, files?: File[], skills?: string[]) => {
       eventCountAtSendRef.current = events.length;
       setIsWaitingForAgent(true);
       setUserCancelled(false);
@@ -100,7 +100,7 @@ export function useConversation(
       ]);
 
       try {
-        const data = await createConversation(message, files);
+        const data = await createConversation(message, files, skills);
         startConversation(data.conversation_id, message);
       } catch (err) {
         console.error("Failed to create conversation:", err);
@@ -119,7 +119,7 @@ export function useConversation(
   );
 
   const handleSendFollowUp = useCallback(
-    async (message: string, files?: File[]) => {
+    async (message: string, files?: File[], skills?: string[]) => {
       if (!conversationId) return;
 
       eventCountAtSendRef.current = events.length;
@@ -132,7 +132,7 @@ export function useConversation(
       ]);
 
       try {
-        await sendFollowUpMessage(conversationId, message, files);
+        await sendFollowUpMessage(conversationId, message, files, skills);
       } catch (err) {
         console.error("Failed to send message:", err);
         setIsWaitingForAgent(false);
@@ -150,7 +150,7 @@ export function useConversation(
   );
 
   const handleResumeConversation = useCallback(
-    async (message: string, files?: File[]) => {
+    async (message: string, files?: File[], skills?: string[]) => {
       if (!conversationId) return;
 
       eventCountAtSendRef.current = events.length;
@@ -163,7 +163,7 @@ export function useConversation(
       ]);
 
       try {
-        await sendFollowUpMessage(conversationId, message, files);
+        await sendFollowUpMessage(conversationId, message, files, skills);
         resumeConversation();
       } catch (err) {
         console.error("Failed to resume conversation:", err);
@@ -182,13 +182,13 @@ export function useConversation(
   );
 
   const handleSendMessage = useCallback(
-    (message: string, files?: File[]) => {
+    (message: string, files?: File[], skills?: string[]) => {
       if (!conversationId) {
-        handleCreateConversation(message, files);
+        handleCreateConversation(message, files, skills);
       } else if (!isLiveConversation) {
-        handleResumeConversation(message, files);
+        handleResumeConversation(message, files, skills);
       } else {
-        handleSendFollowUp(message, files);
+        handleSendFollowUp(message, files, skills);
       }
     },
     [conversationId, isLiveConversation, handleCreateConversation, handleResumeConversation, handleSendFollowUp],

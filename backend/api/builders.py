@@ -15,7 +15,9 @@ from agent.loop.planner import PlannerOrchestrator
 from agent.loop.sub_agent_manager import SubAgentManager
 from agent.memory.store import PersistentMemoryStore
 from agent.sandbox.base import SandboxProvider
+from agent.skills.loader import SkillRegistry as SkillRegistry
 from agent.tools.executor import ToolExecutor
+from agent.tools.local.activate_skill import ActivateSkill
 from agent.tools.local.ask_user import AskUser
 from agent.tools.local.image_gen import ImageGen
 from agent.tools.local.memory_list import MemoryList
@@ -121,6 +123,7 @@ def _build_base_registry(
     mcp_state: MCPState,
     artifact_manager: ArtifactManager | None = None,
     persistent_store: PersistentMemoryStore | None = None,
+    skill_registry: SkillRegistry | None = None,
 ) -> ToolRegistry:
     """Build the shared tool registry with all standard tools registered."""
     settings = get_settings()
@@ -133,9 +136,15 @@ def _build_base_registry(
     registry = registry.register(MessageUser(event_emitter=event_emitter))
     registry = registry.register(AskUser(event_emitter=event_emitter))
     registry = registry.register(TaskComplete(on_complete=on_complete))
-    registry = registry.register(MemoryStore(store=memory, persistent_store=persistent_store))
-    registry = registry.register(MemoryRecall(store=memory, persistent_store=persistent_store))
-    registry = registry.register(MemoryList(store=memory, persistent_store=persistent_store))
+    registry = registry.register(
+        MemoryStore(store=memory, persistent_store=persistent_store)
+    )
+    registry = registry.register(
+        MemoryRecall(store=memory, persistent_store=persistent_store)
+    )
+    registry = registry.register(
+        MemoryList(store=memory, persistent_store=persistent_store)
+    )
 
     # Conditionally register image_gen when API key is configured
     if settings.MINIMAX_API_KEY and artifact_manager is not None:
@@ -185,6 +194,10 @@ def _build_base_registry(
     # Merge MCP tools if available
     if mcp_state.registry is not None:
         registry = registry.merge(mcp_state.registry)
+
+    # Register activate_skill tool if skills are enabled
+    if skill_registry is not None and settings.SKILLS_ENABLED:
+        registry = registry.register(ActivateSkill(skill_registry=skill_registry))
 
     return registry
 
@@ -261,6 +274,7 @@ def _build_orchestrator(
     initial_messages: tuple[dict[str, Any], ...] = (),
     persistent_store: PersistentMemoryStore | None = None,
     mcp_state: MCPState | None = None,
+    skill_registry: SkillRegistry | None = None,
 ) -> tuple[AgentOrchestrator, ToolExecutor]:
     """Build an AgentOrchestrator using a callback holder to avoid two-phase construction."""
     settings = get_settings()
@@ -277,6 +291,7 @@ def _build_orchestrator(
         resolved_mcp_state,
         artifact_manager,
         persistent_store,
+        skill_registry,
     )
     executor = ToolExecutor(
         registry=registry,
@@ -285,15 +300,23 @@ def _build_orchestrator(
         artifact_manager=artifact_manager,
     )
 
+    # Append skill catalog to system prompt if available
+    system_prompt = settings.DEFAULT_SYSTEM_PROMPT
+    if skill_registry is not None and settings.SKILLS_ENABLED:
+        catalog_section = skill_registry.catalog_prompt_section()
+        if catalog_section:
+            system_prompt = system_prompt + "\n" + catalog_section
+
     orchestrator = AgentOrchestrator(
         claude_client=claude_client,
         tool_registry=registry,
         tool_executor=executor,
         event_emitter=event_emitter,
-        system_prompt=settings.DEFAULT_SYSTEM_PROMPT,
+        system_prompt=system_prompt,
         max_iterations=settings.MAX_ITERATIONS,
         initial_messages=initial_messages,
         thinking_budget=settings.THINKING_BUDGET,
+        skill_registry=skill_registry if settings.SKILLS_ENABLED else None,
     )
     callback_holder.set(orchestrator.on_task_complete)
 
@@ -307,6 +330,7 @@ def _build_planner_orchestrator(
     storage_backend: StorageBackend | None = None,
     persistent_store: PersistentMemoryStore | None = None,
     mcp_state: MCPState | None = None,
+    skill_registry: SkillRegistry | None = None,
 ) -> tuple[PlannerOrchestrator, ToolExecutor]:
     """Build a PlannerOrchestrator with properly wired sub-agent registries."""
     settings = get_settings()
@@ -336,6 +360,7 @@ def _build_planner_orchestrator(
         resolved_mcp_state,
         artifact_manager,
         persistent_store,
+        skill_registry,
     )
     executor = ToolExecutor(
         registry=base_registry,

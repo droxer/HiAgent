@@ -2,25 +2,30 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Square, Paperclip } from "lucide-react";
+import { Square, Paperclip, ArrowUp } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
-import { SendButton } from "@/shared/components/SendButton";
 import { FileAttachmentChip } from "@/shared/components/FileAttachmentChip";
+import { SkillSelector } from "@/features/skills";
 import { cn } from "@/shared/lib/utils";
+import { useTranslation } from "@/i18n";
 import type { AttachedFile } from "@/shared/types";
 
 interface ChatInputProps {
-  readonly onSendMessage: (message: string, files?: File[]) => void;
+  readonly onSendMessage: (message: string, files?: File[], skills?: string[]) => void;
   readonly disabled?: boolean;
   readonly onCancel?: () => void;
   readonly isAgentRunning?: boolean;
+  readonly variant?: "default" | "welcome";
+  readonly autoFocus?: boolean;
 }
 
-export function ChatInput({ onSendMessage, disabled = false, onCancel, isAgentRunning = false }: ChatInputProps) {
+export function ChatInput({ onSendMessage, disabled = false, onCancel, isAgentRunning = false, variant = "default", autoFocus = false }: ChatInputProps) {
+  const { t } = useTranslation();
   const [input, setInput] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -28,7 +33,7 @@ export function ChatInput({ onSendMessage, disabled = false, onCancel, isAgentRu
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   }, []);
 
   useEffect(() => {
@@ -67,9 +72,11 @@ export function ChatInput({ onSendMessage, disabled = false, onCancel, isAgentRu
     const trimmed = input.trim();
     if (!trimmed && attachedFiles.length === 0) return;
     const files = attachedFiles.length > 0 ? attachedFiles.map((f) => f.file) : undefined;
-    onSendMessage(trimmed || "See attached files", files);
+    const skills = selectedSkill ? [selectedSkill] : undefined;
+    onSendMessage(trimmed || t("chat.defaultFileMessage"), files, skills);
     setInput("");
     setAttachedFiles([]);
+    setSelectedSkill(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -120,9 +127,11 @@ export function ChatInput({ onSendMessage, disabled = false, onCancel, isAgentRu
   }, [addFiles]);
 
   const hasContent = input.trim().length > 0 || attachedFiles.length > 0;
+  const hasAttachments = selectedSkill || attachedFiles.length > 0;
+  const isWelcome = variant === "welcome";
 
   return (
-    <div className="shrink-0 px-4 pb-4 pt-2">
+    <div className={cn(!isWelcome && "shrink-0 px-4 pb-4 pt-2")}>
       <form
         onSubmit={handleSubmit}
         onDragOver={handleDragOver}
@@ -139,28 +148,53 @@ export function ChatInput({ onSendMessage, disabled = false, onCancel, isAgentRu
 
         <div
           className={cn(
-            "relative rounded-xl backdrop-blur-sm bg-card/80 transition-shadow duration-200",
+            "relative rounded-lg bg-card border transition-all duration-200",
             isFocused
-              ? "shadow-[0_0_0_1px_var(--color-border-active),0_4px_12px_rgba(0,0,0,0.3),0_0_20px_var(--color-input-glow)]"
-              : "shadow-[0_0_0_1px_var(--color-border),0_1px_3px_rgba(0,0,0,0.2)]",
-            isDragOver && "ring-2 ring-[var(--color-border-active)] bg-secondary/40",
+              ? "border-border-active shadow-md"
+              : "border-border shadow-sm",
+            isDragOver && "border-dashed border-border-active bg-secondary/30",
           )}
         >
-          {/* File preview chips */}
-          {attachedFiles.length > 0 && (
-            <div className="flex flex-wrap gap-2 px-4 pt-3">
-              {attachedFiles.map((af) => (
-                <FileAttachmentChip
-                  key={af.id}
-                  name={af.file.name}
-                  size={af.file.size}
-                  previewUrl={af.previewUrl}
-                  onRemove={() => removeFile(af.id)}
-                />
-              ))}
-            </div>
-          )}
+          {/* File & skill attachment shelf */}
+          <AnimatePresence>
+            {hasAttachments && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="overflow-hidden"
+              >
+                <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3 pb-1">
+                  <SkillSelector
+                    selectedSkill={selectedSkill}
+                    onSelect={setSelectedSkill}
+                    buttonSize="icon-xs"
+                  />
+                  <AnimatePresence>
+                    {attachedFiles.map((af) => (
+                      <motion.div
+                        key={af.id}
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        transition={{ duration: 0.15 }}
+                      >
+                        <FileAttachmentChip
+                          name={af.file.name}
+                          size={af.file.size}
+                          previewUrl={af.previewUrl}
+                          onRemove={() => removeFile(af.id)}
+                        />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
+          {/* Textarea */}
           <textarea
             ref={textareaRef}
             value={input}
@@ -169,87 +203,104 @@ export function ChatInput({ onSendMessage, disabled = false, onCancel, isAgentRu
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             onPaste={handlePaste}
-            placeholder={disabled ? "Agent is working..." : "What can I help you build?"}
+            placeholder={disabled ? t("chat.placeholderWorking") : t("chat.placeholder")}
             disabled={disabled}
-            rows={1}
+            rows={isWelcome ? 3 : 1}
+            autoFocus={autoFocus || isWelcome}
             className={cn(
-              "w-full resize-none bg-transparent px-4 pt-3.5 pb-10 text-sm leading-relaxed text-foreground placeholder:text-placeholder outline-none",
+              "w-full resize-none bg-transparent px-4 pt-3 pb-3 text-sm leading-relaxed text-foreground placeholder:text-placeholder outline-none",
               disabled && "opacity-50 cursor-not-allowed",
             )}
           />
 
-          {/* Bottom bar: paperclip + hint + action button */}
-          <div className="absolute right-3 bottom-2.5 left-3 flex items-center justify-between">
-            <div className="flex items-center gap-1">
+          {/* Toolbar divider + action bar */}
+          <div className="border-t border-border/40 px-3 py-2 flex items-center justify-between gap-2">
+            {/* Left: tools + hints */}
+            <div className="flex items-center gap-0.5">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon-xs"
-                aria-label="Attach file"
+                aria-label={t("chat.attachFile")}
                 onClick={() => fileInputRef.current?.click()}
-                className="text-muted-foreground/50 hover:bg-secondary hover:text-muted-foreground"
+                className="text-muted-foreground-dim hover:bg-secondary hover:text-muted-foreground"
               >
-                <Paperclip className="h-4 w-4" />
+                <Paperclip className="h-3.5 w-3.5" />
               </Button>
-              <span
-                className={cn(
-                  "text-xs text-placeholder select-none transition-opacity duration-150",
-                  hasContent && !isAgentRunning ? "opacity-100" : "opacity-0",
-                )}
-              >
-                <kbd className="font-mono text-[10px]">Enter</kbd> to send
-                <span className="mx-1 text-border-strong">&middot;</span>
-                <kbd className="font-mono text-[10px]">Shift + Enter</kbd> for new line
-              </span>
+
+              {!selectedSkill && (
+                <SkillSelector
+                  selectedSkill={selectedSkill}
+                  onSelect={setSelectedSkill}
+                  buttonSize="icon-xs"
+                />
+              )}
+
+              {!isWelcome && (
+                <span
+                  className={cn(
+                    "ml-1 text-xs text-muted-foreground-dim select-none transition-opacity duration-150",
+                    hasContent && !isAgentRunning ? "opacity-100" : "opacity-0",
+                  )}
+                >
+                  <kbd className="rounded border border-border bg-secondary/60 px-1 py-0.5 font-mono text-[0.625rem] text-muted-foreground">Enter</kbd>
+                  <span className="mx-1 text-muted-foreground-dim">{t("chat.enterToSend")}</span>
+                  <kbd className="rounded border border-border bg-secondary/60 px-1 py-0.5 font-mono text-[0.625rem] text-muted-foreground">Shift+Enter</kbd>
+                  <span className="ml-1 text-muted-foreground-dim">{t("chat.shiftEnterNewLine")}</span>
+                </span>
+              )}
             </div>
 
-            <div className="relative flex h-8 w-8 items-center justify-center">
-              <AnimatePresence mode="wait">
-                {isAgentRunning ? (
-                  <motion.button
-                    key="cancel"
-                    type="button"
-                    onClick={onCancel}
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.8, opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className={cn(
-                      "group relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
-                      "bg-foreground/[0.06] text-muted-foreground",
-                      "transition-all duration-200 ease-out",
-                      "hover:bg-destructive/10 hover:text-destructive",
-                      "active:scale-90 active:bg-destructive/15",
-                      "focus-visible:ring-[3px] focus-visible:ring-ring/50 outline-none",
-                    )}
-                  >
-                    {/* Conic-gradient spinning border */}
-                    <span
-                      className="absolute inset-0 rounded-lg opacity-60"
-                      style={{
-                        background: "conic-gradient(from 0deg, var(--color-ai-glow), transparent 60%, var(--color-ai-glow))",
-                        mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                        maskComposite: "exclude",
-                        WebkitMaskComposite: "xor",
-                        padding: "1px",
-                        animation: "conicSpin 3s linear infinite",
-                      }}
-                    />
-                    <Square
-                      className="relative h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110"
-                      fill="currentColor"
-                      strokeWidth={0}
-                    />
-                  </motion.button>
-                ) : (
-                  <SendButton
-                    key="send"
-                    disabled={disabled}
-                    hasContent={hasContent}
+            {/* Right: send / cancel */}
+            <AnimatePresence mode="wait">
+              {isAgentRunning ? (
+                <motion.button
+                  key="cancel"
+                  type="button"
+                  onClick={onCancel}
+                  aria-label={t("chat.cancelExecution")}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className={cn(
+                    "group flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+                    "bg-muted text-muted-foreground",
+                    "transition-colors duration-200 ease-out",
+                    "hover:bg-destructive/10 hover:text-destructive",
+                    "active:bg-destructive/15",
+                    "focus-visible:ring-[3px] focus-visible:ring-ring/50 outline-none",
+                  )}
+                >
+                  <Square
+                    className="h-3 w-3 transition-transform duration-200 group-hover:scale-110"
+                    fill="currentColor"
+                    strokeWidth={0}
                   />
-                )}
-              </AnimatePresence>
-            </div>
+                </motion.button>
+              ) : (
+                <motion.button
+                  key="send"
+                  type="submit"
+                  disabled={disabled || !hasContent}
+                  aria-label={hasContent ? t("chat.sendMessage") : t("chat.typeToSend")}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: hasContent ? 1 : 0.4 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className={cn(
+                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+                    "transition-colors duration-200 ease-out",
+                    "focus-visible:ring-[3px] focus-visible:ring-ring/50 outline-none",
+                    hasContent
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80"
+                      : "bg-muted text-placeholder cursor-default",
+                  )}
+                >
+                  <ArrowUp className="h-3.5 w-3.5" strokeWidth={2.5} />
+                </motion.button>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </form>

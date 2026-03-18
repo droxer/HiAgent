@@ -31,7 +31,7 @@ export function AgentStatusRow({ agent, variant = "light" }: AgentStatusRowProps
           transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
         />
       )}
-      <GitFork className={cn("h-3 w-3 shrink-0", isDark ? "text-terminal-dim" : "text-muted-foreground/50")} />
+      <GitFork className={cn("h-3 w-3 shrink-0", isDark ? "text-terminal-dim" : "text-muted-foreground-dim")} />
       <span className={cn("flex-1 truncate", isDark ? "text-[var(--color-terminal-text)]" : "text-foreground")}>
         {agent.description}
       </span>

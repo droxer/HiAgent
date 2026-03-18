@@ -10,7 +10,7 @@ from typing import Any
 
 from loguru import logger
 
-from agent.sandbox.base import PoolKey, SandboxConfig
+from agent.sandbox.base import SANDBOX_HOME_DIR, PoolKey, SandboxConfig
 
 
 @dataclass(frozen=True)
@@ -100,6 +100,22 @@ class SandboxPool:
             entry.sandbox_id,
             api_key=self._api_key,
         )
+        result = await asyncio.to_thread(
+            sandbox.commands.run,
+            " && ".join(
+                (
+                    f"mkdir -p {SANDBOX_HOME_DIR}",
+                    f"rm -rf {SANDBOX_HOME_DIR}/uploads",
+                    f"mkdir -p {SANDBOX_HOME_DIR}/uploads",
+                    f"ln -sfn {SANDBOX_HOME_DIR} /workspace",
+                )
+            ),
+        )
+        if getattr(result, "exit_code", 0) != 0:
+            raise RuntimeError(
+                "Failed to sanitize pooled sandbox before reuse: "
+                f"{getattr(result, 'stderr', '') or getattr(result, 'stdout', '')}"
+            )
         return E2BSession(sandbox=sandbox, config=entry.config)
 
     async def release(self, session: Any) -> None:

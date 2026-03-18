@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import re
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Path, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Path
 from fastapi.responses import StreamingResponse
 from loguru import logger
+from starlette.datastructures import UploadFile
 from starlette.requests import Request
 
 from agent.llm.client import ClaudeClient
@@ -44,6 +47,18 @@ router = APIRouter(dependencies=common_dependencies)
 # ---------------------------------------------------------------------------
 
 
+def _sanitize_filename(name: str) -> str:
+    """Strip path components and dangerous characters from a filename.
+
+    Prevents path-traversal attacks (e.g. ``../../etc/passwd``) by extracting
+    only the basename and replacing non-word characters (except ``.-`` and
+    space) with underscores.
+    """
+    name = os.path.basename(name)
+    name = re.sub(r"[^\w.\- ]", "_", name)
+    return name.strip() or "unnamed"
+
+
 async def _parse_uploads(files: list[UploadFile]) -> tuple[FileAttachment, ...]:
     """Validate and convert uploaded files into immutable FileAttachment tuples."""
     if len(files) > MAX_FILES_PER_MESSAGE:
@@ -61,9 +76,10 @@ async def _parse_uploads(files: list[UploadFile]) -> tuple[FileAttachment, ...]:
                 status_code=400,
                 detail=f"File '{f.filename}' exceeds {MAX_FILE_SIZE_MB}MB limit",
             )
+        safe_name = _sanitize_filename(f.filename or "unnamed")
         attachments.append(
             FileAttachment(
-                filename=f.filename or "unnamed",
+                filename=safe_name,
                 content_type=f.content_type or "application/octet-stream",
                 data=data,
                 size=len(data),
@@ -72,28 +88,25 @@ async def _parse_uploads(files: list[UploadFile]) -> tuple[FileAttachment, ...]:
     return tuple(attachments)
 
 
-async def _upload_files_to_sandbox(
-    executor: Any,
-    attachments: tuple[FileAttachment, ...],
-) -> None:
-    """Upload attached files to the sandbox's /home/user/uploads/ directory."""
-    import os
-    import tempfile
+def _extract_upload_files(raw_files: list[Any]) -> list[UploadFile]:
+    """Return only upload-file parts from a multipart form payload."""
+    return [f for f in raw_files if isinstance(f, UploadFile)]
 
-    for att in attachments:
-        try:
-            session = await executor._get_sandbox_session()
-            await session.execute("mkdir -p /home/user/uploads")
-            with tempfile.NamedTemporaryFile(delete=False, suffix=f"_{att.filename}") as tmp:
-                tmp.write(att.data)
-                tmp_path = tmp.name
-            try:
-                await session.upload_file(tmp_path, f"/home/user/uploads/{att.filename}")
-            finally:
-                os.unlink(tmp_path)
-            logger.info("uploaded_file filename=%s size=%d", att.filename, att.size)
-        except Exception as exc:
-            logger.warning("file_upload_failed filename=%s error=%s", att.filename, exc)
+
+def _extract_selected_skills(form: Any) -> tuple[str, ...]:
+    """Extract selected skill names from a multipart form payload."""
+    raw_values = form.getlist("skills")
+    if not raw_values:
+        single = form.get("skills")
+        if single is not None:
+            raw_values = [single]
+
+    skills: list[str] = []
+    for value in raw_values:
+        skill = str(value).strip()
+        if skill:
+            skills.append(skill)
+    return tuple(skills)
 
 
 # ---------------------------------------------------------------------------
@@ -154,6 +167,7 @@ async def _reconstruct_conversation(
         initial_messages=tuple(initial_messages),
         persistent_store=persistent_store,
         mcp_state=state.mcp_state,
+        skill_registry=getattr(state, "skill_registry", None),
     )
 
     entry = ConversationEntry(
@@ -186,17 +200,26 @@ async def _run_turn(
     orchestrator: Any,
     message: str,
     attachments: tuple[FileAttachment, ...] = (),
+    selected_skills: tuple[str, ...] = (),
 ) -> str:
     """Run a single turn of the conversation. Does NOT close the SSE connection."""
     try:
-        # Upload files to sandbox if we have attachments and an executor
-        if attachments:
-            entry = state.conversations.get(conversation_id)
-            if entry is not None:
-                await _upload_files_to_sandbox(entry.executor, attachments)
+        # Store attachments on the entry so retry can re-send them
+        entry = state.conversations.get(conversation_id)
+        if entry is not None and attachments:
+            entry.last_attachments = attachments
+        if entry is not None:
+            entry.last_selected_skills = selected_skills
+        # NOTE: file upload to sandbox is now handled inside
+        # orchestrator.run() — after skill matching — so that files
+        # land in the correct sandbox template (e.g. data_science).
 
         logger.info("turn_started conversation_id=%s", conversation_id)
-        result = await orchestrator.run(message, attachments=attachments)
+        result = await orchestrator.run(
+            message,
+            attachments=attachments,
+            selected_skills=selected_skills,
+        )
         logger.info("turn_completed conversation_id=%s", conversation_id)
         return result
     except asyncio.CancelledError:
@@ -326,13 +349,15 @@ async def create_conversation(
             raise HTTPException(status_code=422, detail="message must not be empty")
         message = str(message)
         use_planner = str(form.get("use_planner", "false")).lower() == "true"
+        selected_skills = _extract_selected_skills(form)
         raw_files = form.getlist("files")
-        upload_files = [f for f in raw_files if isinstance(f, UploadFile)]
+        upload_files = _extract_upload_files(raw_files)
         attachments = await _parse_uploads(upload_files) if upload_files else ()
     else:
         body = MessageRequest(**(await request.json()))
         message = body.message
         use_planner = body.use_planner
+        selected_skills = tuple(body.skills)
         attachments = ()
 
     conversation_id = str(uuid.uuid4())
@@ -361,6 +386,7 @@ async def create_conversation(
             state.storage_backend,
             persistent_store=persistent_store,
             mcp_state=state.mcp_state,
+            skill_registry=getattr(state, "skill_registry", None),
         )
     else:
         orchestrator, executor = _build_orchestrator(
@@ -370,6 +396,7 @@ async def create_conversation(
             state.storage_backend,
             persistent_store=persistent_store,
             mcp_state=state.mcp_state,
+            skill_registry=getattr(state, "skill_registry", None),
         )
 
     entry = ConversationEntry(
@@ -394,7 +421,10 @@ async def create_conversation(
     # but connection-pool timing can cause a brief delay.
     for _attempt in range(10):
         async with state.db_session_factory() as barrier_session:
-            if await state.db_repo.get_conversation(barrier_session, conv_uuid) is not None:
+            if (
+                await state.db_repo.get_conversation(barrier_session, conv_uuid)
+                is not None
+            ):
                 break
         await asyncio.sleep(0.05)
     else:
@@ -407,7 +437,14 @@ async def create_conversation(
 
     # Start first turn
     entry.turn_task = asyncio.create_task(
-        _run_turn(state, conversation_id, orchestrator, message, attachments),
+        _run_turn(
+            state,
+            conversation_id,
+            orchestrator,
+            message,
+            attachments,
+            selected_skills,
+        ),
     )
 
     # Generate a concise title in the background
@@ -468,12 +505,14 @@ async def send_message(
         if not message or not str(message).strip():
             raise HTTPException(status_code=422, detail="message must not be empty")
         message = str(message)
+        selected_skills = _extract_selected_skills(form)
         raw_files = form.getlist("files")
-        upload_files = [f for f in raw_files if isinstance(f, UploadFile)]
+        upload_files = _extract_upload_files(raw_files)
         attachments = await _parse_uploads(upload_files) if upload_files else ()
     else:
         body = MessageRequest(**(await request.json()))
         message = body.message
+        selected_skills = tuple(body.skills)
         attachments = ()
 
     entry = state.conversations.get(conversation_id)
@@ -491,15 +530,20 @@ async def send_message(
 
     # Start new turn on the same orchestrator (preserves full history)
     entry.turn_task = asyncio.create_task(
-        _run_turn(state, conversation_id, entry.orchestrator, message, attachments),
+        _run_turn(
+            state,
+            conversation_id,
+            entry.orchestrator,
+            message,
+            attachments,
+            selected_skills,
+        ),
     )
 
     # Touch updated_at timestamp
     try:
         async with state.db_session_factory() as session:
-            await state.db_repo.update_conversation(
-                session, uuid.UUID(conversation_id)
-            )
+            await state.db_repo.update_conversation(session, uuid.UUID(conversation_id))
     except Exception as exc:
         logger.warning(
             "failed_to_update_conversation_timestamp id=%s error=%s",
@@ -710,9 +754,16 @@ async def retry_turn(
     if hasattr(orch, "reset_cancel"):
         orch.reset_cancel()  # type: ignore[union-attr]
 
-    # Start a new turn with the same message
+    # Start a new turn with the same message and original attachments
     entry.turn_task = asyncio.create_task(
-        _run_turn(state, conversation_id, orch, last_msg),
+        _run_turn(
+            state,
+            conversation_id,
+            orch,
+            last_msg,
+            attachments=entry.last_attachments,
+            selected_skills=entry.last_selected_skills,
+        ),
     )
 
     logger.info("turn_retried conversation_id=%s", conversation_id)
@@ -727,7 +778,9 @@ async def delete_conversation(
 ) -> dict[str, str]:
     """Delete a conversation and clean up in-memory resources."""
     await _cleanup_conversation(state, conversation_id)
-    deleted = await state.db_repo.delete_conversation(session, uuid.UUID(conversation_id))
+    deleted = await state.db_repo.delete_conversation(
+        session, uuid.UUID(conversation_id)
+    )
     if not deleted:
         raise HTTPException(status_code=404, detail="Conversation not found")
     logger.info("conversation_deleted id=%s", conversation_id)

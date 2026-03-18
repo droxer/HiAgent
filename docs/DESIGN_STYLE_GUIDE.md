@@ -1,6 +1,6 @@
 # HiAgent Design Style Guide
 
-> Dark-first, keyboard-driven, content-focused AI interface.
+> Warm, approachable, content-focused AI interface with generous whitespace and organic softness.
 
 ---
 
@@ -16,54 +16,62 @@
 
 5. **Token-Driven Styling** — All colors, sizes, and spacing must reference design tokens. Never use hardcoded hex values, raw Tailwind palette classes (e.g., `emerald-500`), or arbitrary pixel values when a token exists. This applies equally to Tailwind classes and inline `style` props (including Framer Motion `style`/`animate` objects — always use `var(--color-*)`).
 
+6. **Warm & Approachable** — The aesthetic should feel human and inviting, not cold and technical. Prefer warm neutrals, soft radii, subtle shadows, and organic softness over sharp edges, cold grays, and flashy glow effects.
+
 ---
 
 ## Color System
+
+### Design Philosophy
+
+The palette is built on **warm stone neutrals** — cream backgrounds, warm grays for text and borders, and a warm violet accent. This creates an approachable, professional feel inspired by modern product sites like junior.so, avoiding the cold "generic AI" aesthetic of pure whites, cool grays, and indigo glows.
+
+### Core Palette (Light Mode — Default)
+
+| Token | Hex | Role |
+|-------|-----|------|
+| `background` | `#FAF9F6` | Page canvas — warm cream |
+| `foreground` | `#1C1917` | Primary text — warm near-black (stone-900) |
+| `primary` | `#1C1917` | Action buttons, interactive fills |
+| `primary-foreground` | `#FAF9F6` | Text on primary surfaces |
+| `secondary` | `#F5F0EB` | Muted backgrounds, user messages |
+| `secondary-foreground` | `#1C1917` | Text on secondary surfaces |
+| `muted` | `#F5F0EB` | Inactive/disabled backgrounds |
+| `muted-foreground` | `#78716C` | Secondary text, hints, timestamps (stone-500) |
+| `muted-foreground-dim` | `#A8A29E` | Tertiary text with WCAG AA contrast (replaces `/60` and `/40` opacity modifiers) |
+| `card` | `#FFFFFF` | Card/elevated surfaces (white on cream for natural contrast) |
+| `card-foreground` | `#1C1917` | Text on cards |
+| `popover` | `#FFFFFF` | Dropdown/popover bg |
+| `popover-foreground` | `#1C1917` | Text in popovers |
+| `destructive` | `#EF4444` | Error states, delete actions |
 
 ### Core Palette (Dark Mode)
 
 | Token | Hex | Role |
 |-------|-----|------|
-| `background` | `#0A0A0A` | Page canvas — deep pure dark |
+| `background` | `#1C1917` | Page canvas — warm dark (stone-900) |
 | `foreground` | `#EDEDED` | Primary text — soft white |
 | `primary` | `#FFFFFF` | Action buttons, interactive fills |
-| `primary-foreground` | `#0A0A0A` | Text on primary surfaces |
-| `secondary` | `#1A1A1A` | Muted backgrounds, user messages |
+| `primary-foreground` | `#1C1917` | Text on primary surfaces |
+| `secondary` | `#292524` | Muted backgrounds (stone-800) |
 | `secondary-foreground` | `#EDEDED` | Text on secondary surfaces |
-| `muted` | `#1A1A1A` | Inactive/disabled backgrounds |
-| `muted-foreground` | `#A1A1AA` | Secondary text, hints, timestamps |
-| `card` | `#141414` | Card/elevated surfaces |
+| `muted` | `#292524` | Inactive/disabled backgrounds |
+| `muted-foreground` | `#A8A29E` | Secondary text (stone-400) |
+| `muted-foreground-dim` | `#78716C` | Tertiary text with WCAG AA contrast (replaces `/60` and `/40` opacity modifiers) |
+| `card` | `#292524` | Card/elevated surfaces |
 | `card-foreground` | `#EDEDED` | Text on cards |
-| `popover` | `#141414` | Dropdown/popover bg |
+| `popover` | `#292524` | Dropdown/popover bg |
 | `popover-foreground` | `#EDEDED` | Text in popovers |
 | `destructive` | `#F87171` | Error states, delete actions |
 
-### Core Palette (Light Mode)
-
-| Token | Hex | Role |
-|-------|-----|------|
-| `background` | `#FFFFFF` | Page canvas — white |
-| `foreground` | `#1A1A1A` | Primary text — near-black |
-| `primary` | `#1A1A1A` | Action buttons, interactive fills |
-| `primary-foreground` | `#FFFFFF` | Text on primary surfaces |
-| `secondary` | `#F4F4F5` | Muted backgrounds |
-| `secondary-foreground` | `#1A1A1A` | Text on secondary surfaces |
-| `muted` | `#F4F4F5` | Inactive/disabled backgrounds |
-| `muted-foreground` | `#71717A` | Secondary text, hints, timestamps |
-| `card` | `#FFFFFF` | Card/elevated surfaces |
-| `card-foreground` | `#1A1A1A` | Text on cards |
-| `popover` | `#FFFFFF` | Dropdown/popover bg |
-| `popover-foreground` | `#1A1A1A` | Text in popovers |
-| `destructive` | `#EF4444` | Error states, delete actions |
-
 ### Borders
 
-| Token | Hex | Usage |
-|-------|-----|-------|
-| `border` | `#2A2A2A` | Default borders, dividers (1px, used sparingly) |
-| `border-strong` | `#3A3A3A` | Emphasized borders |
-| `border-active` | `#525252` | Focus state, active input borders |
-| `input` | `#2A2A2A` | Input field borders |
+| Token | Light | Dark | Usage |
+|-------|-------|------|-------|
+| `border` | `#E8E5E0` | `#44403C` | Default borders, dividers (1px, warm) |
+| `border-strong` | `#D6D3D1` | `#57534E` | Emphasized borders |
+| `border-active` | `#A8A29E` | `#78716C` | Focus state, active input borders |
+| `input` | `#E8E5E0` | `#44403C` | Input field borders |
 
 ### Accent & Semantic Colors
 
@@ -71,38 +79,41 @@ Used sparingly for status indicators and semantic meaning. Never as dominant sur
 
 | Token | Hex | Semantic |
 |-------|-----|----------|
-| `accent-blue` | `#2563EB` | Links, info, processing |
-| `accent-emerald` | `#34D399` | Success, running, progress |
-| `accent-amber` | `#D97706` | Warning, thinking |
-| `accent-rose` | `#F87171` | Error, failure |
-| `accent-purple` | `#7C3AED` | Tool execution |
-| `ai-glow` | `#818CF8` | AI active state — soft electric indigo used when AI is typing, processing, or highlighting generated text |
+| `user-accent` | `#3B82F6` | Links, info, processing |
+| `accent-emerald` | `#34D399` / `#10B981` | Success, running, progress |
+| `accent-amber` | `#D97706` / `#B45309` | Warning, thinking |
+| `accent-rose` | `#F87171` / `#EF4444` | Error, failure |
+| `accent-purple` | `#8B5CF6` | AI accent, tool execution — warm violet |
+| `ai-glow` | `#8B5CF6` | AI active state — warm violet used when AI is typing, processing, or highlighting generated text |
 
 ### Sidebar
 
 | Token | Dark | Light |
 |-------|------|-------|
-| `sidebar-bg` | `#0A0A0A` | `#F9FAFB` |
-| `sidebar-active` | `#1A1A1A` | `#F0F0F2` |
-| `sidebar-hover` | `#141414` | `#F4F4F5` |
+| `sidebar-bg` | `#1C1917` | `#F5F0EB` |
+| `sidebar-active` | `#292524` | `#EDE8E3` |
+| `sidebar-hover` | `#292524` | `#EDE8E3` |
 
 ### Terminal (Dark Panel)
 
-| Token | Hex | Usage |
-|-------|-----|-------|
-| `terminal-bg` | `#0A0A0A` | Panel background |
-| `terminal-surface` | `#141414` | Elevated surfaces within panel |
-| `terminal-border` | `#2A2A2A` | Panel borders |
-| `terminal-text` | `#D6D3D1` | Primary terminal text |
-| `terminal-dim` | `#6B6B76` | Dimmed icons, secondary text in terminal. Use this instead of `text-white/20` or similar hardcoded opacity values. |
+| Token | Light | Dark | Usage |
+|-------|-------|------|-------|
+| `terminal-bg` | `#FAF9F6` | `#1C1917` | Panel background |
+| `terminal-surface` | `#F5F0EB` | `#292524` | Elevated surfaces within panel |
+| `terminal-border` | `#E8E5E0` | `#44403C` | Panel borders |
+| `terminal-text` | `#2D2D2D` | `#D6D3D1` | Primary terminal text |
+| `terminal-dim` | `#8B8B96` | `#78716C` | Dimmed icons, secondary text in terminal |
 
 ### Token Rules
 
 - **Always use semantic tokens** — never raw Tailwind palette classes like `text-emerald-500`. Use `text-accent-emerald` instead.
-- **Framer Motion `style`/`animate` props** — always use `var(--color-*)` CSS custom property references, never hardcoded hex/rgba values. Example: `background: "linear-gradient(90deg, var(--color-ai-glow), var(--color-accent-purple))"`.
+- **Framer Motion `style`/`animate` props** — always use `var(--color-*)` CSS custom property references, never hardcoded hex/rgba values. Example: `background: "linear-gradient(90deg, var(--color-accent-purple), var(--color-accent-emerald))"`.
 - **Text on destructive surfaces** — use `text-primary-foreground`, not `text-white`.
 - **Subtle dividers** — use `bg-border/40`, not `bg-white/[0.04]` (which is invisible in light mode).
 - **Inline code backgrounds** — use `bg-muted` or rely on `.markdown-body` CSS rules. Never use `bg-black/5` (breaks in dark mode).
+- **No cold grays** — use warm stone-based grays throughout. Never use zinc/slate/cool gray tokens.
+- **No opacity-modified borders** — use `border-border` (default), `border-border-strong` (hover), or `border-border-active` (focus). Never use `border-border/60`, `bg-border/60`, or other opacity modifiers on borders.
+- **No opacity-modified text for contrast** — use `text-muted-foreground-dim` instead of `text-muted-foreground/60` or `text-muted-foreground/40`. The dim token maintains WCAG AA contrast ratios.
 
 ---
 
@@ -112,7 +123,7 @@ Used sparingly for status indicators and semantic meaning. Never as dominant sur
 
 | Role | Font | Variable | Fallback | Usage Scope |
 |------|------|----------|----------|-------------|
-| Body (sans) | Inter | `--font-inter` | system-ui, -apple-system, sans-serif | All body text, UI chrome, labels, headings, panel titles |
+| Body (sans) | Inter | `--font-inter` | system-ui, -apple-system, sans-serif | All body text, UI chrome, labels, headings, panel titles. Designed for screens at small sizes (14px body). |
 | Display (serif) | Instrument Serif | `--font-instrument-serif` | Georgia, serif | **WelcomeScreen hero heading only.** Do not use for panel titles, section headers, or UI chrome. |
 | Code (mono) | JetBrains Mono | `--font-jetbrains-mono` | SFMono, Menlo, Consolas, monospace | Code blocks, raw data, terminal logs, keyboard shortcut labels |
 
@@ -149,13 +160,34 @@ text-rendering: optimizeLegibility;
 
 ## Shadows
 
-Three tiers, using `rgba(0, 0, 0, ...)` for dark mode:
+Shadows are warm and soft, using `rgba(28, 25, 23, ...)` (warm stone) instead of pure black.
+
+### Light Mode
 
 | Name | Value | Usage |
 |------|-------|-------|
-| `shadow-card` | `0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2)` | Cards at rest |
-| `shadow-card-hover` | `0 4px 12px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3)` | Cards on hover |
-| `shadow-elevated` | `0 8px 24px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)` | Modals, command palette |
+| `shadow-card` | `0 1px 3px rgba(28,25,23,0.06), 0 1px 2px rgba(28,25,23,0.03)` | Card resting state |
+| `shadow-card-hover` | `0 4px 12px rgba(28,25,23,0.08), 0 1px 3px rgba(28,25,23,0.04)` | Card hover lift |
+| `shadow-elevated` | `0 8px 24px rgba(28,25,23,0.10), 0 2px 8px rgba(28,25,23,0.05)` | Floating overlays: modals, command palette, dropdowns, popovers |
+
+### Dark Mode
+
+| Name | Value | Usage |
+|------|-------|-------|
+| `shadow-card` | `0 1px 3px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.12)` | Card resting state |
+| `shadow-card-hover` | `0 4px 12px rgba(0,0,0,0.25), 0 1px 3px rgba(0,0,0,0.15)` | Card hover lift |
+| `shadow-elevated` | `0 8px 24px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2)` | Floating overlays |
+
+### Shadow Usage
+
+**Cards and content elements** use subtle `shadow-sm` by default with `hover:shadow-md` for a gentle lift effect:
+- Rest: `border border-border shadow-sm`
+- Hover: `hover:border-border-strong hover:shadow-md`
+- Active/focused: `border-border-active`
+
+**Floating overlays** (modals, command palette, dropdowns) use `shadow-elevated`.
+
+**Inputs and form controls** use `shadow-sm` at rest, `shadow-md` on focus (replacing the old glow effect).
 
 ### Focus Ring
 
@@ -163,7 +195,7 @@ Three tiers, using `rgba(0, 0, 0, ...)` for dark mode:
 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50
 ```
 
-3px ring using `--color-ring` (#EDEDED) at 50% opacity.
+3px ring using `--color-ring` at 50% opacity.
 
 **MANDATORY** on every interactive element: buttons, links, inputs, tabs, sidebar items, toolbar actions, and any element with `onClick`. This includes custom interactive elements — not just base UI primitives.
 
@@ -175,23 +207,25 @@ focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50
 
 The central nervous system of the application.
 
-- **Visuals**: Floating, center-screen modal with heavy blur backdrop (glassmorphism)
-- **Behavior**: Instantly focused search bar. Below: recent documents, quick AI actions, system settings
+- **Visuals**: Floating, center-screen modal with heavy blur backdrop
+- **Behavior**: Instantly focused search bar. Below: quick AI actions, navigation (Skills, MCP, New Task), recent conversations (from app store, limit 5), and settings
 - **Styling**: `bg-card/90 backdrop-blur-xl border border-border rounded-xl shadow-elevated`
+- **Shortcuts**: Display keyboard hints (`⌘N`, `ESC`) on the right side of items using `<kbd>` elements
+- **Global shortcuts**: `Cmd+N` / `Ctrl+N` creates a new task (navigates home)
 
 ### Chat Messages
 
 **User messages**: Right-aligned bubble card with subtle accent tint. Styled with `bg-[var(--color-user-accent-dim)]`, a 1px border at `border-[var(--color-user-accent)]/10`, and asymmetric rounded corners (`rounded-2xl rounded-br-md`). Max width 80%.
 
-**Assistant messages**: Left-aligned, plain text with markdown rendering. No bubble, no border — `text-sm leading-[1.5] text-foreground`. Max width 85%. AI indicator: "HIAGENT" label in `text-xs font-medium tracking-wide text-ai-glow/70 uppercase`.
+**Assistant messages**: Left-aligned, plain text with markdown rendering. No bubble, no border — `text-sm leading-[1.5] text-foreground`. Max width 85%. AI indicator: "HIAGENT" label in `text-xs font-medium tracking-wide text-accent-purple/70 uppercase`. Action buttons (copy, retry) use hover-reveal pattern: `opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150`.
 
-**AI Active State**: When AI is processing, use `ai-glow` (`#818CF8`) token indicators — never hardcoded hex. Use `text-ai-glow/70` for labels, `bg-ai-glow` for dots. The "writing" phase indicator should use `ai-glow` tokens (not `primary`).
+**AI Active State**: When AI is processing, use `accent-purple` (`#8B5CF6`) token indicators — never hardcoded hex. Use `text-accent-purple/70` for labels, `bg-accent-purple` for dots.
 
 ### Interactive Data Blocks
 
 When AI generates structured content, render as a distinct block:
-- Subtle 1px border (`border-border`)
-- Slight background fill (`#1A1A1A`)
+- Subtle 1px border (`border-border`) with `shadow-sm`
+- Slight background fill (`bg-card`)
 - Hover state reveals utility icons (Copy, Edit, Delete, Regenerate) in top-right corner
 
 ### Processing Logs (Terminal Style)
@@ -222,20 +256,22 @@ The log section must have a collapse/expand affordance (chevron header). Complet
 - **Never use traditional spinning wheels** (`Loader2` + `animate-spin` is prohibited)
 - Use fast left-to-right shimmer gradient over skeleton of text block (use `--animate-shimmer` from globals.css)
 - Text streaming: character-by-character
-- Phase labels during loading should use `text-ai-glow/70`, not `text-muted-foreground`
+- Phase labels during loading should use `text-accent-purple/70`, not `text-muted-foreground`
 
 ### Core Patterns
 
 1. **Fade + Slide Up**: `initial={{ opacity: 0, y: 8 }}` → `animate={{ opacity: 1, y: 0 }}`
 2. **Stagger Children**: `staggerChildren: 0.05, delayChildren: 0.3` (max 0.4 — never exceed Standard timing band)
 3. **Spring Physics**: `type: "spring", stiffness: 300, damping: 25`
-4. **Shadow Lift (hover — NOT scale)**: Shadow increases on hover, no scale or translate transform on content cards
-5. **Opacity Pulse (status indicators)**: `animate={{ opacity: [0.4, 1, 0.4] }}` for breathing/pulsing dots and icons
+4. **Shadow Lift (hover)**: Cards use `shadow-sm` at rest, `hover:shadow-md` + `hover:border-border-strong` on hover
+5. **Opacity Pulse (status indicators)**: Use CSS `@keyframes` for pulsing dots (`pulsingDotFade`, `pulsingDotRing` in globals.css). Prefer CSS animations over framer-motion for simple continuous loops.
 
 ### Anti-Patterns
 
-- **No `scale` on content elements** — messages, cards, status indicators, dots. Scale is for buttons only. This includes pulsing `scale: [1, 1.4, 1]` on dots — use opacity pulse instead.
-- **No `y` or translate on hover for content cards** — use shadow lift only. `whileHover={{ y: -1 }}` on a card is prohibited.
+- **No `scale` on content elements** — messages, cards, status indicators, dots, entry animations. Scale is for buttons only. This includes pulsing `scale: [1, 1.4, 1]` on dots, and `scale: 0.98` on entry animations — use opacity + translateY instead.
+- **No glow effects** — `box-shadow: 0 0 Xpx` glow halos, `aiGlow` keyframes, `orbitalPulse` animations, and conic-gradient spinning borders are prohibited. Use subtle shadow lift and opacity pulse instead.
+- **No gradient mesh backgrounds** — animated multi-gradient backgrounds (`meshDrift`) are removed. Use a single subtle radial gradient at most.
+- **No glassmorphism on content** — `backdrop-blur-sm bg-card/80` on inputs and cards is prohibited. Use solid `bg-card` instead. Glassmorphism is allowed only for the command palette overlay.
 - **No gratuitous entrance animations** — reserve motion for state changes. Decorative `filter: blur()` on static heading words is prohibited.
 - **Respect `prefers-reduced-motion`** — wrap the app in `<MotionConfig reducedMotion="user">` (Framer Motion). The CSS `prefers-reduced-motion` media query in globals.css does NOT affect JS-driven Framer Motion animations.
 
@@ -264,38 +300,68 @@ import { MotionConfig } from "framer-motion";
 
 - Expanded: `w-64` (256px) — default width must be 256px, not 280px
 - Collapsed: `w-12` (48px)
-- Background: `sidebar-bg` token (matches page canvas)
+- Background: `sidebar-bg` token (warm cream in light mode, warm dark in dark mode)
 - Internal padding: `px-4` expanded, `px-2` collapsed — consistent across all sections (header, search, task list)
+- Active indicator: solid `bg-accent-purple` bar (3px wide × 20px tall: `w-[3px] h-5`, no glow shadow)
+- Right-edge separator: use `border-r border-border` on the aside element (not an absolutely-positioned div)
 
 ### Task Input
 
-The task input card (used in both WelcomeScreen and ChatInput) must be consistent:
-- Border radius: `rounded-xl` (not `rounded-2xl`)
+WelcomeScreen renders `ChatInput` with `variant="welcome"` — a single component with two visual modes. This eliminates the previous duplication where WelcomeScreen had its own textarea without drag-and-drop or paste support.
+
+- **Shared behavior**: Drag-and-drop, paste images, file attachments, skill selector, keyboard hints
+- **`variant="default"`**: Single-row auto-expanding textarea with `shrink-0 px-4 pb-4 pt-2` wrapper padding
+- **`variant="welcome"`**: Three-row textarea with no wrapper padding (parent manages layout), autoFocus enabled, keyboard hints hidden
+- Border radius: `rounded-lg`
+- Background: solid `bg-card` (no glassmorphism, no `backdrop-blur`)
+- Focus: `border-border-active` + `shadow-md` (no glow, no `box-shadow: 0 0 20px`)
+- Shadow: `shadow-sm` at rest, `shadow-md` on focus
 - Textarea horizontal padding: `px-4`
-- Both instances must use the same visual treatment
+
+### TopBar
+
+The top bar (`h-12`) displays breadcrumbs on the left and action buttons on the right:
+- **Left**: Home button, task breadcrumb with step count, connection status dot
+- **Right**: Stop button (visible during `executing`/`planning` states), panel toggle (`PanelRightOpen`/`PanelRightClose`)
+- Props: `taskState`, `isConnected`, `currentIteration`, `onNavigateHome`, `onTogglePanel`, `panelOpen`, `onCancel`, `taskTitle`
+
+### Agent Computer Panel Status Bar
+
+A single consolidated status bar at the bottom of the Agent Computer Panel:
+- Progress bar + status indicator (PulsingDot/CircleCheck/CircleX) + label + count
+- Replaces the previous three-layer approach (progress bar + live dot + task summary footer)
+
+### Border Radius
+
+| Token | Value | Tailwind | Usage |
+|-------|-------|----------|-------|
+| `--radius-sm` | 4px | `rounded-sm` | Small pills, inline code |
+| `--radius-md` | 8px | `rounded-md` | Sidebar items, small buttons |
+| `--radius-lg` | 12px | `rounded-lg` | Cards, inputs, containers |
+| `--radius-xl` | 16px | `rounded-xl` | Dialogs, command palette |
 
 ### Scrollbar
 
 Width is always **5px** — including Radix `ScrollArea` components (use `w-[5px]`, not the default `w-2.5`).
 
 ```css
-/* Dark mode */
+/* Light mode */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(120, 113, 108, 0.2);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(120, 113, 108, 0.35);
 }
 
-/* Light mode */
-::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
+/* Dark mode */
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(214, 211, 209, 0.1);
 }
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.25);
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(214, 211, 209, 0.2);
 }
 ```
 
@@ -325,7 +391,7 @@ Lucide React (`lucide-react`)
 | Active | `text-foreground` |
 | Success | `text-accent-emerald` |
 | Error | `text-accent-rose` |
-| AI Active | `text-ai-glow` |
+| AI Active | `text-accent-purple` |
 
 ---
 
@@ -379,7 +445,7 @@ All conditional class merging uses `cn()` from `@/shared/lib/utils`.
 
 ---
 
-## Common Pitfalls (from 2026-03-17 Design Review)
+## Common Pitfalls
 
 These patterns have been found in the codebase and must be avoided:
 
@@ -392,8 +458,23 @@ These patterns have been found in the codebase and must be avoided:
 | `font-bold` on headings | Use `font-semibold` (600) |
 | `font-serif` on panel titles | Serif is for WelcomeScreen hero only |
 | `scale: [1, 1.4, 1]` on dots/icons | Use `opacity: [0.4, 1, 0.4]` |
-| `whileHover={{ y: -1 }}` on cards | Use shadow lift only |
+| `shadow-[0_0_6px_var(--color-ai-glow)]` | Remove glow — use `shadow-sm` or nothing |
+| `backdrop-blur-sm bg-card/80` on inputs | Use solid `bg-card` |
+| `box-shadow: 0 0 20px var(--color-input-glow)` | Use `shadow-md` on focus |
+| `background: #FFFFFF` / `#0A0A0A` | Use `#FAF9F6` (cream) / `#1C1917` (warm dark) |
+| `#818CF8` (cold indigo) | Use `#8B5CF6` (warm violet) via `accent-purple` / `ai-glow` |
+| `border-radius: 2px–6px` (sharp) | Use `rounded-lg` (12px) for cards, `rounded-md` (8px) for items |
+| `animation: conicSpin`, `aiGlow`, `orbitalPulse` | Removed — use CSS `@keyframes` opacity pulse |
+| `animation: meshDrift` on backgrounds | Removed — use static radial gradient |
 | `<Loader2 className="animate-spin">` | Use shimmer skeleton |
 | `<span role="button" onClick>` | Use native `<button>` |
 | `opacity-0 group-hover:opacity-100` (alone) | Add `group-focus-within:opacity-100` |
-| `style={{ background: "#818CF8" }}` | Use `var(--color-ai-glow)` |
+| `style={{ background: "#818CF8" }}` | Use `var(--color-accent-purple)` |
+| Cool gray tokens (zinc, slate) | Use warm stone-based neutrals |
+| `Montserrat` / `geist` font references | Use `Inter` (`--font-inter`) |
+| `text-muted-foreground/60`, `/40` | Use `text-muted-foreground-dim` (WCAG AA) |
+| `border-border/60`, `bg-border/60` | Use `border-border` (no opacity modifiers) |
+| `border-[var(--color-border-active)]` | Use `border-border-active` (Tailwind token) |
+| `scale: 0.98` in entry animations | Remove scale — use only `opacity` + `y` |
+| Separate WelcomeScreen textarea | Use `ChatInput variant="welcome"` |
+| framer-motion for simple CSS loops | Use CSS `@keyframes` (e.g., PulsingDot) |

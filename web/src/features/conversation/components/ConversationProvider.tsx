@@ -34,8 +34,8 @@ export interface ConversationContextValue {
   readonly allMessages: ChatMessage[];
   readonly isWaitingForAgent: boolean;
   readonly userCancelled: boolean;
-  readonly handleSendMessage: (message: string, files?: File[]) => void;
-  readonly handleCreateConversation: (message: string, files?: File[]) => void;
+  readonly handleSendMessage: (message: string, files?: File[], skills?: string[]) => void;
+  readonly handleCreateConversation: (message: string, files?: File[], skills?: string[]) => void;
   readonly handleSwitchConversation: (conversationId: string) => void;
   readonly handleNewConversation: () => void;
   readonly handleCancel: () => void;

@@ -53,7 +53,7 @@ const listItem = {
 /* ── shimmer skeleton ── */
 function ServerSkeleton() {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border px-4 py-3">
+    <div className="flex items-center gap-3 rounded-lg border border-border px-4 py-3 shadow-sm">
       <div className="h-2 w-2 shrink-0 rounded-full bg-muted-foreground/20 animate-shimmer" />
       <div className="flex-1 space-y-2">
         <div className="h-3.5 w-24 rounded bg-muted-foreground/10 animate-shimmer" />
@@ -63,15 +63,15 @@ function ServerSkeleton() {
   );
 }
 
-interface IntegrationsDialogProps {
+interface MCPDialogProps {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
 }
 
-export function IntegrationsDialog({
+export function MCPDialog({
   open,
   onOpenChange,
-}: IntegrationsDialogProps) {
+}: MCPDialogProps) {
   const [servers, setServers] = useState<readonly MCPServer[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -150,7 +150,7 @@ export function IntegrationsDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Integrations</DialogTitle>
+            <DialogTitle>MCP</DialogTitle>
             <DialogDescription>
               Connect MCP servers to extend your agent&apos;s capabilities.
             </DialogDescription>
@@ -161,7 +161,7 @@ export function IntegrationsDialog({
             <AnimatePresence>
               {error && (
                 <motion.div
-                  className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2"
+                  className="flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2"
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
@@ -199,7 +199,7 @@ export function IntegrationsDialog({
               ) : servers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-2.5 rounded-lg border border-dashed border-border py-10">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
-                    <Unplug className="h-4 w-4 text-muted-foreground/50" />
+                    <Unplug className="h-4 w-4 text-muted-foreground-dim" />
                   </div>
                   <p className="text-xs text-muted-foreground">
                     No MCP servers configured
@@ -212,10 +212,11 @@ export function IntegrationsDialog({
                     variants={listItem}
                     initial="hidden"
                     animate="show"
-                    className="group flex items-center gap-3 rounded-lg border border-border px-4 py-3 transition-shadow duration-200 hover:shadow-card-hover"
+                    className="group flex items-center gap-3 rounded-lg border border-border px-4 py-3 shadow-sm transition-all duration-200 hover:border-border-strong hover:shadow-md"
                   >
                     {/* Status dot */}
                     <span
+                      aria-hidden="true"
                       className={cn(
                         "h-2 w-2 shrink-0 rounded-full transition-colors",
                         server.status === "connected"
@@ -223,6 +224,9 @@ export function IntegrationsDialog({
                           : "bg-muted-foreground/30",
                       )}
                     />
+                    <span className="sr-only">
+                      {server.status === "connected" ? "Connected" : "Disconnected"}
+                    </span>
 
                     {/* Server info */}
                     <div className="min-w-0 flex-1">
@@ -277,7 +281,7 @@ export function IntegrationsDialog({
             <AnimatePresence>
               {showForm && (
                 <motion.div
-                  className="space-y-4 rounded-lg border border-border bg-card p-4"
+                  className="space-y-4 rounded-lg border border-border bg-card p-4 shadow-sm"
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -4 }}

@@ -31,7 +31,7 @@ interface AppState {
   // UI
   readonly sidebarCollapsed: boolean;
   readonly sidebarWidth: number;
-  readonly searchQuery: string;
+  readonly sidebarOpen: boolean;
 
   // Actions
   readonly startConversation: (conversationId: string, title: string) => void;
@@ -41,9 +41,10 @@ interface AppState {
   readonly resetConversation: () => void;
   readonly toggleSidebar: () => void;
   readonly setSidebarWidth: (width: number) => void;
+  readonly openSidebar: () => void;
+  readonly closeSidebar: () => void;
   readonly loadConversations: () => Promise<void>;
   readonly loadMore: () => Promise<void>;
-  readonly setSearchQuery: (query: string) => void;
   readonly deleteConversation: (conversationId: string) => Promise<void>;
 }
 
@@ -59,7 +60,7 @@ export const useAppStore = create<AppState>()(
       isLoadingHistory: false,
       sidebarCollapsed: false,
       sidebarWidth: 280,
-      searchQuery: "",
+      sidebarOpen: false,
 
       startConversation: (conversationId, title) =>
         set((state) => ({
@@ -94,14 +95,16 @@ export const useAppStore = create<AppState>()(
       setSidebarWidth: (width) =>
         set({ sidebarWidth: Math.max(200, Math.min(480, width)) }),
 
+      openSidebar: () => set({ sidebarOpen: true }),
+
+      closeSidebar: () => set({ sidebarOpen: false }),
+
       loadConversations: async () => {
         set({ isLoadingHistory: true });
         try {
-          const { searchQuery } = get();
           const { items, total } = await fetchConversations(
             PAGE_SIZE,
             0,
-            searchQuery || undefined,
           );
           set({
             conversationHistory: items.map(toHistoryItem),
@@ -115,7 +118,7 @@ export const useAppStore = create<AppState>()(
       },
 
       loadMore: async () => {
-        const { conversationHistory, totalConversations, isLoadingHistory, searchQuery } = get();
+        const { conversationHistory, totalConversations, isLoadingHistory } = get();
         if (isLoadingHistory || conversationHistory.length >= totalConversations) return;
 
         set({ isLoadingHistory: true });
@@ -123,7 +126,6 @@ export const useAppStore = create<AppState>()(
           const { items, total } = await fetchConversations(
             PAGE_SIZE,
             conversationHistory.length,
-            searchQuery || undefined,
           );
           set((state) => ({
             conversationHistory: [
@@ -140,8 +142,6 @@ export const useAppStore = create<AppState>()(
           set({ isLoadingHistory: false });
         }
       },
-
-      setSearchQuery: (query) => set({ searchQuery: query }),
 
       deleteConversation: async (conversationId) => {
         try {

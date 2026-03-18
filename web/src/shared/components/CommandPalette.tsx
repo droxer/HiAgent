@@ -3,6 +3,9 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
+import { FOCUSABLE_SELECTOR } from "@/shared/lib/a11y";
+import { useAppStore } from "@/shared/stores";
+import { useTranslation } from "@/i18n";
 import {
   Search,
   Plus,
@@ -12,24 +15,48 @@ import {
   AppWindow,
   Palette,
   Settings,
+  Wand,
+  Blocks,
+  MessageSquare,
 } from "lucide-react";
 
 interface CommandPaletteProps {
   readonly onNewTask: (prompt: string) => void;
   readonly onNavigateHome?: () => void;
+  readonly onNavigateSkills?: () => void;
+  readonly onNavigateMcp?: () => void;
 }
 
-const QUICK_ACTIONS = [
-  { icon: Sparkles, label: "Summarize Page", prompt: "Summarize this page" },
-  { icon: Presentation, label: "Create Slides", prompt: "Create a presentation about " },
-  { icon: Globe, label: "Build Website", prompt: "Build a website that " },
-  { icon: AppWindow, label: "Develop App", prompt: "Develop an app that " },
-  { icon: Palette, label: "Design UI", prompt: "Design a " },
+const QUICK_ACTION_KEYS = [
+  { icon: Sparkles, labelKey: "command.summarizePage", promptKey: "command.summarizePrompt" },
+  { icon: Presentation, labelKey: "command.createSlides", promptKey: "command.createSlidesPrompt" },
+  { icon: Globe, labelKey: "command.buildWebsite", promptKey: "command.buildWebsitePrompt" },
+  { icon: AppWindow, labelKey: "command.developApp", promptKey: "command.developAppPrompt" },
+  { icon: Palette, labelKey: "command.designUI", promptKey: "command.designUIPrompt" },
 ] as const;
 
-export function CommandPalette({ onNewTask, onNavigateHome }: CommandPaletteProps) {
+const ITEM_CLASS =
+  "flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm text-foreground transition-colors data-[selected=true]:bg-secondary data-[selected=true]:text-foreground data-[selected=true]:border-l-2 data-[selected=true]:border-ai-glow";
+
+const GROUP_HEADING_CLASS =
+  "[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground";
+
+function ShortcutHint({ keys }: { readonly keys: string }) {
+  return (
+    <kbd className="ml-auto shrink-0 rounded border border-border bg-secondary px-1.5 py-0.5 font-mono text-[0.625rem] text-muted-foreground">
+      {keys}
+    </kbd>
+  );
+}
+
+export function CommandPalette({ onNewTask, onNavigateHome, onNavigateSkills, onNavigateMcp }: CommandPaletteProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const conversationHistory = useAppStore((s) => s.conversationHistory);
+  const switchConversation = useAppStore((s) => s.switchConversation);
+
+  const recentConversations = conversationHistory.slice(0, 5);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -41,10 +68,22 @@ export function CommandPalette({ onNewTask, onNavigateHome }: CommandPaletteProp
     }
   }, []);
 
+  // Global Cmd+N / Ctrl+N shortcut for new task
+  const handleGlobalShortcuts = useCallback((e: KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "n") {
+      e.preventDefault();
+      onNavigateHome?.();
+    }
+  }, [onNavigateHome]);
+
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
+    document.addEventListener("keydown", handleGlobalShortcuts);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keydown", handleGlobalShortcuts);
+    };
+  }, [handleKeyDown, handleGlobalShortcuts]);
 
   // Focus trap: keep Tab cycling within the dialog when open
   useEffect(() => {
@@ -55,9 +94,7 @@ export function CommandPalette({ onNewTask, onNavigateHome }: CommandPaletteProp
       const container = dialogRef.current;
       if (!container) return;
 
-      const focusable = container.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-      );
+      const focusable = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
       if (focusable.length === 0) return;
 
       const first = focusable[0];
@@ -98,77 +135,126 @@ export function CommandPalette({ onNewTask, onNavigateHome }: CommandPaletteProp
           {/* Command dialog — blur-to-sharp entry */}
           <motion.div
             ref={dialogRef}
-            className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]"
+            role="dialog"
+            aria-label={t("command.ariaLabel")}
+            className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] sm:pt-[20vh]"
             initial={{ opacity: 0, scale: 0.96, y: -10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -10 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
             <Command
-              className="w-full max-w-[560px] overflow-hidden rounded-xl border border-border bg-card/90 shadow-elevated backdrop-blur-xl"
+              className="w-[calc(100%-2rem)] max-w-[560px] overflow-hidden rounded-md border border-border bg-card/90 shadow-elevated backdrop-blur-xl"
               loop
             >
               {/* Search input */}
               <div className="flex items-center gap-2 border-b border-border px-4">
                 <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <Command.Input
-                  placeholder="Type a command or search..."
+                  placeholder={t("command.placeholder")}
                   className="h-12 w-full bg-transparent text-sm text-foreground placeholder:text-placeholder outline-none"
                   autoFocus
                 />
-                <kbd className="shrink-0 rounded border border-border bg-secondary px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                <kbd className="shrink-0 rounded border border-border bg-secondary px-1.5 py-0.5 font-mono text-[0.625rem] text-muted-foreground">
                   ESC
                 </kbd>
               </div>
 
               <Command.List className="max-h-[320px] overflow-y-auto p-2">
                 <Command.Empty className="px-4 py-8 text-center text-sm text-muted-foreground">
-                  No results found.
+                  {t("command.noResults")}
                 </Command.Empty>
 
                 {/* Quick Actions */}
-                <Command.Group heading="Quick Actions" className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground">
-                  {QUICK_ACTIONS.map((action) => (
-                    <Command.Item
-                      key={action.label}
-                      value={action.label}
-                      onSelect={() => handleSelect(action.prompt)}
-                      className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground/90 transition-colors data-[selected=true]:bg-secondary data-[selected=true]:text-foreground data-[selected=true]:border-l-2 data-[selected=true]:border-ai-glow"
-                    >
-                      <action.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      {action.label}
-                    </Command.Item>
-                  ))}
+                <Command.Group heading={t("command.quickActions")} className={GROUP_HEADING_CLASS}>
+                  {QUICK_ACTION_KEYS.map((action) => {
+                    const label = t(action.labelKey);
+                    const prompt = t(action.promptKey);
+                    return (
+                      <Command.Item
+                        key={action.labelKey}
+                        value={label}
+                        onSelect={() => handleSelect(prompt)}
+                        className={ITEM_CLASS}
+                      >
+                        <action.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        {label}
+                      </Command.Item>
+                    );
+                  })}
                 </Command.Group>
 
                 {/* Navigation */}
-                <Command.Group heading="Navigation" className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground">
+                <Command.Group heading={t("command.navigation")} className={GROUP_HEADING_CLASS}>
                   <Command.Item
-                    value="New Task"
+                    value={t("command.skills")}
+                    onSelect={() => {
+                      setOpen(false);
+                      onNavigateSkills?.();
+                    }}
+                    className={ITEM_CLASS}
+                  >
+                    <Wand className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    {t("command.skills")}
+                  </Command.Item>
+                  <Command.Item
+                    value={t("command.mcp")}
+                    onSelect={() => {
+                      setOpen(false);
+                      onNavigateMcp?.();
+                    }}
+                    className={ITEM_CLASS}
+                  >
+                    <Blocks className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    {t("command.mcp")}
+                  </Command.Item>
+                  <Command.Item
+                    value={t("command.newTask")}
                     onSelect={() => {
                       setOpen(false);
                       onNavigateHome?.();
                     }}
-                    className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground/90 transition-colors data-[selected=true]:bg-secondary data-[selected=true]:text-foreground data-[selected=true]:border-l-2 data-[selected=true]:border-ai-glow"
+                    className={ITEM_CLASS}
                   >
                     <Plus className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    New Task
+                    {t("command.newTask")}
+                    <ShortcutHint keys="⌘N" />
                   </Command.Item>
                   <Command.Item
-                    value="Settings"
+                    value={t("command.settings")}
                     onSelect={() => setOpen(false)}
-                    className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground/90 transition-colors data-[selected=true]:bg-secondary data-[selected=true]:text-foreground data-[selected=true]:border-l-2 data-[selected=true]:border-ai-glow"
+                    className={ITEM_CLASS}
                   >
                     <Settings className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    Settings
+                    {t("command.settings")}
                   </Command.Item>
                 </Command.Group>
+
+                {/* Recent Conversations */}
+                {recentConversations.length > 0 && (
+                  <Command.Group heading={t("command.recentConversations")} className={GROUP_HEADING_CLASS}>
+                    {recentConversations.map((conversation) => (
+                      <Command.Item
+                        key={conversation.id}
+                        value={`recent ${conversation.title}`}
+                        onSelect={() => {
+                          setOpen(false);
+                          switchConversation(conversation.id);
+                        }}
+                        className={ITEM_CLASS}
+                      >
+                        <MessageSquare className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="truncate">{conversation.title}</span>
+                      </Command.Item>
+                    ))}
+                  </Command.Group>
+                )}
               </Command.List>
 
               {/* Footer hint */}
               <div className="flex items-center justify-between border-t border-border px-4 py-2">
                 <span className="text-xs text-muted-foreground">
-                  Navigate with <kbd className="font-mono">↑↓</kbd> · Select with <kbd className="font-mono">↵</kbd>
+                  {t("command.navigateHint")} <kbd className="font-mono">↑↓</kbd> · {t("command.selectHint")} <kbd className="font-mono">↵</kbd>
                 </span>
               </div>
             </Command>
