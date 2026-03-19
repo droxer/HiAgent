@@ -70,18 +70,42 @@ Edit `backend/.env`:
 ANTHROPIC_API_KEY=sk-ant-...
 TAVILY_API_KEY=tvly-...
 
-# Optional — sandbox provider (default: boxlite)
-SANDBOX_PROVIDER=local          # Use "local" for development without Docker
+# Optional — use any Anthropic-compatible LLM provider
+# ANTHROPIC_BASE_URL=https://api.anthropic.com   # Default (Anthropic)
+# ANTHROPIC_BASE_URL=https://openrouter.ai/api/v1  # OpenRouter example
+
+# Optional — sandbox provider (default: boxlite, pulls prebuilt images automatically)
+# SANDBOX_PROVIDER=boxlite      # Recommended — requires Docker
+# SANDBOX_PROVIDER=local        # Use if you don't have Docker
 
 # Optional — database (remove or leave empty to skip persistence)
 DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/hiagent
+```
+
+### LLM Provider
+
+HiAgent works with any LLM provider that exposes an Anthropic-compatible API. Set `ANTHROPIC_BASE_URL` to point to your provider and `ANTHROPIC_API_KEY` to the corresponding key.
+
+| Provider | `ANTHROPIC_BASE_URL` | Notes |
+|----------|---------------------|-------|
+| Anthropic (default) | `https://api.anthropic.com` | Direct Claude API |
+| OpenRouter | `https://openrouter.ai/api/v1` | Access multiple models |
+| Amazon Bedrock | Use the Bedrock endpoint URL | Via Anthropic SDK |
+| Any compatible proxy | Your proxy URL | Must support the Anthropic messages API |
+
+You can also customize which models are used for different tasks:
+
+```bash
+PLANNING_MODEL=claude-sonnet-4-20250514    # Model for task planning
+TASK_MODEL=claude-sonnet-4-20250514        # Model for task execution
+LITE_MODEL=claude-haiku-4-5-20251001       # Model for simple sub-tasks
 ```
 
 ### API Keys
 
 | Key | Where to get it | Required |
 |-----|----------------|----------|
-| `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com/) | Yes |
+| `ANTHROPIC_API_KEY` | Your LLM provider | Yes |
 | `TAVILY_API_KEY` | [tavily.com](https://tavily.com/) | Yes |
 | `MINIMAX_API_KEY` | [minimaxi.com](https://www.minimaxi.com/) | No (enables image generation) |
 | `E2B_API_KEY` | [e2b.dev](https://e2b.dev/) | No (only if `SANDBOX_PROVIDER=e2b`) |
@@ -91,10 +115,12 @@ DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/hiagent
 | Provider | When to use | Requires |
 |----------|------------|----------|
 | `local` | Development — runs code as local subprocesses (no isolation) | Nothing |
-| `boxlite` | Production — isolated micro-VMs | Docker |
+| `boxlite` | Recommended — isolated micro-VMs with prebuilt images | Docker |
 | `e2b` | Cloud sandboxes | `E2B_API_KEY` |
 
-For local development, set `SANDBOX_PROVIDER=local` to skip Docker entirely.
+For the best experience, use `SANDBOX_PROVIDER=boxlite` (the default). Prebuilt images are available on GHCR — Docker will pull them automatically on first run, no manual build needed.
+
+If you don't have Docker installed, set `SANDBOX_PROVIDER=local` to run code as local subprocesses (no isolation).
 
 ---
 
@@ -146,9 +172,11 @@ make web        # cd web && npm run dev
 
 ---
 
-## 6. Build Sandbox Images (Optional)
+## 6. Sandbox Images (Optional)
 
-If using `SANDBOX_PROVIDER=boxlite`, build the Docker images:
+Boxlite sandbox images are published to GHCR. Docker pulls them automatically when needed — **no manual build required**.
+
+If you want to customize the images or build from source:
 
 ```bash
 make build-sandbox

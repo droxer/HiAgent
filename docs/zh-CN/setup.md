@@ -70,18 +70,42 @@ cp backend/.env.example backend/.env
 ANTHROPIC_API_KEY=sk-ant-...
 TAVILY_API_KEY=tvly-...
 
-# 可选 — 沙盒提供者（默认：boxlite）
-SANDBOX_PROVIDER=local          # 本地开发建议使用 "local"，无需 Docker
+# 可选 — 使用任何 Anthropic 兼容的 LLM 提供者
+# ANTHROPIC_BASE_URL=https://api.anthropic.com   # 默认（Anthropic）
+# ANTHROPIC_BASE_URL=https://openrouter.ai/api/v1  # OpenRouter 示例
+
+# 可选 — 沙盒提供者（默认：boxlite，自动拉取预构建镜像）
+# SANDBOX_PROVIDER=boxlite      # 推荐 — 需要 Docker
+# SANDBOX_PROVIDER=local        # 未安装 Docker 时使用
 
 # 可选 — 数据库（留空或删除则跳过持久化）
 DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/hiagent
+```
+
+### LLM 提供者
+
+HiAgent 支持任何提供 Anthropic 兼容 API 的 LLM 提供者。设置 `ANTHROPIC_BASE_URL` 指向你的提供者地址，`ANTHROPIC_API_KEY` 设置为对应的密钥即可。
+
+| 提供者 | `ANTHROPIC_BASE_URL` | 说明 |
+|--------|---------------------|------|
+| Anthropic（默认） | `https://api.anthropic.com` | 直连 Claude API |
+| OpenRouter | `https://openrouter.ai/api/v1` | 可访问多种模型 |
+| Amazon Bedrock | 使用 Bedrock 端点 URL | 通过 Anthropic SDK |
+| 其他兼容代理 | 你的代理地址 | 需支持 Anthropic messages API |
+
+你还可以自定义不同任务使用的模型：
+
+```bash
+PLANNING_MODEL=claude-sonnet-4-20250514    # 任务规划模型
+TASK_MODEL=claude-sonnet-4-20250514        # 任务执行模型
+LITE_MODEL=claude-haiku-4-5-20251001       # 简单子任务模型
 ```
 
 ### API 密钥
 
 | 密钥 | 获取地址 | 是否必填 |
 |------|---------|---------|
-| `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com/) | 是 |
+| `ANTHROPIC_API_KEY` | 你的 LLM 提供者 | 是 |
 | `TAVILY_API_KEY` | [tavily.com](https://tavily.com/) | 是 |
 | `MINIMAX_API_KEY` | [minimaxi.com](https://www.minimaxi.com/) | 否（启用图片生成） |
 | `E2B_API_KEY` | [e2b.dev](https://e2b.dev/) | 否（仅 `SANDBOX_PROVIDER=e2b` 时需要） |
@@ -91,10 +115,12 @@ DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/hiagent
 | 提供者 | 适用场景 | 依赖 |
 |--------|---------|------|
 | `local` | 开发环境 — 以本地子进程运行代码（无隔离） | 无 |
-| `boxlite` | 生产环境 — 隔离的微型虚拟机 | Docker |
+| `boxlite` | 推荐 — 隔离的微型虚拟机，提供预构建镜像 | Docker |
 | `e2b` | 云端沙盒 | `E2B_API_KEY` |
 
-本地开发建议设置 `SANDBOX_PROVIDER=local`，可完全跳过 Docker。
+推荐使用 `SANDBOX_PROVIDER=boxlite`（默认值）。预构建镜像已发布到 GHCR，Docker 会在首次运行时自动拉取，无需手动构建。
+
+如果未安装 Docker，可设置 `SANDBOX_PROVIDER=local`，以本地子进程运行代码（无隔离）。
 
 ---
 
@@ -146,9 +172,11 @@ make web        # cd web && npm run dev
 
 ---
 
-## 6. 构建沙盒镜像（可选）
+## 6. 沙盒镜像（可选）
 
-如使用 `SANDBOX_PROVIDER=boxlite`，需先构建 Docker 镜像：
+Boxlite 沙盒镜像已发布到 GHCR，Docker 会在需要时自动拉取——**无需手动构建**。
+
+如需自定义镜像或从源码构建：
 
 ```bash
 make build-sandbox

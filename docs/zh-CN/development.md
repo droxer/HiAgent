@@ -352,8 +352,20 @@ allowed_tools:
 
 | 变量 | 描述 |
 |------|------|
-| `ANTHROPIC_API_KEY` | 用于 Claude 的 Anthropic API 密钥 |
+| `ANTHROPIC_API_KEY` | LLM 提供者的 API 密钥（Anthropic 或任何兼容提供者） |
 | `TAVILY_API_KEY` | 用于网络搜索的 Tavily API 密钥 |
+
+### LLM 提供者
+
+HiAgent 支持任何提供 Anthropic 兼容 API 的 LLM 提供者。通过 `ANTHROPIC_BASE_URL` 和 `ANTHROPIC_API_KEY` 进行配置。
+
+| 变量 | 默认值 | 描述 |
+|------|--------|------|
+| `ANTHROPIC_BASE_URL` | `https://api.anthropic.com` | LLM API 基础地址 — 修改此项以使用其他提供者（如 OpenRouter、Bedrock 或任何 Anthropic 兼容代理） |
+| `PLANNING_MODEL` | `claude-sonnet-4-20250514` | 用于任务规划的模型 |
+| `TASK_MODEL` | `claude-sonnet-4-20250514` | 用于任务执行的模型 |
+| `LITE_MODEL` | `claude-haiku-4-5-20251001` | 用于简单子任务的模型 |
+| `THINKING_BUDGET` | `10000` | 扩展思考的 token 预算（`0` = 禁用） |
 
 ### 可选
 
@@ -361,7 +373,7 @@ allowed_tools:
 |------|--------|------|
 | `DATABASE_URL` | — | PostgreSQL 连接字符串（`postgresql+asyncpg://...`） |
 | `REDIS_URL` | — | 用于缓存的 Redis URL |
-| `SANDBOX_PROVIDER` | `boxlite` | 沙箱后端：`boxlite`、`e2b` 或 `local` |
+| `SANDBOX_PROVIDER` | `boxlite` | 沙盒后端：`boxlite`（GHCR 上有预构建镜像）、`e2b` 或 `local` |
 | `E2B_API_KEY` | — | E2B API 密钥（使用 E2B 提供者时需要） |
 | `MINIMAX_API_KEY` | — | MiniMax API 密钥（用于图像生成） |
 | `STORAGE_PROVIDER` | `local` | 产物存储：`local` 或 `r2` |
@@ -370,10 +382,6 @@ allowed_tools:
 | `R2_ACCESS_KEY_ID` | — | Cloudflare R2 访问密钥 |
 | `R2_SECRET_ACCESS_KEY` | — | Cloudflare R2 密钥 |
 | `R2_BUCKET_NAME` | — | Cloudflare R2 存储桶名称 |
-| `PLANNING_MODEL` | `claude-sonnet-4-20250514` | 用于任务规划的模型 |
-| `TASK_MODEL` | `claude-sonnet-4-20250514` | 用于任务执行的模型 |
-| `LITE_MODEL` | `claude-haiku-4-5-20251001` | 用于简单子任务的模型 |
-| `THINKING_BUDGET` | `10000` | 扩展思考的 token 预算（`0` = 禁用） |
 | `SKILLS_ENABLED` | `true` | 启用技能系统 |
 | `SKILLS_REGISTRY_URL` | `https://api.agentskills.io` | 外部技能注册表 URL |
 | `SKILLS_TRUST_PROJECT` | `true` | 信任项目级技能 |

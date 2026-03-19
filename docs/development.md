@@ -352,8 +352,20 @@ Required in `backend/.env` (see `backend/.env.example`):
 
 | Variable | Description |
 |----------|-------------|
-| `ANTHROPIC_API_KEY` | Anthropic API key for Claude |
+| `ANTHROPIC_API_KEY` | API key for your LLM provider (Anthropic or any compatible provider) |
 | `TAVILY_API_KEY` | Tavily API key for web search |
+
+### LLM Provider
+
+HiAgent works with any LLM provider that exposes an Anthropic-compatible API. Configure via `ANTHROPIC_BASE_URL` and `ANTHROPIC_API_KEY`.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ANTHROPIC_BASE_URL` | `https://api.anthropic.com` | LLM API base URL — change to use alternative providers (e.g. OpenRouter, Bedrock, or any Anthropic-compatible proxy) |
+| `PLANNING_MODEL` | `claude-sonnet-4-20250514` | Model for task planning |
+| `TASK_MODEL` | `claude-sonnet-4-20250514` | Model for task execution |
+| `LITE_MODEL` | `claude-haiku-4-5-20251001` | Model for simple sub-tasks |
+| `THINKING_BUDGET` | `10000` | Extended thinking token budget (`0` = disabled) |
 
 ### Optional
 
@@ -361,7 +373,7 @@ Required in `backend/.env` (see `backend/.env.example`):
 |----------|---------|-------------|
 | `DATABASE_URL` | — | PostgreSQL connection string (`postgresql+asyncpg://...`) |
 | `REDIS_URL` | — | Redis URL for caching |
-| `SANDBOX_PROVIDER` | `boxlite` | Sandbox backend: `boxlite`, `e2b`, or `local` |
+| `SANDBOX_PROVIDER` | `boxlite` | Sandbox backend: `boxlite` (prebuilt images on GHCR), `e2b`, or `local` |
 | `E2B_API_KEY` | — | E2B API key (if using E2B provider) |
 | `MINIMAX_API_KEY` | — | MiniMax API key (for image generation) |
 | `STORAGE_PROVIDER` | `local` | Artifact storage: `local` or `r2` |
@@ -370,10 +382,6 @@ Required in `backend/.env` (see `backend/.env.example`):
 | `R2_ACCESS_KEY_ID` | — | Cloudflare R2 access key |
 | `R2_SECRET_ACCESS_KEY` | — | Cloudflare R2 secret key |
 | `R2_BUCKET_NAME` | — | Cloudflare R2 bucket name |
-| `PLANNING_MODEL` | `claude-sonnet-4-20250514` | Model for task planning |
-| `TASK_MODEL` | `claude-sonnet-4-20250514` | Model for task execution |
-| `LITE_MODEL` | `claude-haiku-4-5-20251001` | Model for simple sub-tasks |
-| `THINKING_BUDGET` | `10000` | Extended thinking token budget (`0` = disabled) |
 | `SKILLS_ENABLED` | `true` | Enable skill system |
 | `SKILLS_REGISTRY_URL` | `https://api.agentskills.io` | External skill registry URL |
 | `SKILLS_TRUST_PROJECT` | `true` | Trust project-level skills |
