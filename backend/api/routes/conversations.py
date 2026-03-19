@@ -14,7 +14,7 @@ from loguru import logger
 from starlette.datastructures import UploadFile
 from starlette.requests import Request
 
-from agent.llm.client import ClaudeClient
+from agent.llm.client import AnthropicClient
 from agent.memory.store import PersistentMemoryStore
 from api.dependencies import AppState, get_app_state, get_db_session
 from api.models import (
@@ -300,7 +300,7 @@ async def _cleanup_stale_conversations(state: AppState) -> None:
 
 
 async def _generate_title(
-    claude_client: ClaudeClient,
+    claude_client: AnthropicClient,
     conversation_id: str,
     user_message: str,
     emitter: EventEmitter,

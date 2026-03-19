@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
     from agent.artifacts.storage import StorageBackend
-    from agent.llm.client import ClaudeClient
+    from agent.llm.client import AnthropicClient
     from agent.skills.installer import SkillInstaller
     from agent.skills.loader import SkillRegistry
     from agent.state.repository import ConversationRepository
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 class AppState:
     """Holds all shared state currently captured via closures in the app factory."""
 
-    claude_client: ClaudeClient
+    claude_client: AnthropicClient
     sandbox_provider: Any  # SandboxProvider
     storage_backend: StorageBackend
     db_engine: AsyncEngine

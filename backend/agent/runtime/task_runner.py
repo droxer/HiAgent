@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import Any
 
-from agent.llm.client import ClaudeClient
+from agent.llm.client import AnthropicClient
 from agent.runtime.helpers import (
     apply_response_to_state,
     extract_final_text,
@@ -92,7 +92,7 @@ class TaskAgentRunner:
         self,
         agent_id: str,
         config: TaskAgentConfig,
-        claude_client: ClaudeClient,
+        claude_client: AnthropicClient,
         tool_registry: ToolRegistry,
         tool_executor: ToolExecutor,
         event_emitter: EventEmitter,

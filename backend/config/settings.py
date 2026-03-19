@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
     SANDBOX_PROVIDER: str = "boxlite"  # "boxlite" or "e2b"
     E2B_API_KEY: str = ""
+    IMAGE_PROVIDER: str = "minimax"  # Image generation provider (e.g., "minimax")
     MINIMAX_API_KEY: str = ""
     MINIMAX_API_HOST: str = "https://api.minimaxi.com"  # or https://api.minimax.io
     API_KEY: str = ""  # Optional API key for authentication; empty = allow all

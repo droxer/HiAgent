@@ -78,7 +78,7 @@ def _parse_response(response: Any) -> LLMResponse:
     )
 
 
-class ClaudeClient:
+class AnthropicClient:
     """Async client for the Claude API with tool support."""
 
     def __init__(

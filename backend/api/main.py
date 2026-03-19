@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
 from agent.artifacts.storage import create_storage_backend
-from agent.llm.client import ClaudeClient
+from agent.llm.client import AnthropicClient
 from agent.skills.discovery import SkillDiscoverer
 from agent.skills.installer import SkillInstaller
 from agent.skills.loader import SkillRegistry
@@ -46,8 +46,8 @@ def _create_app() -> FastAPI:
     db_repo = ConversationRepository()
     db_pending_writes = PendingWrites()
 
-    # Shared ClaudeClient singleton
-    claude_client = ClaudeClient(
+    # Shared AnthropicClient singleton
+    claude_client = AnthropicClient(
         api_key=settings.ANTHROPIC_API_KEY,
         default_model=settings.TASK_MODEL,
         base_url=settings.ANTHROPIC_BASE_URL,

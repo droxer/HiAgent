@@ -7,7 +7,7 @@ from typing import Any, Protocol
 
 from loguru import logger
 
-from agent.llm.client import ClaudeClient, LLMResponse
+from agent.llm.client import AnthropicClient, LLMResponse
 from agent.runtime.helpers import (
     apply_response_to_state,
     extract_final_text,
@@ -70,7 +70,7 @@ class PlannerOrchestrator:
 
     def __init__(
         self,
-        claude_client: ClaudeClient,
+        claude_client: AnthropicClient,
         tool_registry: ToolRegistry,
         tool_executor: ToolExecutor,
         event_emitter: EventEmitter,

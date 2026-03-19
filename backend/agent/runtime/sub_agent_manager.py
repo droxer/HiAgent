@@ -6,7 +6,7 @@ import asyncio
 import uuid
 from typing import Callable
 
-from agent.llm.client import ClaudeClient
+from agent.llm.client import AnthropicClient
 from agent.runtime.task_runner import AgentResult, HandoffRequest, TaskAgentConfig, TaskAgentRunner
 from agent.tools.executor import ToolExecutor
 from agent.tools.local.task_complete import TaskComplete
@@ -63,7 +63,7 @@ class SubAgentManager:
 
     def __init__(
         self,
-        claude_client: ClaudeClient,
+        claude_client: AnthropicClient,
         tool_registry_factory: ToolRegistryFactory,
         tool_executor_factory: ToolExecutorFactory,
         event_emitter: EventEmitter,

@@ -9,7 +9,8 @@ from loguru import logger
 
 from agent.artifacts.manager import ArtifactManager
 from agent.artifacts.storage import StorageBackend
-from agent.llm.client import ClaudeClient
+from agent.llm.client import AnthropicClient
+from agent.llm.image import MiniMaxImageClient
 from agent.runtime.orchestrator import AgentOrchestrator
 from agent.runtime.planner import PlannerOrchestrator
 from agent.runtime.sub_agent_manager import SubAgentManager
@@ -142,12 +143,15 @@ def _build_base_registry(
 
     # Conditionally register image_gen when API key is configured
     if settings.MINIMAX_API_KEY and artifact_manager is not None:
+        image_client = MiniMaxImageClient(
+            api_key=settings.MINIMAX_API_KEY,
+            api_host=settings.MINIMAX_API_HOST,
+        )
         registry = registry.register(
             ImageGen(
-                api_key=settings.MINIMAX_API_KEY,
+                client=image_client,
                 artifact_manager=artifact_manager,
                 event_emitter=event_emitter,
-                api_host=settings.MINIMAX_API_HOST,
             )
         )
 
@@ -251,7 +255,7 @@ def _build_sub_agent_registry_factory(
 
 
 def _build_orchestrator(
-    claude_client: ClaudeClient,
+    claude_client: AnthropicClient,
     event_emitter: EventEmitter,
     sandbox_provider: SandboxProvider,
     storage_backend: StorageBackend | None = None,
@@ -308,7 +312,7 @@ def _build_orchestrator(
 
 
 def _build_planner_orchestrator(
-    claude_client: ClaudeClient,
+    claude_client: AnthropicClient,
     event_emitter: EventEmitter,
     sandbox_provider: SandboxProvider,
     storage_backend: StorageBackend | None = None,

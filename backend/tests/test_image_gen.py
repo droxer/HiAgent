@@ -1,4 +1,4 @@
-"""Tests for the ImageGen tool."""
+"""Tests for the ImageGen tool and ImageGenerationClient."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ import httpx
 import pytest
 
 from agent.artifacts.manager import ArtifactManager
+from agent.llm.image import MiniMaxImageClient
 from agent.tools.base import ExecutionContext
 from agent.tools.local.image_gen import ImageGen
 from api.events import EventEmitter, EventType
@@ -25,9 +26,14 @@ def event_emitter():
 
 
 @pytest.fixture
-def tool(artifact_manager, event_emitter):
+def image_client():
+    return MiniMaxImageClient(api_key="test-key")
+
+
+@pytest.fixture
+def tool(image_client, artifact_manager, event_emitter):
     return ImageGen(
-        api_key="test-key",
+        client=image_client,
         artifact_manager=artifact_manager,
         event_emitter=event_emitter,
     )
@@ -197,10 +203,6 @@ async def test_api_business_error(tool):
 
 
 def test_empty_api_key_raises():
-    """Constructor should reject empty API key."""
+    """MiniMaxImageClient should reject empty API key."""
     with pytest.raises(ValueError, match="must not be empty"):
-        ImageGen(
-            api_key="",
-            artifact_manager=ArtifactManager(),
-            event_emitter=EventEmitter(),
-        )
+        MiniMaxImageClient(api_key="")
