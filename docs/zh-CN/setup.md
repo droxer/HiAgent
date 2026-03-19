@@ -1,0 +1,254 @@
+[English](../setup.md) | **简体中文**
+
+# 本地部署指南
+
+按照以下步骤在本地运行 HiAgent。
+
+---
+
+## 前置要求
+
+| 工具 | 版本 | 安装地址 |
+|------|------|---------|
+| Python | 3.12+ | [python.org](https://www.python.org/downloads/) |
+| Node.js | 18+（含 npm） | [nodejs.org](https://nodejs.org/) |
+| uv | 最新版 | [docs.astral.sh/uv](https://docs.astral.sh/uv/) |
+| PostgreSQL | 14+（可选） | [postgresql.org](https://www.postgresql.org/download/) |
+| Docker | 最新版（可选） | [docker.com](https://www.docker.com/get-started/) |
+
+> **PostgreSQL** 为可选项 — 不安装的话，对话记录不会在服务重启后保留。
+> **Docker** 仅在需要通过 Boxlite 进行沙盒代码执行时才需要。
+
+### 验证前置要求
+
+```bash
+python3 --version   # 3.12+
+node --version       # 18+
+uv --version         # 任意近期版本
+```
+
+---
+
+## 1. 克隆仓库
+
+```bash
+git clone https://github.com/droxer/HiAgent.git
+cd HiAgent
+```
+
+---
+
+## 2. 安装依赖
+
+```bash
+make install
+```
+
+该命令会为后端执行 `uv sync`，为前端执行 `npm install`。
+
+也可以分别安装：
+
+```bash
+make install-backend   # cd backend && uv sync
+make install-web       # cd web && npm install
+```
+
+---
+
+## 3. 配置环境变量
+
+复制示例文件并填入你的 API 密钥：
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+编辑 `backend/.env`：
+
+```bash
+# 必填 — 必须设置
+ANTHROPIC_API_KEY=sk-ant-...
+TAVILY_API_KEY=tvly-...
+
+# 可选 — 沙盒提供者（默认：boxlite）
+SANDBOX_PROVIDER=local          # 本地开发建议使用 "local"，无需 Docker
+
+# 可选 — 数据库（留空或删除则跳过持久化）
+DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/hiagent
+```
+
+### API 密钥
+
+| 密钥 | 获取地址 | 是否必填 |
+|------|---------|---------|
+| `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com/) | 是 |
+| `TAVILY_API_KEY` | [tavily.com](https://tavily.com/) | 是 |
+| `MINIMAX_API_KEY` | [minimaxi.com](https://www.minimaxi.com/) | 否（启用图片生成） |
+| `E2B_API_KEY` | [e2b.dev](https://e2b.dev/) | 否（仅 `SANDBOX_PROVIDER=e2b` 时需要） |
+
+### 沙盒提供者
+
+| 提供者 | 适用场景 | 依赖 |
+|--------|---------|------|
+| `local` | 开发环境 — 以本地子进程运行代码（无隔离） | 无 |
+| `boxlite` | 生产环境 — 隔离的微型虚拟机 | Docker |
+| `e2b` | 云端沙盒 | `E2B_API_KEY` |
+
+本地开发建议设置 `SANDBOX_PROVIDER=local`，可完全跳过 Docker。
+
+---
+
+## 4. 配置数据库（可选）
+
+如需对话持久化，先创建 PostgreSQL 数据库：
+
+```bash
+createdb hiagent
+```
+
+确保 `backend/.env` 中的 `DATABASE_URL` 指向该数据库：
+
+```
+DATABASE_URL=postgresql+asyncpg://localhost:5432/hiagent
+```
+
+然后执行迁移：
+
+```bash
+cd backend && uv run alembic upgrade head
+```
+
+> 如果不需要持久化，可跳过此步骤。应用在没有数据库的情况下也能正常运行。
+
+---
+
+## 5. 启动开发服务器
+
+```bash
+make dev
+```
+
+该命令会同时启动两个服务：
+- **后端** (FastAPI)：http://localhost:8000
+- **前端** (Next.js)：http://localhost:3000
+
+在浏览器中打开 http://localhost:3000。
+
+如需分别启动（便于调试）：
+
+```bash
+# 终端 1
+make backend    # cd backend && uv run python -m api.main
+
+# 终端 2
+make web        # cd web && npm run dev
+```
+
+---
+
+## 6. 构建沙盒镜像（可选）
+
+如使用 `SANDBOX_PROVIDER=boxlite`，需先构建 Docker 镜像：
+
+```bash
+make build-sandbox
+```
+
+将构建三个镜像：
+- `hiagent-sandbox-default` — Python、Node.js、git
+- `hiagent-sandbox-data-science` — pandas、numpy、matplotlib
+- `hiagent-sandbox-browser` — Playwright + Chromium
+
+---
+
+## 项目结构
+
+```
+HiAgent/
+├── backend/           # Python/FastAPI 后端
+│   ├── api/           # 路由、中间件、应用工厂
+│   ├── agent/         # 智能体运行时、工具、沙盒、技能
+│   ├── config/        # 配置（Pydantic）
+│   ├── migrations/    # Alembic 数据库迁移
+│   └── tests/         # pytest 测试套件
+├── web/               # Next.js 前端
+│   └── src/
+│       ├── app/       # 页面（App Router）
+│       ├── features/  # 功能模块（对话、智能体面板、技能、MCP）
+│       ├── shared/    # 共享组件、hooks、状态管理、类型定义
+│       └── i18n/      # 国际化（en、zh-CN）
+├── container/         # 沙盒 Dockerfiles
+├── docs/              # 文档
+└── Makefile           # 开发命令
+```
+
+---
+
+## 常用命令
+
+| 命令 | 说明 |
+|------|------|
+| `make dev` | 启动后端 + 前端 |
+| `make backend` | 仅启动后端 |
+| `make web` | 仅启动前端 |
+| `make install` | 安装所有依赖 |
+| `make build-web` | 生产环境构建前端 |
+| `make build-sandbox` | 构建沙盒 Docker 镜像 |
+| `make migrate` | 执行数据库迁移 |
+| `make clean` | 删除 `.venv`、`node_modules`、`.next` |
+
+### 后端测试与代码检查
+
+在 `backend/` 目录下运行：
+
+```bash
+uv run pytest                          # 运行所有测试
+uv run pytest path/to/test.py::test_fn # 运行单个测试
+uv run pytest --cov                    # 带覆盖率报告
+uv run ruff check .                    # 代码检查
+uv run ruff format .                   # 自动格式化
+```
+
+---
+
+## 常见问题
+
+### 端口被占用
+
+```bash
+# 查找并终止占用端口 8000 或 3000 的进程
+lsof -ti:8000 | xargs kill -9
+lsof -ti:3000 | xargs kill -9
+```
+
+### 找不到 `uv`
+
+安装 uv：
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+### 数据库连接被拒绝
+
+- 检查 PostgreSQL 是否在运行：`pg_isready`
+- 确认 `backend/.env` 中的 `DATABASE_URL` 与本地配置一致
+- 如不需要持久化，删除或注释掉 `DATABASE_URL` 即可
+
+### Boxlite 沙盒报错
+
+- 确保 Docker 正在运行：`docker info`
+- 先构建镜像：`make build-sandbox`
+- 或切换为 `SANDBOX_PROVIDER=local` 用于开发
+
+### 前端无法连接后端
+
+前端通过代理将 `/api/*` 请求转发到 `http://127.0.0.1:8000`。请确保后端运行在 8000 端口。如果更改了后端端口，需同步修改 `web/next.config.ts`。
+
+---
+
+## 下一步
+
+- [开发指南](development.md) — 架构详解、API 参考、环境变量
+- [设计风格指南](DESIGN_STYLE_GUIDE.md) — UI 组件规范、色彩系统、字体排版
+- [品牌规范](brand-guidelines.md) — 品牌标识与视觉设计语言

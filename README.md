@@ -66,6 +66,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Documentation
 
+- [Local Setup Guide](docs/setup.md) — Step-by-step instructions to get HiAgent running on your machine
 - [Development Guide](docs/development.md) — Commands, architecture, API reference, environment variables, and contribution workflow
 - [Design Style Guide](docs/DESIGN_STYLE_GUIDE.md) — UI component patterns, color system, typography, and accessibility
 - [Brand Guidelines](docs/brand-guidelines.md) — Brand identity, color palette, and visual design language

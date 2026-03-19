@@ -66,6 +66,7 @@ make dev
 
 ## 文档
 
+- [本地部署指南](docs/zh-CN/setup.md) — 从零开始在本地运行 HiAgent 的完整步骤
 - [开发指南](docs/zh-CN/development.md) — 命令、架构、API 参考、环境变量及贡献流程
 - [设计风格指南](docs/zh-CN/DESIGN_STYLE_GUIDE.md) — UI 组件规范、色彩系统、排版与无障碍设计
 - [品牌指南](docs/zh-CN/brand-guidelines.md) — 品牌标识、色彩方案与视觉设计语言
