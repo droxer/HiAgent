@@ -16,7 +16,6 @@ from agent.tools.base import (
 
 _SCREENSHOT_PATH = "/home/user/.browser/screenshot.png"
 _SCRIPT_PATH = "/home/user/.browser/browser_action.py"
-_CONFIG_PATH = "/tmp/_browser_config.json"
 _WS_FILE = "/home/user/.browser/browser_ws.txt"
 
 _VALID_DIRECTIONS = frozenset({"up", "down"})
@@ -63,7 +62,19 @@ async def _run_browser_script(session: Any, script: str) -> tuple[str, int]:
     result = await session.exec(f"python3 {_SCRIPT_PATH}", timeout=60)
     output = result.stdout or ""
     if result.stderr:
-        output = f"{output}\n[stderr]\n{result.stderr}" if output else result.stderr
+        # Filter out container noise (seccomp warnings, etc.)
+        stderr_lines = [
+            line
+            for line in result.stderr.splitlines()
+            if not line.strip().startswith(("WARN", "INFO"))
+            and "seccomp" not in line
+            and "libcontainer" not in line
+        ]
+        filtered_stderr = "\n".join(stderr_lines).strip()
+        if filtered_stderr:
+            output = (
+                f"{output}\n[stderr]\n{filtered_stderr}" if output else filtered_stderr
+            )
     return output, result.exit_code
 
 
@@ -108,12 +119,10 @@ class BrowserNavigate(SandboxTool):
         if not url.strip():
             return ToolResult.fail("URL must not be empty")
 
-        await session.write_file(
-            _CONFIG_PATH, json.dumps({"url": url})
-        )
+        cfg_literal = json.dumps({"url": url})
         action_code = (
             "import json, time\n"
-            f'_cfg = json.load(open("{_CONFIG_PATH}"))\n'
+            f"_cfg = json.loads({cfg_literal!r})\n"
             "last_err = None\n"
             "for _attempt in range(3):\n"
             "    try:\n"
@@ -174,13 +183,25 @@ class BrowserClick(SandboxTool):
         if not selector.strip():
             return ToolResult.fail("Selector must not be empty")
 
-        await session.write_file(
-            _CONFIG_PATH, json.dumps({"selector": selector})
-        )
+        cfg_literal = json.dumps({"selector": selector})
         action_code = (
-            "import json\n"
-            f'_cfg = json.load(open("{_CONFIG_PATH}"))\n'
-            'page.click(_cfg["selector"])\npage.wait_for_timeout(500)'
+            "import json, time\n"
+            f"_cfg = json.loads({cfg_literal!r})\n"
+            "_sel = _cfg['selector']\n"
+            "last_err = None\n"
+            "for _attempt in range(3):\n"
+            "    try:\n"
+            "        page.wait_for_selector(_sel, state='visible', timeout=5000)\n"
+            "        page.click(_sel, timeout=10000)\n"
+            "        last_err = None\n"
+            "        break\n"
+            "    except Exception as e:\n"
+            "        last_err = e\n"
+            "        time.sleep(1)\n"
+            "if last_err is not None:\n"
+            "    print(f'URL: {page.url}')\n"
+            "    raise last_err\n"
+            "page.wait_for_timeout(500)"
         )
         script = _build_browser_script(action_code)
 
@@ -193,7 +214,10 @@ class BrowserClick(SandboxTool):
             return ToolResult.fail(f"Click error (exit {exit_code}): {output}")
 
         screenshot_b64 = await _capture_screenshot_base64(session)
-        metadata: dict[str, Any] = {"screenshot": _SCREENSHOT_PATH, "selector": selector}
+        metadata: dict[str, Any] = {
+            "screenshot": _SCREENSHOT_PATH,
+            "selector": selector,
+        }
         if screenshot_b64:
             metadata["screenshot_base64"] = screenshot_b64
         return ToolResult.ok(
@@ -236,13 +260,25 @@ class BrowserType(SandboxTool):
         if not text:
             return ToolResult.fail("Text must not be empty")
 
-        await session.write_file(
-            _CONFIG_PATH, json.dumps({"selector": selector, "text": text})
-        )
+        cfg_literal = json.dumps({"selector": selector, "text": text})
         action_code = (
-            "import json\n"
-            f'_cfg = json.load(open("{_CONFIG_PATH}"))\n'
-            'page.fill(_cfg["selector"], _cfg["text"])\npage.wait_for_timeout(300)'
+            "import json, time\n"
+            f"_cfg = json.loads({cfg_literal!r})\n"
+            "_sel = _cfg['selector']\n"
+            "last_err = None\n"
+            "for _attempt in range(3):\n"
+            "    try:\n"
+            "        page.wait_for_selector(_sel, state='visible', timeout=5000)\n"
+            "        page.fill(_sel, _cfg['text'], timeout=10000)\n"
+            "        last_err = None\n"
+            "        break\n"
+            "    except Exception as e:\n"
+            "        last_err = e\n"
+            "        time.sleep(1)\n"
+            "if last_err is not None:\n"
+            "    print(f'URL: {page.url}')\n"
+            "    raise last_err\n"
+            "page.wait_for_timeout(300)"
         )
         script = _build_browser_script(action_code)
 
@@ -255,7 +291,10 @@ class BrowserType(SandboxTool):
             return ToolResult.fail(f"Type error (exit {exit_code}): {output}")
 
         screenshot_b64 = await _capture_screenshot_base64(session)
-        metadata: dict[str, Any] = {"screenshot": _SCREENSHOT_PATH, "selector": selector}
+        metadata: dict[str, Any] = {
+            "screenshot": _SCREENSHOT_PATH,
+            "selector": selector,
+        }
         if screenshot_b64:
             metadata["screenshot_base64"] = screenshot_b64
         return ToolResult.ok(
@@ -317,7 +356,10 @@ class BrowserScroll(SandboxTool):
             return ToolResult.fail(f"Scroll error (exit {exit_code}): {output}")
 
         screenshot_b64 = await _capture_screenshot_base64(session)
-        metadata: dict[str, Any] = {"screenshot": _SCREENSHOT_PATH, "direction": direction}
+        metadata: dict[str, Any] = {
+            "screenshot": _SCREENSHOT_PATH,
+            "direction": direction,
+        }
         if screenshot_b64:
             metadata["screenshot_base64"] = screenshot_b64
         return ToolResult.ok(
@@ -326,18 +368,18 @@ class BrowserScroll(SandboxTool):
         )
 
 
-_EXTRACT_TEXT_CODE = """\
+_EXTRACT_TEXT_TEMPLATE = """\
 import json as _json
-_cfg = _json.load(open("{config_path}"))
+_cfg = _json.loads({cfg_literal})
 _sel = _cfg.get("selector", "")
 target = page.query_selector(_sel) if _sel else None
 el = target if target else page
 print(el.inner_text())
 """
 
-_EXTRACT_LINKS_CODE = """\
+_EXTRACT_LINKS_TEMPLATE = """\
 import json as _json
-_cfg = _json.load(open("{config_path}"))
+_cfg = _json.loads({cfg_literal})
 _sel = _cfg.get("selector", "")
 target = page.query_selector(_sel) if _sel else None
 scope = target if target else page
@@ -349,9 +391,9 @@ for link in links:
     print(f"{{link['text']}} -> {{link['href']}}")
 """
 
-_EXTRACT_TABLES_CODE = """\
+_EXTRACT_TABLES_TEMPLATE = """\
 import json as _json
-_cfg = _json.load(open("{config_path}"))
+_cfg = _json.loads({cfg_literal})
 _sel = _cfg.get("selector", "")
 target = page.query_selector(_sel) if _sel else None
 scope = target if target else page
@@ -372,14 +414,14 @@ for i, table in enumerate(tables):
 """
 
 
-def _build_extract_code(extract_type: str) -> str:
+def _build_extract_code(extract_type: str, cfg_json: str) -> str:
     """Return the extraction action code for the given type."""
     templates = {
-        "text": _EXTRACT_TEXT_CODE,
-        "links": _EXTRACT_LINKS_CODE,
-        "tables": _EXTRACT_TABLES_CODE,
+        "text": _EXTRACT_TEXT_TEMPLATE,
+        "links": _EXTRACT_LINKS_TEMPLATE,
+        "tables": _EXTRACT_TABLES_TEMPLATE,
     }
-    return templates[extract_type].format(config_path=_CONFIG_PATH)
+    return templates[extract_type].format(cfg_literal=repr(cfg_json))
 
 
 class BrowserExtract(SandboxTool):
@@ -419,10 +461,8 @@ class BrowserExtract(SandboxTool):
                 f"Must be one of: {', '.join(sorted(_VALID_EXTRACT_TYPES))}"
             )
 
-        await session.write_file(
-            _CONFIG_PATH, json.dumps({"selector": selector})
-        )
-        action_code = _build_extract_code(extract_type)
+        cfg_json = json.dumps({"selector": selector})
+        action_code = _build_extract_code(extract_type, cfg_json)
         script = _build_browser_script(action_code)
 
         try:

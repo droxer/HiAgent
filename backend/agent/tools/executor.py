@@ -56,9 +56,7 @@ class ToolExecutor:
             return "browser"
         return "default"
 
-    async def _get_sandbox_session(
-        self, tool_tags: tuple[str, ...] = ()
-    ) -> Any:
+    async def _get_sandbox_session(self, tool_tags: tuple[str, ...] = ()) -> Any:
         """Get or create a sandbox session for the required template.
 
         Sessions are keyed by template name so that browser tools get a
@@ -95,9 +93,7 @@ class ToolExecutor:
         )
         return session
 
-    async def get_sandbox_session(
-        self, tool_tags: tuple[str, ...] = ()
-    ) -> Any:
+    async def get_sandbox_session(self, tool_tags: tuple[str, ...] = ()) -> Any:
         """Public accessor for obtaining a sandbox session.
 
         Delegates to the internal ``_get_sandbox_session`` so that callers
@@ -209,10 +205,14 @@ class ToolExecutor:
                     },
                 )
 
-        # Return a new result with artifact_ids in metadata
+        # Return a new result with artifact_ids and content_type in metadata
         if artifact_ids:
             updated_meta = dict(result.metadata)
             updated_meta["artifact_ids"] = artifact_ids
+            # Use the first artifact's content_type so the frontend knows
+            # how to render the tool output (e.g. as an image).
+            if artifacts:
+                updated_meta["content_type"] = artifacts[0].content_type
             return ToolResult.ok(result.output, metadata=updated_meta)
 
         return result

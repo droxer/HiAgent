@@ -9,6 +9,12 @@ export function formatInput(input: Record<string, unknown>): string {
     .join(" ");
 }
 
+export function formatArgValue(value: unknown): string {
+  if (value === null || value === undefined) return "null";
+  if (typeof value === "string") return value;
+  return JSON.stringify(value, null, 2);
+}
+
 export function formatToolPreview(input: Record<string, unknown>): string {
   const first = Object.values(input)[0];
   if (!first) return "";

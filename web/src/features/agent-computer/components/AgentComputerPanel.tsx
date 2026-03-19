@@ -11,7 +11,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Progress } from "@/shared/components/ui/progress";
-import { formatInput, formatToolPreview } from "../lib/format-tools";
+import { formatToolPreview } from "../lib/format-tools";
+import { ToolArgsDisplay } from "./ToolArgsDisplay";
 import { HIDDEN_ACTIVITY_TOOLS, normalizeToolName } from "../lib/tool-constants";
 import { normalizeSkillName } from "@/features/skills/lib/normalize-skill-name";
 import { ToolOutputRenderer } from "./ToolOutputRenderer";
@@ -313,17 +314,19 @@ export function AgentComputerPanel({
                       <span className="text-foreground">
                         {normalizeToolName(tc.name)}
                       </span>
-                      {Object.keys(tc.input).length > 0 && (
-                        <span className="text-muted-foreground-dim">
-                          — {formatInput(tc.input)}
-                        </span>
-                      )}
                       {tc.output === undefined && (
                         <span className="text-ai-glow">
                           {t("computer.running")}
                         </span>
                       )}
                     </div>
+
+                    {/* Args detail box */}
+                    {Object.keys(tc.input).length > 0 && (
+                      <div className="ml-6 mb-1">
+                        <ToolArgsDisplay input={tc.input} />
+                      </div>
+                    )}
 
                     {/* Output (collapsible) */}
                     {tc.output !== undefined && (

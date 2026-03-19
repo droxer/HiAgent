@@ -6,8 +6,8 @@ import { CircleCheck, GitFork, CircleX, ChevronRight, ArrowRightLeft } from "luc
 import { PulsingDot } from "@/shared/components/PulsingDot";
 import { cn } from "@/shared/lib/utils";
 import { normalizeToolName } from "../lib/tool-constants";
-import { formatInput } from "../lib/format-tools";
 import { ToolOutputRenderer } from "./ToolOutputRenderer";
+import { ToolArgsDisplay } from "./ToolArgsDisplay";
 import { useTranslation } from "@/i18n";
 import type { AgentStatus, ToolCallInfo } from "@/shared/types";
 
@@ -106,17 +106,17 @@ export function AgentStatusRow({
                     <span className="text-foreground text-xs">
                       {normalizeToolName(tc.name)}
                     </span>
-                    {Object.keys(tc.input).length > 0 && (
-                      <span className="text-muted-foreground-dim text-xs truncate max-w-[200px]">
-                        — {formatInput(tc.input)}
-                      </span>
-                    )}
                     {tc.output === undefined && (
                       <span className="text-ai-glow text-xs">
                         {t("computer.running")}
                       </span>
                     )}
                   </div>
+                  {Object.keys(tc.input).length > 0 && (
+                    <div className="ml-5 mb-0.5">
+                      <ToolArgsDisplay input={tc.input} compact />
+                    </div>
+                  )}
                   {tc.output !== undefined && (
                     <div className="ml-5 mb-1">
                       <ToolOutputRenderer

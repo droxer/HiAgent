@@ -1,3 +1,6 @@
+SANDBOX_REGISTRY := ghcr.io/droxer
+SANDBOX_IMAGES := default data_science browser
+
 .PHONY: backend web dev install install-backend install-web build-web build-sandbox push-sandbox migrate clean test lint format evals
 
 # Start both backend and web concurrently
@@ -31,16 +34,22 @@ build-web:
 	cd web && npm run build
 
 # Build sandbox Docker images (from container/ folder)
+# Usage: make build-sandbox [SANDBOX=browser]
 build-sandbox:
-	docker build -t ghcr.io/droxer/hiagent-sandbox-default -f container/Dockerfile.default container
-	docker build -t ghcr.io/droxer/hiagent-sandbox-data-science -f container/Dockerfile.data_science container
-	docker build -t ghcr.io/droxer/hiagent-sandbox-browser -f container/Dockerfile.browser container
+ifdef SANDBOX
+	docker build -t $(SANDBOX_REGISTRY)/hiagent-sandbox-$(SANDBOX) -f container/Dockerfile.$(SANDBOX) container
+else
+	$(foreach img,$(SANDBOX_IMAGES),docker build -t $(SANDBOX_REGISTRY)/hiagent-sandbox-$(img) -f container/Dockerfile.$(img) container;)
+endif
 
 # Push sandbox Docker images to GHCR
+# Usage: make push-sandbox [SANDBOX=browser]
 push-sandbox:
-	docker push ghcr.io/droxer/hiagent-sandbox-default
-	docker push ghcr.io/droxer/hiagent-sandbox-data-science
-	docker push ghcr.io/droxer/hiagent-sandbox-browser
+ifdef SANDBOX
+	docker push $(SANDBOX_REGISTRY)/hiagent-sandbox-$(SANDBOX)
+else
+	$(foreach img,$(SANDBOX_IMAGES),docker push $(SANDBOX_REGISTRY)/hiagent-sandbox-$(img);)
+endif
 
 # Run backend tests
 test:

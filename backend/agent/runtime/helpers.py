@@ -143,6 +143,8 @@ async def process_tool_calls(
         if result.metadata:
             if "artifact_ids" in result.metadata:
                 result_data["artifact_ids"] = list(result.metadata["artifact_ids"])
+            if "content_type" in result.metadata:
+                result_data["content_type"] = result.metadata["content_type"]
         if agent_id is not None:
             result_data["agent_id"] = agent_id
 
