@@ -23,7 +23,7 @@ export function MCPServerCard({ server, onDelete }: MCPServerCardProps) {
   const TransportIcon = transport.icon;
 
   return (
-    <div className="group flex h-full flex-col rounded-lg border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:border-border-strong hover:shadow-md">
+    <div className="group flex h-full flex-col rounded-lg border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:border-border-strong">
       {/* Top row: icon + transport badge + delete */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary">

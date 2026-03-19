@@ -123,20 +123,29 @@ Used sparingly for status indicators and semantic meaning. Never as dominant sur
 
 | Role | Font | Variable | Fallback | Usage Scope |
 |------|------|----------|----------|-------------|
-| Body (sans) | Geist Sans | `--font-geist` | Noto Sans SC/TC, system-ui, -apple-system, sans-serif | All body text, UI chrome, labels, headings, panel titles, including WelcomeScreen hero. Modern geometric sans designed for screens. |
+| Body (sans) | Geist Sans | `--font-geist` | Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Noto Sans SC/TC, PingFang SC, Microsoft YaHei, sans-serif | All body text, UI chrome, labels, headings, panel titles, including WelcomeScreen hero. Modern geometric sans designed for screens. |
 | CJK (sans) | Noto Sans SC / Noto Sans TC | `--font-noto-sans-sc`, `--font-noto-sans-tc` | PingFang SC, Microsoft YaHei, sans-serif | Chinese Simplified and Traditional text. Loaded as web fonts for consistent cross-platform rendering. |
-| Code (mono) | Geist Mono | `--font-geist-mono` | SFMono, Menlo, Consolas, monospace | Code blocks, raw data, terminal logs, keyboard shortcut labels |
+| Code (mono) | Geist Mono | `--font-geist-mono` | JetBrains Mono, monospace | Code blocks, raw data, terminal logs, keyboard shortcut labels |
 
 ### Type Scale
 
 | Name | Size | CSS Token | Tailwind | Line Height | Usage |
 |------|------|-----------|----------|-------------|-------|
-| Hero | `3.75rem` (60px) | `--font-size-hero` | `text-[3.75rem]` | 1.1 | WelcomeScreen hero heading (sans-serif, semi-bold) |
-| H1 (Canvas Title) | `1.5rem` (24px) | `--font-size-h1` | `text-2xl` | 1.3 | Page/canvas titles |
-| H2 (Section Header) | `1rem` (16px) | `--font-size-h2` | `text-base` | 1.3 | Section headers (semi-bold, subdued) |
-| Body | `0.875rem` (14px) | `--font-size-body` | `text-sm` | 1.5 | Chat messages, UI text, button labels |
-| Caption | `0.75rem` (12px) | `--font-size-caption` | `text-xs` | 1.45 | Timestamps, metadata, hints (subdued color) |
-| Micro | `0.625rem` (10px) | `--font-size-micro` | `text-[10px]` | 1.4 | Inline badges, `<kbd>` labels, fine print |
+| 2xl (Page Title) | `1.5rem` (24px) | `--text-2xl` | `text-2xl` | `--lh-tight` (1.2) | Page/canvas titles |
+| xl (Card Title) | `1.25rem` (20px) | `--text-xl` | `text-xl` | `--lh-tight` (1.2) | Card titles |
+| lg | `1.125rem` (18px) | `--text-lg` | `text-lg` | `--lh-normal` (1.5) | Large body text |
+| base (Section Header) | `1rem` (16px) | `--text-base` | `text-base` | `--lh-normal` (1.5) | Section headers (semi-bold, subdued) |
+| sm (Body) | `0.875rem` (14px) | `--text-sm` | `text-sm` | `--lh-normal` (1.5) | Chat messages, UI text, button labels |
+| xs (Caption) | `0.75rem` (12px) | `--text-xs` | `text-xs` | `--lh-normal` (1.5) | Timestamps, metadata, hints (subdued color) |
+| Micro | `0.625rem` (10px) | `--font-size-micro` | `text-micro` | 1.4 | Inline badges, `<kbd>` labels, fine print |
+
+### Line Heights
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--lh-tight` | 1.2 | Headings, titles |
+| `--lh-normal` | 1.5 | Body text, UI labels |
+| `--lh-relaxed` | 1.625 | Long-form content, markdown prose |
 
 **No arbitrary sizes.** Do not use `text-[11px]`, `text-[13px]`, `text-[15px]`, or `text-[0.9375rem]`. If a value is not in this table, choose the closest scale token.
 
@@ -426,7 +435,7 @@ Any pattern using `opacity-0 group-hover:opacity-100` to reveal actions on hover
 ### Error Pages
 
 The `global-error.tsx` component renders its own `<html>/<body>` tree. It must:
-1. Import and inject font CSS variables (`geist.variable`, `geistMono.variable`, `notoSansSC.variable`, `notoSansTC.variable`)
+1. Import and inject font CSS variables (`geist.variable`, `inter.variable`, `geistMono.variable`, `jetbrainsMono.variable`, `notoSansSC.variable`, `notoSansTC.variable`)
 2. Use design tokens (`bg-background`, `text-foreground`, etc.) — never hardcoded hex
 
 ---
@@ -478,7 +487,7 @@ These patterns have been found in the codebase and must be avoided:
 | `opacity-0 group-hover:opacity-100` (alone) | Add `group-focus-within:opacity-100` |
 | `style={{ background: "#818CF8" }}` | Use `var(--color-accent-purple)` |
 | Cool gray tokens (zinc, slate) | Use warm stone-based neutrals |
-| `Montserrat` / `Inter` font references | Use `Geist Sans` (`--font-geist`) |
+| `Montserrat` font references | Use `Geist Sans` (`--font-geist`), Inter is a fallback only |
 | `text-muted-foreground/60`, `/40` | Use `text-muted-foreground-dim` (WCAG AA) |
 | `border-border/60`, `bg-border/60` | Use `border-border` (no opacity modifiers) |
 | `border-[var(--color-border-active)]` | Use `border-border-active` (Tailwind token) |

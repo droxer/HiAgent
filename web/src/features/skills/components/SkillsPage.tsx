@@ -2,7 +2,10 @@
 
 import { useState, useCallback, useRef, type DragEvent } from "react";
 import { motion } from "framer-motion";
-import { Lightbulb, Plus, Package, Search, X, Upload, FileText, FolderOpen } from "lucide-react";
+import { Lightbulb, Plus, Package, X, Upload, FileText, FolderOpen, Search } from "lucide-react";
+import { EmptyState } from "@/shared/components/EmptyState";
+import { ErrorBanner } from "@/shared/components/ErrorBanner";
+import { SearchInput } from "@/shared/components/SearchInput";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
@@ -271,22 +274,7 @@ export function SkillsPage() {
         <div className="mx-auto max-w-5xl space-y-5">
           {/* Error banner */}
           {error && (
-            <motion.div
-              className="flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/5 px-4 py-2.5"
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" />
-              <p className="flex-1 text-sm text-destructive">{error}</p>
-              <button
-                type="button"
-                onClick={() => setError(null)}
-                className="rounded-sm p-0.5 text-destructive/60 transition-colors hover:text-destructive"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </motion.div>
+            <ErrorBanner message={error} onDismiss={() => setError(null)} />
           )}
 
           {/* Section header with search + install */}
@@ -296,26 +284,12 @@ export function SkillsPage() {
             </h2>
             <div className="flex-1" />
             {skills.length > 3 && (
-              <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5">
-                <Search className="h-3.5 w-3.5 text-muted-foreground-dim" />
-                <input
-                  type="text"
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                  placeholder={t("skills.filterPlaceholder")}
-                  className="w-32 bg-transparent text-xs text-foreground placeholder:text-muted-foreground-dim outline-none"
-                />
-                {filter && (
-                  <button
-                    type="button"
-                    aria-label={t("skills.clearFilter")}
-                    onClick={() => setFilter("")}
-                    className="rounded-sm p-0.5 text-muted-foreground-dim hover:text-muted-foreground"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
+              <SearchInput
+                value={filter}
+                onChange={setFilter}
+                placeholder={t("skills.filterPlaceholder")}
+                clearLabel={t("skills.clearFilter")}
+              />
             )}
             <Button
               variant="outline"
@@ -339,34 +313,28 @@ export function SkillsPage() {
             </div>
           ) : displaySkills.length === 0 && filter ? (
             <motion.div
-              className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border py-12"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.15 }}
             >
-              <Search className="h-5 w-5 text-muted-foreground-dim" />
-              <p className="text-sm text-muted-foreground">
-                {t("skills.noSkillsMatching", { filter })}
-              </p>
+              <EmptyState
+                icon={Search}
+                description={t("skills.noSkillsMatching", { filter })}
+                dashed
+              />
             </motion.div>
           ) : skills.length === 0 ? (
             <motion.div
-              className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border py-14"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.12, delay: 0.05 }}
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-secondary">
-                <Lightbulb className="h-5 w-5 text-muted-foreground-dim" />
-              </div>
-              <div className="text-center">
-                <p className="text-sm font-medium text-foreground">
-                  {t("skills.noSkillsAvailable")}
-                </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {t("skills.noSkillsHint")}
-                </p>
-              </div>
+              <EmptyState
+                icon={Lightbulb}
+                title={t("skills.noSkillsAvailable")}
+                description={t("skills.noSkillsHint")}
+                dashed
+              />
             </motion.div>
           ) : (
             <motion.div
@@ -399,17 +367,7 @@ export function SkillsPage() {
           <div className="space-y-4">
             {/* Error inside dialog */}
             {error && (
-              <div className="flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2">
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" />
-                <p className="flex-1 text-sm text-destructive">{error}</p>
-                <button
-                  type="button"
-                  onClick={() => setError(null)}
-                  className="rounded-sm p-0.5 text-destructive transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
+              <ErrorBanner message={error} onDismiss={() => setError(null)} variant="compact" />
             )}
 
             {/* Source toggle */}

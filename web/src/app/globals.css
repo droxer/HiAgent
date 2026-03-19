@@ -62,23 +62,28 @@
   --color-terminal-dim: #78716C;
 
   /* Font families */
-  --font-sans: var(--font-geist), var(--font-noto-sans-sc), var(--font-noto-sans-tc), "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --font-sans: var(--font-geist), var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, var(--font-noto-sans-sc), var(--font-noto-sans-tc), "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-serif: Georgia, "Times New Roman", serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --font-mono: var(--font-geist-mono), var(--font-jetbrains-mono), monospace;
 
   /* Type scale */
-  --font-size-hero: 3.75rem;
-  --font-size-hero--line-height: 1.1;
-  --font-size-h1: 1.5rem;
-  --font-size-h1--line-height: 1.3;
-  --font-size-h2: 1rem;
-  --font-size-h2--line-height: 1.3;
-  --font-size-body: 0.9375rem;
-  --font-size-body--line-height: 1.5;
-  --font-size-caption: 0.75rem;
-  --font-size-caption--line-height: 1.45;
+  --text-xs: 0.75rem;      /* 12px */
+  --text-sm: 0.875rem;     /* 14px — main body */
+  --text-base: 1rem;       /* 16px — secondary headers */
+  --text-lg: 1.125rem;     /* 18px */
+  --text-xl: 1.25rem;      /* 20px — card titles */
+  --text-2xl: 1.5rem;      /* 24px — page titles */
+
+  /* Line heights */
+  --lh-tight: 1.2;
+  --lh-normal: 1.5;
+  --lh-relaxed: 1.625;
+
+  /* Legacy aliases (used by text-micro / text-caption utilities) */
   --font-size-micro: 0.625rem;
   --font-size-micro--line-height: 1.4;
+  --font-size-caption: var(--text-xs);
+  --font-size-caption--line-height: var(--lh-normal);
 
   /* Shadows — warm, soft */
   --shadow-card: 0 1px 2px rgba(28, 25, 23, 0.05);

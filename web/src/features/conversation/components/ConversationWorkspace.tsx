@@ -156,7 +156,7 @@ export function ConversationWorkspace({
       <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
         {/* Left pane: Conversation */}
         <div className={cn("flex flex-col", panelOpen ? "w-full border-b border-border md:w-1/2 md:border-b-0 md:border-r" : "w-full")}>
-          <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-6">
+          <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
             {messages.length === 0 && (
               <div className="flex h-full items-center justify-center">
                 <p className="text-[15px] text-muted-foreground">{t("conversation.waiting")}</p>

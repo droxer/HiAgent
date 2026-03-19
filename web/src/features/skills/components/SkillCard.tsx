@@ -36,7 +36,7 @@ export function SkillCard({ skill, onDelete }: SkillCardProps) {
   return (
     <Link
       href={`/skills/${encodeURIComponent(skill.name)}`}
-      className="group flex h-full cursor-pointer flex-col rounded-lg border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:border-border-strong hover:shadow-md"
+      className="group flex h-full cursor-pointer flex-col rounded-lg border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:border-border-strong"
     >
       {/* Top row: icon + badge + optional delete */}
       <div className="flex items-start justify-between gap-2">

@@ -1,0 +1,37 @@
+"use client";
+
+import { Search, X } from "lucide-react";
+import { cn } from "@/shared/lib/utils";
+
+interface SearchInputProps {
+  readonly value: string;
+  readonly onChange: (value: string) => void;
+  readonly placeholder: string;
+  readonly clearLabel?: string;
+  readonly className?: string;
+}
+
+export function SearchInput({ value, onChange, placeholder, clearLabel = "Clear filter", className }: SearchInputProps) {
+  return (
+    <div className={cn("flex items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5", className)}>
+      <Search className="h-3.5 w-3.5 text-muted-foreground-dim" />
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-32 bg-transparent text-xs text-foreground placeholder:text-muted-foreground-dim outline-none"
+      />
+      {value && (
+        <button
+          type="button"
+          aria-label={clearLabel}
+          onClick={() => onChange("")}
+          className="rounded-sm p-0.5 text-muted-foreground-dim hover:text-muted-foreground"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </div>
+  );
+}

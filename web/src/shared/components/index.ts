@@ -1,3 +1,5 @@
+export { EmptyState } from "./EmptyState";
+export { ErrorBanner } from "./ErrorBanner";
 export { ErrorBoundary } from "./ErrorBoundary";
 export { FileAttachmentChip } from "./FileAttachmentChip";
 export { IconButton } from "./IconButton";
@@ -7,3 +9,4 @@ export { PulsingDot } from "./PulsingDot";
 export { Sidebar } from "./Sidebar";
 export { TopBar } from "./TopBar";
 export { CommandPalette } from "./CommandPalette";
+export { SearchInput } from "./SearchInput";

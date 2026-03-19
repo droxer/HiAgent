@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChatInput } from "./ChatInput";
+import { ErrorBanner } from "@/shared/components/ErrorBanner";
 import { useTranslation } from "@/i18n";
-import { X } from "lucide-react";
 
 interface WelcomeScreenProps {
   onSubmitTask: (task: string, files?: File[], skills?: string[], usePlanner?: boolean) => void;
@@ -67,17 +67,10 @@ export function WelcomeScreen({ onSubmitTask, error, isLoading = false }: Welcom
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className="flex w-full items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+              transition={{ duration: 0.15 }}
+              className="w-full"
             >
-              <span className="flex-1">{error}</span>
-              <button
-                onClick={() => setDismissed(true)}
-                className="shrink-0 rounded p-0.5 hover:bg-destructive/10"
-                aria-label="Dismiss error"
-              >
-                <X size={16} />
-              </button>
+              <ErrorBanner message={error} onDismiss={() => setDismissed(true)} />
             </motion.div>
           )}
         </AnimatePresence>

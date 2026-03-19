@@ -18,6 +18,7 @@ import { ToolOutputRenderer } from "./ToolOutputRenderer";
 import { SkillActivityEntry } from "./SkillActivityEntry";
 import { AgentStatusRow } from "./AgentStatusRow";
 import { ArtifactFilesPanel } from "./ArtifactFilesPanel";
+import { EmptyState } from "@/shared/components/EmptyState";
 import { cn } from "@/shared/lib/utils";
 import { useTranslation } from "@/i18n";
 import { PulsingDot } from "@/shared/components/PulsingDot";
@@ -275,18 +276,15 @@ export function AgentComputerPanel({
         <div id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" className="flex min-h-0 flex-1 flex-col">
           <div
             ref={contentRef}
-            className="flex-1 overflow-y-auto px-3 py-4 sm:px-6"
+            className="flex-1 overflow-y-auto px-4 py-4 sm:px-6"
           >
             {/* Empty state */}
             {visibleToolCalls.length === 0 && (
-              <div className="flex h-full flex-col items-center justify-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-md bg-secondary">
-                  <Monitor className="h-5 w-5 text-muted-foreground-dim" />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t("computer.waitingActivity")}
-                </p>
-              </div>
+              <EmptyState
+                icon={Monitor}
+                description={t("computer.waitingActivity")}
+                className="h-full"
+              />
             )}
 
             {/* Parent tool call entries (no agentId) */}
@@ -363,7 +361,7 @@ export function AgentComputerPanel({
 
           {/* ── Consolidated status bar ── */}
           <div className="flex shrink-0 items-center gap-3 border-t border-border px-4 py-2">
-            <Progress value={progressValue} className="flex-1 h-1.5" />
+            <Progress value={progressValue} className="flex-1 h-1" />
 
             <div className="flex items-center gap-1.5">
               {isRunning ? (

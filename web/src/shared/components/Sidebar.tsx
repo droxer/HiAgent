@@ -186,7 +186,7 @@ export function Sidebar({
                     "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                     activePath === "/" && !activeTaskId
                       ? "bg-secondary text-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-secondary hover:border-border hover:shadow-md",
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary hover:border-border",
                   )}
                 >
                   <Plus className="h-4 w-4 transition-transform duration-200 group-hover/new:rotate-90" />
@@ -252,7 +252,7 @@ export function Sidebar({
                 "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                 activePath === "/" && !activeTaskId
                   ? "bg-secondary"
-                  : "hover:bg-secondary hover:border-border hover:shadow-md",
+                  : "hover:bg-secondary hover:border-border",
               )}
             >
               <div className={cn(
@@ -277,7 +277,7 @@ export function Sidebar({
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground",
               )}
             >
-              <Lightbulb className="h-[18px] w-[18px]" />
+              <Lightbulb className="h-4 w-4" />
               {t("sidebar.skills")}
             </Link>
             <Link
@@ -289,7 +289,7 @@ export function Sidebar({
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground",
               )}
             >
-              <Blocks className="h-[18px] w-[18px]" />
+              <Blocks className="h-4 w-4" />
               {t("sidebar.mcp")}
             </Link>
           </div>

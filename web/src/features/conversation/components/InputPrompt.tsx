@@ -69,7 +69,7 @@ export function InputPrompt({ question, onSubmit }: InputPromptProps) {
         aria-labelledby="input-prompt-title"
         className="relative z-10 mx-4 w-full max-w-lg animate-slide-up"
       >
-        <div className="rounded-md border border-border bg-card p-6 shadow-elevated">
+        <div className="rounded-lg border border-border bg-card p-6 shadow-elevated">
           {/* Header */}
           <div className="mb-4 flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-md bg-accent-amber/10 text-accent-amber">

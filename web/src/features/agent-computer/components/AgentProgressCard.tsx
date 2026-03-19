@@ -24,6 +24,7 @@ import {
   Plug,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { Progress } from "@/shared/components/ui/progress";
 import { cn } from "@/shared/lib/utils";
 import { useTranslation } from "@/i18n";
 import { PulsingDot } from "@/shared/components/PulsingDot";
@@ -207,16 +208,16 @@ function StepIcon({ step }: { readonly step: TimelineStep }) {
 
   if (step.status === "running") {
     return (
-      <span className="relative flex h-5 w-5 shrink-0 items-center justify-center rounded bg-ai-glow/15">
+      <span className="relative flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-ai-glow/15">
         <Icon className="h-3 w-3 text-ai-glow" />
-        <span className="absolute inset-0 rounded bg-ai-glow/10 animate-[pulsingDotFade_2s_ease-in-out_infinite]" />
+        <span className="absolute inset-0 rounded-md bg-ai-glow/10 animate-[pulsingDotFade_2s_ease-in-out_infinite]" />
       </span>
     );
   }
 
   if (step.status === "error") {
     return (
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-accent-rose/15">
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-accent-rose/15">
         <CircleX className="h-3 w-3 text-accent-rose" />
       </span>
     );
@@ -224,7 +225,7 @@ function StepIcon({ step }: { readonly step: TimelineStep }) {
 
   // complete — swap category icon for a check
   return (
-    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-accent-emerald/10">
+    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-accent-emerald/10">
       <Check className="h-3 w-3 text-accent-emerald" />
     </span>
   );
@@ -305,27 +306,17 @@ export function AgentProgressCard({
       transition={{ duration: 0.12, ease: "easeOut" }}
     >
       {/* Progress bar — solid accent */}
-      <div
-        className="h-0.5 w-full bg-secondary"
-        role="progressbar"
-        aria-valuenow={Math.round(progressRatio * 100)}
-        aria-valuemin={0}
-        aria-valuemax={100}
+      <Progress
+        value={Math.round(progressRatio * 100)}
+        className="h-1 rounded-none"
+        indicatorClassName={cn(
+          taskState === "complete" && "bg-accent-emerald",
+          taskState === "error" && "bg-accent-rose",
+          taskState === "planning" && "bg-accent-amber",
+          (taskState === "executing" || taskState === "idle") && "bg-accent-purple",
+        )}
         aria-label={t("progress.taskProgress", { percent: Math.round(progressRatio * 100) })}
-      >
-        <motion.div
-          className={cn(
-            "h-full",
-            taskState === "complete" && "bg-accent-emerald",
-            taskState === "error" && "bg-accent-rose",
-            taskState === "planning" && "bg-accent-amber",
-            (taskState === "executing" || taskState === "idle") && "bg-accent-purple",
-          )}
-          initial={{ width: 0 }}
-          animate={{ width: `${progressRatio * 100}%` }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
-        />
-      </div>
+      />
 
       {/* Unified header row */}
       <div className="flex items-center gap-3 px-4 py-3">
