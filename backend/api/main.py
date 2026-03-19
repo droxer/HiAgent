@@ -23,7 +23,7 @@ from api.builders import _build_sandbox_provider
 from api.db_subscriber import PendingWrites
 from api.dependencies import AppState
 from api.models import MCPState
-from api.routes import artifacts, conversations, mcp, skills
+from api.routes import artifacts, conversations, mcp, skill_files, skills
 from config.settings import get_settings
 
 
@@ -143,6 +143,7 @@ def _create_app() -> FastAPI:
     application.include_router(mcp.router)
     application.include_router(artifacts.router)
     application.include_router(skills.router)
+    application.include_router(skill_files.router)
 
     return application
 

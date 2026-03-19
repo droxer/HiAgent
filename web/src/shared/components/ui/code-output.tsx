@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Copy, Check } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
+import { MarkdownRenderer } from "@/shared/components/MarkdownRenderer";
 import { ExpandToggle } from "./expand-toggle";
 
 const COLLAPSE_THRESHOLD = 500;
@@ -12,10 +13,11 @@ interface CodeOutputProps {
   readonly output: string;
   readonly icon?: LucideIcon;
   readonly label?: string;
+  readonly language?: string;
   readonly className?: string;
 }
 
-export function CodeOutput({ output, icon: Icon, label, className }: CodeOutputProps) {
+export function CodeOutput({ output, icon: Icon, label, language, className }: CodeOutputProps) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const handleToggle = useCallback(() => setExpanded((p) => !p), []);
@@ -31,6 +33,11 @@ export function CodeOutput({ output, icon: Icon, label, className }: CodeOutputP
       // Clipboard access denied — silently degrade
     }
   }, [output]);
+
+  const fenced = useMemo(() => {
+    const lang = language ?? "";
+    return `\`\`\`${lang}\n${displayText}\n\`\`\``;
+  }, [language, displayText]);
 
   return (
     <div className={cn("rounded-md border-l-2 border-l-accent-emerald bg-muted px-3 py-2", className)}>
@@ -67,18 +74,13 @@ export function CodeOutput({ output, icon: Icon, label, className }: CodeOutputP
         )}
       </div>
 
-      {/* Content */}
-      <pre
-        className={cn(
-          "whitespace-pre-wrap font-mono text-xs leading-relaxed",
-          "text-accent-emerald",
-        )}
-      >
-        {displayText}
+      {/* Content — rendered via MarkdownRenderer for syntax highlighting */}
+      <div className="code-output-content [&_.markdown-body]:bg-transparent [&_.markdown-body_pre]:m-0 [&_.markdown-body_pre]:rounded-none [&_.markdown-body_pre]:border-0 [&_.markdown-body_pre]:bg-transparent [&_.markdown-body_pre]:p-0">
+        <MarkdownRenderer content={fenced} />
         {isLong && !expanded && (
-          <span className="text-muted-foreground-dim">{"\n..."}</span>
+          <span className="font-mono text-xs text-muted-foreground-dim">{"\n..."}</span>
         )}
-      </pre>
+      </div>
 
       {isLong && <ExpandToggle expanded={expanded} onToggle={handleToggle} />}
     </div>

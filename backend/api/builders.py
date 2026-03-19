@@ -353,6 +353,15 @@ def _build_planner_orchestrator(
         artifact_manager=artifact_manager,
     )
 
+    # Append skill catalog to planner system prompt if available
+    planner_prompt = ""
+    if skill_registry is not None and settings.SKILLS_ENABLED:
+        catalog_section = skill_registry.catalog_prompt_section()
+        if catalog_section:
+            from agent.runtime.planner import PLANNER_SYSTEM_PROMPT
+
+            planner_prompt = PLANNER_SYSTEM_PROMPT + "\n" + catalog_section
+
     orchestrator = PlannerOrchestrator(
         claude_client=claude_client,
         tool_registry=base_registry,
@@ -360,6 +369,8 @@ def _build_planner_orchestrator(
         event_emitter=event_emitter,
         sub_agent_manager=sub_agent_manager,
         max_iterations=settings.MAX_ITERATIONS,
+        system_prompt=planner_prompt,
+        skill_registry=skill_registry if settings.SKILLS_ENABLED else None,
     )
     callback_holder.set(orchestrator.on_task_complete)
 

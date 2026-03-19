@@ -16,6 +16,7 @@ from agent.runtime.helpers import (
 from agent.runtime.observer import Observer
 from agent.runtime.orchestrator import AgentState
 from agent.runtime.task_runner import TaskAgentConfig
+from agent.skills.loader import SkillRegistry
 from agent.tools.executor import ToolExecutor
 from agent.tools.meta.spawn_task_agent import SpawnTaskAgent
 from agent.tools.meta.wait_for_agents import WaitForAgents
@@ -76,6 +77,8 @@ class PlannerOrchestrator:
         sub_agent_manager: SubAgentManagerProtocol,
         max_iterations: int = 30,
         observer: Observer | None = None,
+        system_prompt: str = "",
+        skill_registry: SkillRegistry | None = None,
     ) -> None:
         if max_iterations < 1:
             raise ValueError("max_iterations must be at least 1")
@@ -86,6 +89,8 @@ class PlannerOrchestrator:
         self._max_iterations = max_iterations
         self._observer = observer or Observer()
         self._task_complete_summary: str | None = None
+        self._system_prompt = system_prompt or PLANNER_SYSTEM_PROMPT
+        self._skill_registry = skill_registry
 
         # Register meta-tools into the provided registry
         registry_with_meta = tool_registry.register(
@@ -137,11 +142,79 @@ class PlannerOrchestrator:
         self._task_complete_summary = None
         self._state = replace(self._state, completed=False, error=None, iteration=0)
 
-        tools = self._registry.to_anthropic_tools()
+        # Skill matching — mirrors AgentOrchestrator.run() logic
+        effective_prompt = self._system_prompt
+        effective_registry = self._registry
+        matched = None
+        if self._skill_registry is not None:
+            explicit_skill_name = next(
+                (skill for skill in selected_skills if skill.strip()),
+                None,
+            )
+            if explicit_skill_name is not None:
+                matched = self._skill_registry.find_by_name(explicit_skill_name)
+                if matched is None:
+                    error = f"Selected skill '{explicit_skill_name}' is not available."
+                    await self._emitter.emit(
+                        EventType.TASK_ERROR,
+                        {"error": error},
+                    )
+                    return f"Error: {error}"
+                logger.info("explicit_skill_selected name={}", explicit_skill_name)
+            else:
+                matched = self._skill_registry.match_description(user_message)
+
+            if matched is not None:
+                effective_prompt = (
+                    self._system_prompt
+                    + f'\n\n<skill_content name="{matched.metadata.name}">\n'
+                    + matched.instructions
+                    + "\n</skill_content>"
+                )
+                source = "explicit" if explicit_skill_name is not None else "auto"
+                logger.info(
+                    "planner_skill_activated name={} source={}",
+                    matched.metadata.name,
+                    source,
+                )
+                await self._emitter.emit(
+                    EventType.SKILL_ACTIVATED,
+                    {"name": matched.metadata.name, "source": source},
+                )
+
+                # Replace ActivateSkill tool with active skill name
+                from agent.tools.local.activate_skill import ActivateSkill
+
+                effective_registry = effective_registry.replace_tool(
+                    ActivateSkill(
+                        skill_registry=self._skill_registry,
+                        active_skill_name=matched.metadata.name,
+                    )
+                )
+
+                # Apply sandbox template
+                if matched.metadata.sandbox_template:
+                    self._executor.set_sandbox_template(
+                        matched.metadata.sandbox_template
+                    )
+                    logger.info(
+                        "planner_skill_sandbox_template name={} template={}",
+                        matched.metadata.name,
+                        matched.metadata.sandbox_template,
+                    )
+
+                # Filter tools by allowed_tools
+                if matched.metadata.allowed_tools:
+                    allowed = set(matched.metadata.allowed_tools) | {"activate_skill"}
+                    effective_registry = effective_registry.filter_by_names(allowed)
+
+        tools = effective_registry.to_anthropic_tools()
         model = get_settings().PLANNING_MODEL
 
         try:
-            self._state = await self._execute_loop(self._state, tools, model)
+            self._state = await self._execute_loop(
+                self._state, tools, model, effective_prompt
+            )
         finally:
             await self._cleanup_sub_agents()
 
@@ -152,11 +225,12 @@ class PlannerOrchestrator:
         state: AgentState,
         tools: list[dict[str, Any]],
         model: str,
+        system_prompt: str | None = None,
     ) -> AgentState:
         """Run the ReAct loop until completion, error, or max iterations."""
         while not state.completed and state.error is None:
             state = state.increment_iteration()
-            state = await self._run_iteration(state, tools, model)
+            state = await self._run_iteration(state, tools, model, system_prompt)
         return state
 
     async def _run_iteration(
@@ -164,6 +238,7 @@ class PlannerOrchestrator:
         state: AgentState,
         tools: list[dict[str, Any]],
         model: str,
+        system_prompt: str | None = None,
     ) -> AgentState:
         """Run a single iteration of the planner ReAct loop."""
         # Compact history before the LLM call if needed
@@ -182,7 +257,7 @@ class PlannerOrchestrator:
                 f"Exceeded maximum iterations ({self._max_iterations})",
             )
 
-        response = await self._call_llm(state, tools, model)
+        response = await self._call_llm(state, tools, model, system_prompt)
         if response is None:
             return state.mark_error("LLM call failed")
 
@@ -211,6 +286,7 @@ class PlannerOrchestrator:
         state: AgentState,
         tools: list[dict[str, Any]],
         model: str,
+        system_prompt: str | None = None,
     ) -> LLMResponse | None:
         """Call the LLM with streaming and return the response, or None on failure."""
         try:
@@ -222,7 +298,7 @@ class PlannerOrchestrator:
                 )
 
             return await self._client.create_message_stream(
-                system=PLANNER_SYSTEM_PROMPT,
+                system=system_prompt or self._system_prompt,
                 messages=list(state.messages),
                 tools=tools if tools else None,
                 model=model,

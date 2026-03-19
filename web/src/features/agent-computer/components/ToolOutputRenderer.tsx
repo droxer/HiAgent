@@ -80,6 +80,34 @@ function parsePreviewOutput(output: string): PreviewInfo {
   };
 }
 
+/** Map MIME content types to highlight.js language identifiers. */
+function contentTypeToLang(contentType?: string): string | undefined {
+  if (!contentType) return undefined;
+  const map: Record<string, string> = {
+    "text/x-python": "python",
+    "text/javascript": "javascript",
+    "text/x-java": "java",
+    "text/x-c": "c",
+    "text/x-cpp": "cpp",
+    "text/x-ruby": "ruby",
+    "text/x-go": "go",
+    "text/x-rust": "rust",
+    "text/x-typescript": "typescript",
+    "text/x-swift": "swift",
+    "text/x-kotlin": "kotlin",
+    "text/x-sql": "sql",
+    "text/x-shellscript": "bash",
+    "text/x-sh": "bash",
+    "text/css": "css",
+    "text/html": "html",
+    "text/xml": "xml",
+    "application/json": "json",
+    "application/xml": "xml",
+    "application/javascript": "javascript",
+  };
+  return map[contentType];
+}
+
 interface ToolOutputRendererProps {
   readonly output: string;
   readonly toolName: string;
@@ -200,6 +228,7 @@ export function ToolOutputRenderer({ output, toolName, contentType, conversation
         output={output}
         icon={style.icon}
         label={style.labelKey ? t(style.labelKey) : ""}
+        language={contentTypeToLang(contentType)}
         className="mt-2.5"
       />
     );

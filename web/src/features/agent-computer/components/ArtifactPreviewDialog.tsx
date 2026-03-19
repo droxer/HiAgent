@@ -19,6 +19,36 @@ import {
   fileIcon,
 } from "../lib/artifact-helpers";
 
+/** Map file extensions to highlight.js language identifiers. */
+const EXT_TO_LANG: Record<string, string> = {
+  py: "python",
+  ts: "typescript",
+  tsx: "tsx",
+  js: "javascript",
+  jsx: "jsx",
+  json: "json",
+  yaml: "yaml",
+  yml: "yaml",
+  xml: "xml",
+  html: "html",
+  css: "css",
+  sh: "bash",
+  toml: "toml",
+  sql: "sql",
+  rs: "rust",
+  go: "go",
+  rb: "ruby",
+  java: "java",
+  kt: "kotlin",
+  swift: "swift",
+  c: "c",
+  cpp: "cpp",
+  h: "c",
+  hpp: "cpp",
+  lua: "lua",
+  r: "r",
+};
+
 interface ArtifactPreviewDialogProps {
   readonly artifact: ArtifactInfo | null;
   readonly artifactUrl: string | null;
@@ -156,7 +186,8 @@ export function ArtifactPreviewDialog({
 
     // Code / text preview
     if ((isCodeType(ct) || isTextType(ct)) && textContent !== null) {
-      return <CodeOutput output={textContent} icon={Icon} label={ext || undefined} />;
+      const lang = ext ? EXT_TO_LANG[ext] : undefined;
+      return <CodeOutput output={textContent} icon={Icon} label={ext || undefined} language={lang} />;
     }
 
     // HTML preview

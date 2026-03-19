@@ -79,6 +79,40 @@ export async function uploadSkill(files: readonly File[]): Promise<Skill> {
   return res.json();
 }
 
+// ── File explorer types & functions ──
+
+export interface FileTreeNode {
+  readonly name: string;
+  readonly path: string;
+  readonly type: "file" | "directory";
+  readonly children?: readonly FileTreeNode[];
+}
+
+export async function fetchSkillFiles(
+  name: string,
+): Promise<readonly FileTreeNode[]> {
+  const res = await fetch(
+    `${API_BASE}/skills/${encodeURIComponent(name)}/files`,
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to fetch skill files: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function fetchSkillFileContent(
+  name: string,
+  path: string,
+): Promise<string> {
+  const res = await fetch(
+    `${API_BASE}/skills/${encodeURIComponent(name)}/files/${encodeURIComponent(path)}`,
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to fetch file content: ${res.status}`);
+  }
+  return res.text();
+}
+
 export async function searchRegistry(
   query: string,
 ): Promise<readonly RegistrySearchResult[]> {

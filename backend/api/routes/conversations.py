@@ -187,7 +187,7 @@ async def _reconstruct_conversation(
     emitter.subscribe(db_sub)
 
     logger.info(
-        "conversation_reconstructed id=%s messages=%d",
+        "conversation_reconstructed id={} messages={}",
         conversation_id,
         len(initial_messages),
     )
@@ -453,7 +453,7 @@ async def create_conversation(
     )
 
     logger.info(
-        "conversation_created id=%s message=%s skills=%s attachments=%d",
+        "conversation_created id={} message={} skills={} attachments={}",
         conversation_id,
         message[:100],
         selected_skills,
@@ -662,7 +662,7 @@ async def respond_to_prompt(
         )
 
     logger.info(
-        "user_response_received conversation_id=%s request_id=%s",
+        "user_response_received conversation_id={} request_id={}",
         conversation_id,
         body.request_id,
     )

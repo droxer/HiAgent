@@ -159,6 +159,11 @@ class BoxliteSession:
                 if not mv_result.success:
                     # Don't raise yet — try the base64 fallback below
                     pass
+        except Exception:
+            logger.warning(
+                "Boxlite copy_in failed for %s, will try base64 fallback",
+                path,
+            )
         finally:
             await asyncio.to_thread(os.unlink, tmp_path)
 

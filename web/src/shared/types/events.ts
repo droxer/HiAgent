@@ -23,7 +23,8 @@ export type EventType =
   | "sandbox_stderr"
   | "code_result"
   | "artifact_created"
-  | "conversation_title";
+  | "conversation_title"
+  | "skill_activated";
 
 export interface AgentEvent {
   type: EventType;

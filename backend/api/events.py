@@ -49,6 +49,8 @@ class EventType(StrEnum):
     PREVIEW_AVAILABLE = "preview_available"
     PREVIEW_STOPPED = "preview_stopped"
 
+    SKILL_ACTIVATED = "skill_activated"
+
 
 @dataclass(frozen=True)
 class AgentEvent:

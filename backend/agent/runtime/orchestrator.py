@@ -314,9 +314,15 @@ class AgentOrchestrator:
                     + matched.instructions
                     + "\n</skill_content>"
                 )
+                source = "explicit" if explicit_skill_name is not None else "auto"
                 logger.info(
-                    "auto_injected_skill name={}",
+                    "skill_activated name={} source={}",
                     matched.metadata.name,
+                    source,
+                )
+                await self._emitter.emit(
+                    EventType.SKILL_ACTIVATED,
+                    {"name": matched.metadata.name, "source": source},
                 )
                 # Replace ActivateSkill tool with active skill name (copy-on-write)
                 from agent.tools.local.activate_skill import ActivateSkill
@@ -388,6 +394,13 @@ class AgentOrchestrator:
                 self._state, tools, effective_prompt
             )
 
+            # Check if activate_skill was invoked mid-turn and enforce constraints
+            updated = await self._check_mid_turn_skill_activation(
+                effective_prompt, effective_registry
+            )
+            if updated is not None:
+                effective_prompt, effective_registry, tools = updated
+
         logger.info("turn_complete iterations={}", self._state.iteration)
 
         if self._cancel_event.is_set():
@@ -414,6 +427,132 @@ class AgentOrchestrator:
             {"result": final_text},
         )
         return final_text
+
+    async def _check_mid_turn_skill_activation(
+        self,
+        current_prompt: str,
+        current_registry: ToolRegistry,
+    ) -> tuple[str, ToolRegistry, list[dict[str, Any]]] | None:
+        """Detect a successful mid-turn activate_skill call and enforce constraints.
+
+        Returns (effective_prompt, effective_registry, tools) if a new skill was
+        activated, or None if no change occurred.
+        """
+        if self._skill_registry is None:
+            return None
+
+        # Look at the last assistant message for activate_skill tool_use blocks
+        last_assistant = None
+        for msg in reversed(self._state.messages):
+            if msg.get("role") == "assistant":
+                last_assistant = msg
+                break
+
+        if last_assistant is None:
+            return None
+
+        content = last_assistant.get("content")
+        if not isinstance(content, list):
+            return None
+
+        # Find activate_skill tool_use blocks
+        activated_name: str | None = None
+        for block in content:
+            if (
+                isinstance(block, dict)
+                and block.get("type") == "tool_use"
+                and block.get("name") == "activate_skill"
+            ):
+                skill_input = block.get("input", {})
+                activated_name = skill_input.get("name")
+                break
+
+        if not activated_name:
+            return None
+
+        # Skip if this skill is already the active one
+        if activated_name == self._auto_injected_skill:
+            return None
+
+        # Check if the tool result indicates success (not "already active" or error)
+        # Look for the corresponding tool_result in the next user message
+        tool_id = None
+        for block in content:
+            if (
+                isinstance(block, dict)
+                and block.get("type") == "tool_use"
+                and block.get("name") == "activate_skill"
+            ):
+                tool_id = block.get("id")
+                break
+
+        if tool_id is not None:
+            # Find the tool result message
+            for msg in self._state.messages:
+                if msg.get("role") == "user":
+                    msg_content = msg.get("content")
+                    if isinstance(msg_content, list):
+                        for block in msg_content:
+                            if (
+                                isinstance(block, dict)
+                                and block.get("type") == "tool_result"
+                                and block.get("tool_use_id") == tool_id
+                                and block.get("is_error") is True
+                            ):
+                                return None
+
+        skill = self._skill_registry.find_by_name(activated_name)
+        if skill is None:
+            return None
+
+        # Update active skill tracking
+        self._auto_injected_skill = skill.metadata.name
+
+        # Inject skill instructions into prompt
+        effective_prompt = (
+            self._system_prompt
+            + f'\n\n<skill_content name="{skill.metadata.name}">\n'
+            + skill.instructions
+            + "\n</skill_content>"
+        )
+
+        # Replace ActivateSkill tool with updated active skill name
+        from agent.tools.local.activate_skill import ActivateSkill
+
+        updated_registry = current_registry.replace_tool(
+            ActivateSkill(
+                skill_registry=self._skill_registry,
+                active_skill_name=skill.metadata.name,
+            )
+        )
+
+        # Apply sandbox template if specified
+        if skill.metadata.sandbox_template:
+            self._executor.set_sandbox_template(skill.metadata.sandbox_template)
+            logger.info(
+                "mid_turn_skill_sandbox_template name={} template={}",
+                skill.metadata.name,
+                skill.metadata.sandbox_template,
+            )
+
+        # Filter tools by allowed_tools if specified
+        if skill.metadata.allowed_tools:
+            allowed = set(skill.metadata.allowed_tools) | {"activate_skill"}
+            updated_registry = updated_registry.filter_by_names(allowed)
+
+        tools = updated_registry.to_anthropic_tools()
+
+        logger.info(
+            "mid_turn_skill_activated name={}",
+            skill.metadata.name,
+        )
+
+        await self._emitter.emit(
+            EventType.SKILL_ACTIVATED,
+            {"name": skill.metadata.name, "source": "mid_turn"},
+        )
+
+        return effective_prompt, updated_registry, tools
 
     async def _run_iteration(
         self,

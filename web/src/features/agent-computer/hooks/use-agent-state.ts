@@ -312,6 +312,18 @@ export function useAgentState(events: AgentEvent[]) {
     return phase;
   }, [events]);
 
+  const activeSkill = useMemo<string | null>(() => {
+    let skill: string | null = null;
+    for (const e of events) {
+      if (e.type === "skill_activated") {
+        skill = String(e.data.name ?? null);
+      } else if (e.type === "turn_start") {
+        skill = null;
+      }
+    }
+    return skill;
+  }, [events]);
+
   const artifacts = useMemo<ArtifactInfo[]>(() => {
     return events
       .filter((e) => e.type === "artifact_created")
@@ -334,5 +346,6 @@ export function useAgentState(events: AgentEvent[]) {
     isStreaming,
     assistantPhase,
     artifacts,
+    activeSkill,
   };
 }
