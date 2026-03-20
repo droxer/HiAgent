@@ -10,6 +10,7 @@ import { AgentProgressCard, AgentComputerPanel } from "@/features/agent-computer
 import { NON_ARTIFACT_TOOLS } from "@/features/agent-computer/lib/tool-constants";
 import { ChatInput } from "@/features/conversation";
 import { AssistantLoadingSkeleton } from "./AssistantLoadingSkeleton";
+import { PlanChecklistPanel } from "./PlanChecklistPanel";
 import { StreamingCursor } from "./StreamingCursor";
 import { cn } from "@/shared/lib/utils";
 import { useTranslation } from "@/i18n";
@@ -21,6 +22,7 @@ import type {
   ChatMessage,
   ToolCallInfo,
   AgentStatus,
+  PlanStep,
 } from "@/shared/types";
 
 function formatTime(ts: number): string {
@@ -34,6 +36,7 @@ interface ConversationWorkspaceProps {
   messages: ChatMessage[];
   toolCalls: ToolCallInfo[];
   agentStatuses: AgentStatus[];
+  planSteps: PlanStep[];
   artifacts: ArtifactInfo[];
   taskState: TaskState;
   thinkingContent: string;
@@ -57,6 +60,7 @@ export function ConversationWorkspace({
   messages,
   toolCalls,
   agentStatuses,
+  planSteps,
   artifacts,
   taskState,
   thinkingContent,
@@ -316,6 +320,12 @@ export function ConversationWorkspace({
             </div>
 
           </div>
+
+          {planSteps.length > 0 && (
+            <div className={cn("border-t border-border px-6 py-3", !panelOpen && "mx-auto w-full max-w-3xl")}>
+              <PlanChecklistPanel planSteps={planSteps} taskState={taskState} />
+            </div>
+          )}
 
           {events.length > 0 && (
             <div className={cn("border-t border-border px-6 py-3", !panelOpen && "mx-auto w-full max-w-3xl")}>

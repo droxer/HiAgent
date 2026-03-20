@@ -75,6 +75,7 @@ async def main():
         browser = Browser(
             headless=True,
             disable_security=True,
+            enable_default_extensions=False,
         )
 
         task = config["task"]

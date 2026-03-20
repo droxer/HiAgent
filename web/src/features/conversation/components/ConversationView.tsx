@@ -13,6 +13,7 @@ export function ConversationView() {
     allMessages,
     toolCalls,
     agentStatuses,
+    planSteps,
     artifacts,
     taskState,
     thinkingContent,
@@ -67,6 +68,7 @@ export function ConversationView() {
             messages={allMessages}
             toolCalls={toolCalls}
             agentStatuses={agentStatuses}
+            planSteps={planSteps}
             artifacts={artifacts}
             taskState={taskState}
             thinkingContent={thinkingContent}

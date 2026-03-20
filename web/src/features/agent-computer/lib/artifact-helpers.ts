@@ -6,12 +6,20 @@ import {
   File,
 } from "lucide-react";
 
-export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB"];
+export function formatFileSize(
+  bytes: number,
+  t: (key: string, params?: Record<string, string | number>) => string,
+): string {
+  if (bytes === 0) return t("artifacts.size.zero");
+  const units = [
+    "artifacts.size.b",
+    "artifacts.size.kb",
+    "artifacts.size.mb",
+    "artifacts.size.gb",
+  ];
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   const size = bytes / Math.pow(1024, i);
-  return `${size.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+  return t(units[i], { size: i === 0 ? size.toFixed(0) : size.toFixed(1) });
 }
 
 export function fileIcon(contentType: string) {

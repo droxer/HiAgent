@@ -1,6 +1,7 @@
 /** Tools that should be hidden from the activity view (communication-only). */
 export const HIDDEN_ACTIVITY_TOOLS = new Set([
   "user_message",
+  "plan_create",
 ]);
 
 /** Tools whose results are never considered "artifacts" for panel auto-open. */
@@ -12,6 +13,7 @@ export const NON_ARTIFACT_TOOLS = new Set([
   "memory_store",
   "memory_search",
   "task_complete",
+  "plan_create",
 ]);
 
 /** Tools whose output should be rendered as code. */
@@ -61,6 +63,7 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
   preview_start: "Preview Start",
   preview_stop: "Preview Stop",
   // Meta: agents
+  plan_create: "Create Plan",
   agent_spawn: "Spawn Agent",
   agent_send: "Send Message",
   agent_receive: "Receive Message",
@@ -69,6 +72,21 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
   activate_skill: "Load Skill",
   load_skill: "Load Skill",
 };
+
+type TFn = (key: string, params?: Record<string, string | number>) => string;
+
+/**
+ * Return a normalized, i18n-aware display name for a tool.
+ * Looks up `tools.name.{rawName}` via `t()`; falls back to `normalizeToolName()`.
+ */
+export function normalizeToolNameI18n(rawName: string, t: TFn): string {
+  // MCP tools don't have i18n keys — delegate to normalizeToolName
+  if (rawName.includes("__")) return normalizeToolName(rawName);
+  const i18nKey = `tools.name.${rawName}`;
+  const translated = t(i18nKey);
+  if (translated === i18nKey) return normalizeToolName(rawName);
+  return translated;
+}
 
 /**
  * Return a normalized, human-friendly display name for a tool.
@@ -93,7 +111,7 @@ export function normalizeToolName(rawName: string): string {
     .join(" ");
 }
 
-export type ToolCategory = "code" | "file" | "search" | "memory" | "browser" | "computer" | "preview" | "mcp" | "default";
+export type ToolCategory = "code" | "file" | "search" | "memory" | "browser" | "computer" | "preview" | "mcp" | "agent" | "database" | "default";
 
 const SEARCH_TOOLS = new Set(["web_search", "web_fetch"]);
 const MEMORY_TOOLS = new Set(["memory_store", "memory_search", "memory_list"]);
@@ -101,6 +119,8 @@ const PREVIEW_TOOLS = new Set(["preview_start", "preview_stop"]);
 const BROWSER_TOOLS = new Set(["browser_use"]);
 const COMPUTER_TOOLS = new Set(["computer_action", "computer_screenshot"]);
 const FILE_TOOLS = new Set(["file_read", "file_write"]);
+export const AGENT_TOOLS = new Set(["agent_spawn", "agent_wait", "agent_send", "agent_receive"]);
+const DATABASE_TOOLS = new Set(["database_query", "database_create", "database_schema"]);
 
 export function getToolCategory(toolName: string): ToolCategory {
   if (toolName.includes("__")) return "mcp";
@@ -111,5 +131,7 @@ export function getToolCategory(toolName: string): ToolCategory {
   if (BROWSER_TOOLS.has(toolName)) return "browser";
   if (COMPUTER_TOOLS.has(toolName)) return "computer";
   if (PREVIEW_TOOLS.has(toolName)) return "preview";
+  if (AGENT_TOOLS.has(toolName)) return "agent";
+  if (DATABASE_TOOLS.has(toolName)) return "database";
   return "default";
 }

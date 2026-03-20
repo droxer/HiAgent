@@ -10,6 +10,10 @@ import {
   FileCode,
   Play,
   Plug,
+  GitFork,
+  CircleCheck,
+  CircleX,
+  MessageSquare,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
@@ -44,8 +48,10 @@ const CATEGORY_STYLES: Record<ToolCategory, CategoryStyle> = {
   browser:  { border: "border-l-accent-purple",  icon: Monitor,   labelKey: "output.category.browser" },
   computer: { border: "border-l-accent-amber",   icon: Monitor,   labelKey: "output.category.computer" },
   preview: { border: "border-l-accent-emerald", icon: Play,      labelKey: "output.category.preview" },
-  mcp:     { border: "border-l-user-accent",    icon: Plug,      labelKey: "output.category.mcp" },
-  default: { border: "border-l-border",            icon: FileText,  labelKey: "" },
+  mcp:      { border: "border-l-user-accent",    icon: Plug,      labelKey: "output.category.mcp" },
+  agent:    { border: "border-l-accent-purple",  icon: GitFork,   labelKey: "output.category.agent" },
+  database: { border: "border-l-accent-amber",   icon: Database,  labelKey: "output.category.database" },
+  default:  { border: "border-l-border",            icon: FileText,  labelKey: "" },
 };
 
 interface SearchPayload {
@@ -263,6 +269,161 @@ export function ToolOutputRenderer({ output, toolName, contentType, conversation
         artifactIds={artifactIds}
       />
     );
+  }
+
+  // agent_wait — Agent Results Card
+  if (toolName === "agent_wait") {
+    try {
+      const results = JSON.parse(output) as Record<string, { success: boolean; summary: string; error: string | null; artifacts: string[] }>;
+      const entries = Object.entries(results);
+      return (
+        <div className="mt-2.5 rounded-md border-l-2 border-l-accent-purple bg-muted px-2.5 py-1.5">
+          <div className="mb-1.5 flex items-center gap-1 text-micro text-muted-foreground-dim">
+            <GitFork className="h-3 w-3" />
+            {t("output.agentResults")}
+          </div>
+          <div className="space-y-1">
+            {entries.map(([agentId, result]) => (
+              <div key={agentId} className="flex items-start gap-2 rounded px-2 py-1 text-sm text-muted-foreground">
+                {result.success ? (
+                  <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-accent-emerald" />
+                ) : (
+                  <CircleX className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                )}
+                <span className="shrink-0 font-mono text-xs text-muted-foreground-dim">{agentId.slice(0, 12)}</span>
+                <span className="min-w-0 break-words">{result.error ?? result.summary}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    } catch {
+      // Fall through to generic renderer
+    }
+  }
+
+  // agent_receive — Message List
+  if (toolName === "agent_receive") {
+    if (output === "No pending messages." || output === "[]") {
+      return (
+        <div className="mt-2.5 rounded-md border-l-2 border-l-accent-purple bg-muted px-2.5 py-1.5">
+          <div className="flex items-center gap-1 text-sm text-muted-foreground-dim">
+            <MessageSquare className="h-3 w-3" />
+            {t("output.noMessages")}
+          </div>
+        </div>
+      );
+    }
+    try {
+      const messages = JSON.parse(output) as Array<{ from: string; to: string; message: string; metadata?: object }>;
+      if (Array.isArray(messages)) {
+        return (
+          <div className="mt-2.5 rounded-md border-l-2 border-l-accent-purple bg-muted px-2.5 py-1.5">
+            <div className="mb-1.5 flex items-center gap-1 text-micro text-muted-foreground-dim">
+              <MessageSquare className="h-3 w-3" />
+              {t("output.agentMessages", { count: messages.length })}
+            </div>
+            <div className="space-y-1.5">
+              {messages.map((msg, i) => (
+                <div key={i} className="rounded border border-border bg-background/50 px-2.5 py-1.5 text-sm">
+                  <div className="mb-0.5 text-xs text-muted-foreground-dim">
+                    {t("output.agentMessageFrom", { id: msg.from.slice(0, 12) })}
+                  </div>
+                  <div className="text-muted-foreground">{msg.message}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+    } catch {
+      // Fall through to generic renderer
+    }
+  }
+
+  // database_query (SELECT) — Table View
+  if (toolName === "database_query") {
+    const newlineIdx = output.indexOf("\n");
+    if (newlineIdx > 0) {
+      const summaryLine = output.slice(0, newlineIdx);
+      const jsonPart = output.slice(newlineIdx + 1);
+      try {
+        const rows = JSON.parse(jsonPart) as Record<string, unknown>[];
+        if (Array.isArray(rows) && rows.length > 0) {
+          const columns = Object.keys(rows[0]);
+          const MAX_ROWS = 20;
+          const visibleRows = rows.slice(0, MAX_ROWS);
+          const remaining = rows.length - MAX_ROWS;
+          return (
+            <div className="mt-2.5 rounded-md border-l-2 border-l-accent-amber bg-muted px-2.5 py-1.5">
+              <div className="mb-1.5 flex items-center gap-1 text-micro text-muted-foreground-dim">
+                <Database className="h-3 w-3" />
+                {summaryLine}
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      {columns.map((col) => (
+                        <th key={col} className="whitespace-nowrap px-2 py-1 font-medium text-muted-foreground">{col}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleRows.map((row, i) => (
+                      <tr key={i} className={cn("border-b border-border/50", i % 2 === 1 && "bg-background/30")}>
+                        {columns.map((col) => (
+                          <td key={col} className="whitespace-nowrap px-2 py-1 text-muted-foreground">{String(row[col] ?? "")}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {remaining > 0 && (
+                <div className="mt-1.5 text-xs text-muted-foreground-dim">
+                  {t("output.dbQueryMore", { count: remaining })}
+                </div>
+              )}
+            </div>
+          );
+        }
+      } catch {
+        // Fall through to generic renderer
+      }
+    }
+  }
+
+  // memory_search / memory_list — Memory Entry Cards
+  if (category === "memory" && (toolName === "memory_search" || toolName === "memory_list")) {
+    try {
+      const parsed = JSON.parse(output);
+      const entries: Array<{ key: string; value: string; namespace?: string }> = Array.isArray(parsed) ? parsed : Object.entries(parsed).map(([k, v]) => ({ key: k, value: String(v) }));
+      if (entries.length > 0) {
+        return (
+          <div className="mt-2.5 rounded-md border-l-2 border-l-accent-amber bg-muted px-2.5 py-1.5">
+            <div className="mb-1.5 flex items-center gap-1 text-micro text-muted-foreground-dim">
+              <Database className="h-3 w-3" />
+              {t("output.memoryEntries", { count: entries.length })}
+            </div>
+            <div className="space-y-0.5">
+              {entries.map((entry, i) => {
+                const label = entry.namespace ? `${entry.namespace}:${entry.key}` : entry.key;
+                const value = typeof entry.value === "string" ? entry.value : JSON.stringify(entry.value);
+                return (
+                  <div key={i} className="flex gap-2 px-2 py-0.5 text-sm">
+                    <span className="shrink-0 font-mono text-xs text-muted-foreground-dim">{label}</span>
+                    <span className="text-muted-foreground">{value.length > 80 ? `${value.slice(0, 80)}...` : value}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      }
+    } catch {
+      // Fall through to generic renderer
+    }
   }
 
   // Category-aware rendering for all other tools (markdown fallback)

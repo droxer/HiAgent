@@ -24,7 +24,8 @@ export type EventType =
   | "code_result"
   | "artifact_created"
   | "conversation_title"
-  | "skill_activated";
+  | "skill_activated"
+  | "plan_created";
 
 export interface AgentEvent {
   type: EventType;
@@ -88,8 +89,16 @@ export interface ArtifactInfo {
   readonly size: number;
 }
 
+export interface PlanStep {
+  readonly name: string;
+  readonly description: string;
+  readonly status: "pending" | "running" | "complete" | "error";
+  readonly agentId?: string;
+}
+
 export interface AgentStatus {
   agentId: string;
+  name: string;
   description: string;
   status: "running" | "complete" | "error";
 }

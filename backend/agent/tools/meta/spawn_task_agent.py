@@ -36,6 +36,11 @@ class SpawnTaskAgent(LocalTool):
                         "type": "string",
                         "description": "Clear description of what the agent should accomplish.",
                     },
+                    "name": {
+                        "type": "string",
+                        "description": "Short user-friendly label for this task (3-5 words, shown in the UI).",
+                        "default": "",
+                    },
                     "context": {
                         "type": "string",
                         "description": "Additional context or instructions for the agent.",
@@ -68,7 +73,7 @@ class SpawnTaskAgent(LocalTool):
                         "default": "",
                     },
                 },
-                "required": ["task_description"],
+                "required": ["task_description", "name"],
             },
             execution_context=ExecutionContext.LOCAL,
             tags=("meta", "agent"),
@@ -76,6 +81,7 @@ class SpawnTaskAgent(LocalTool):
 
     async def execute(self, **kwargs: Any) -> ToolResult:
         task_description: str = kwargs.get("task_description", "")
+        name: str = kwargs.get("name", "")
         context: str = kwargs.get("context", "")
         sandbox_template: str = kwargs.get("sandbox_template", "default")
         depends_on: list[str] = kwargs.get("depends_on", [])
@@ -93,6 +99,7 @@ class SpawnTaskAgent(LocalTool):
 
             config = TaskAgentConfig(
                 task_description=task_description,
+                name=name,
                 context=context,
                 sandbox_template=sandbox_template,
                 depends_on=tuple(depends_on),

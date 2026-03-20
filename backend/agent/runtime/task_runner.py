@@ -25,6 +25,7 @@ class TaskAgentConfig:
     """Immutable configuration for a task agent."""
 
     task_description: str
+    name: str = ""
     context: str = ""
     sandbox_template: str = "default"
     priority: int = 0
@@ -130,6 +131,7 @@ class TaskAgentRunner:
             EventType.AGENT_SPAWN,
             {
                 "agent_id": self._agent_id,
+                "name": self._config.name or "",
                 "task": self._config.task_description,
                 "description": self._config.task_description,
             },

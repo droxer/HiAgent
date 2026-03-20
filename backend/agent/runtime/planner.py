@@ -18,6 +18,7 @@ from agent.runtime.orchestrator import AgentState
 from agent.runtime.task_runner import TaskAgentConfig
 from agent.skills.loader import SkillRegistry
 from agent.tools.executor import ToolExecutor
+from agent.tools.meta.plan_create import PlanCreate
 from agent.tools.meta.spawn_task_agent import SpawnTaskAgent
 from agent.tools.meta.wait_for_agents import WaitForAgents
 from agent.tools.registry import ToolRegistry
@@ -28,13 +29,14 @@ PLANNER_SYSTEM_PROMPT = """You are a planning agent that decomposes complex task
 
 Your workflow:
 1. Analyze the user's request
-2. Break it into independent sub-tasks where possible
-3. Use agent_spawn to create task agents for each sub-task
+2. Call plan_create with the list of steps you intend to execute
+3. Use agent_spawn to create task agents for each step (use the same name from the plan)
 4. Use agent_wait to wait for results
 5. Synthesize the results and communicate to the user via user_message
 6. Call task_complete when done
 
 Guidelines:
+- Always call plan_create FIRST before spawning any agents
 - Spawn agents for tasks that can run in parallel
 - Each agent gets its own sandbox if needed
 - Keep sub-tasks focused and specific
@@ -94,6 +96,9 @@ class PlannerOrchestrator:
 
         # Register meta-tools into the provided registry
         registry_with_meta = tool_registry.register(
+            PlanCreate(event_emitter=event_emitter),
+        )
+        registry_with_meta = registry_with_meta.register(
             SpawnTaskAgent(sub_agent_manager=sub_agent_manager),
         )
         registry_with_meta = registry_with_meta.register(

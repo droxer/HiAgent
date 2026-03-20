@@ -51,6 +51,8 @@ class EventType(StrEnum):
 
     SKILL_ACTIVATED = "skill_activated"
 
+    PLAN_CREATED = "plan_created"
+
 
 @dataclass(frozen=True)
 class AgentEvent:

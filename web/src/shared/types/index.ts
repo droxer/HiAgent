@@ -9,5 +9,6 @@ export type {
   ComputerUseMetadata,
   ArtifactInfo,
   AgentStatus,
+  PlanStep,
   AssistantPhase,
 } from "./events";

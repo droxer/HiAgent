@@ -30,7 +30,7 @@ import { cn } from "@/shared/lib/utils";
 import { useTranslation } from "@/i18n";
 import { PulsingDot } from "@/shared/components/PulsingDot";
 import type { AgentEvent, TaskState, ToolCallInfo, AgentStatus } from "@/shared/types";
-import { normalizeToolName, getToolCategory } from "@/features/agent-computer/lib/tool-constants";
+import { normalizeToolNameI18n, getToolCategory } from "@/features/agent-computer/lib/tool-constants";
 import type { ToolCategory } from "@/features/agent-computer/lib/tool-constants";
 import { normalizeSkillName } from "@/features/skills/lib/normalize-skill-name";
 
@@ -133,12 +133,12 @@ function buildSteps(
             stepTitle = t("progress.browsing", { target: displayName });
             // Append step count for completed browser_use
             if (tc?.output !== undefined && tc.browserMetadata?.steps) {
-              stepTitle += ` (${tc.browserMetadata.steps} steps)`;
+              stepTitle += ` (${t("progress.browsingSteps", { count: tc.browserMetadata.steps })})`;
             }
           } else {
             displayName = isSkill
               ? normalizeSkillName(String(input.name ?? "skill"))
-              : normalizeToolName(toolName);
+              : normalizeToolNameI18n(toolName, t);
             stepTitle = isSkill
               ? t("progress.loadingSkill", { name: displayName })
               : t("progress.usingTool", { name: displayName });
@@ -156,6 +156,17 @@ function buildSteps(
         break;
       }
 
+      case "plan_created": {
+        const planSteps = Array.isArray(event.data.steps) ? event.data.steps as unknown[] : [];
+        steps = [...steps, {
+          id: `plan-${event.timestamp}`,
+          kind: "start",
+          title: t("progress.planCreated", { count: planSteps.length }),
+          status: "complete",
+        }];
+        break;
+      }
+
       case "agent_spawn": {
         const spawnAgentId = String(event.data.agent_id ?? event.data.id ?? "");
         const agentToolCount = toolCalls.filter((tc) => tc.agentId === spawnAgentId).length;
@@ -163,7 +174,7 @@ function buildSteps(
         steps = [...steps, {
           id: `agent-${spawnAgentId}-${event.timestamp}`,
           kind: "agent",
-          title: t("progress.subAgent", { description: String(event.data.description ?? "working") }).slice(0, 55) + toolSuffix,
+          title: (String(event.data.name || event.data.description || "working")).slice(0, 55) + toolSuffix,
           status: "running",
         }];
         break;

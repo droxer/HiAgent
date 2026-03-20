@@ -6,7 +6,10 @@ import { Brain, Pencil, Wrench } from "lucide-react";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
 import type { AssistantPhase } from "@/shared/types";
-import { normalizeToolName } from "@/features/agent-computer/lib/tool-constants";
+import { normalizeToolNameI18n } from "@/features/agent-computer/lib/tool-constants";
+import { useTranslation } from "@/i18n";
+
+type TFn = (key: string, params?: Record<string, string | number>) => string;
 
 interface AssistantLoadingSkeletonProps {
   readonly phase: AssistantPhase;
@@ -18,26 +21,22 @@ const PHASE_CONFIG: Record<
   ActivePhase,
   {
     readonly icon: typeof Brain;
-    readonly label: string;
     readonly badgeClass: string;
     readonly dotClass: string;
   }
 > = {
   thinking: {
     icon: Brain,
-    label: "Thinking",
     badgeClass: "bg-secondary border border-border text-accent-amber",
     dotClass: "bg-accent-amber",
   },
   writing: {
     icon: Pencil,
-    label: "Writing",
     badgeClass: "bg-[var(--color-ai-surface)] border border-border text-accent-purple",
     dotClass: "bg-accent-purple",
   },
   using_tool: {
     icon: Wrench,
-    label: "Using tool",
     badgeClass: "bg-secondary border border-border text-accent-purple",
     dotClass: "bg-accent-purple",
   },
@@ -50,23 +49,24 @@ const SKELETON_LINES: Record<ActivePhase, readonly string[]> = {
   using_tool: ["w-[55%]", "w-[40%]"],
 };
 
-function getPhaseLabel(phase: AssistantPhase): string {
+function getPhaseLabel(phase: AssistantPhase, t: TFn): string {
   if (phase.phase === "idle") return "";
   if (phase.phase === "using_tool") {
-    return `Using ${normalizeToolName(phase.toolName ?? "tool")}`;
+    return t("assistant.usingTool", { name: normalizeToolNameI18n(phase.toolName ?? "tool", t) });
   }
-  return PHASE_CONFIG[phase.phase].label;
+  return t(`assistant.phase.${phase.phase}`);
 }
 
 export function AssistantLoadingSkeleton({ phase }: AssistantLoadingSkeletonProps) {
   const shouldReduceMotion = useReducedMotion();
+  const { t } = useTranslation();
 
   if (phase.phase === "idle") return null;
 
   const activePhase = phase.phase as ActivePhase;
   const config = PHASE_CONFIG[activePhase];
   const Icon = config.icon;
-  const label = getPhaseLabel(phase);
+  const label = getPhaseLabel(phase, t);
   const lines = SKELETON_LINES[activePhase];
 
   const dur = shouldReduceMotion ? 0 : 1;
@@ -106,12 +106,12 @@ export function AssistantLoadingSkeleton({ phase }: AssistantLoadingSkeletonProp
       exit="exit"
       role="status"
       aria-live="polite"
-      aria-label={`${label}...`}
+      aria-label={t("assistant.ariaLoading", { label })}
     >
       {/* Phase badge */}
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-3 flex items-center gap-2 pt-1">
         <div
-          className={cn("inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium", config.badgeClass)}
+          className={cn("inline-flex items-center gap-2 rounded-md border px-2.5 py-1 text-sm font-medium shadow-sm", config.badgeClass)}
         >
           {activePhase === "thinking" ? (
             <motion.span
@@ -150,10 +150,10 @@ export function AssistantLoadingSkeleton({ phase }: AssistantLoadingSkeletonProp
       </div>
 
       {/* Skeleton paragraph lines */}
-      <div className="flex flex-col gap-2 pl-1">
+      <div className="flex flex-col gap-2.5 pl-1">
         {lines.map((widthClass, i) => (
           <motion.div key={`line-${i}`} variants={lineVariants}>
-            <Skeleton className={`h-3 rounded-md ${widthClass}`} />
+            <Skeleton className={`h-3 rounded-md opacity-60 ${widthClass}`} />
           </motion.div>
         ))}
       </div>

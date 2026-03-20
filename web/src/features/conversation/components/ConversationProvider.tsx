@@ -15,6 +15,7 @@ import type {
   ToolCallInfo,
   TaskState,
   AgentStatus,
+  PlanStep,
 } from "@/shared/types";
 
 export interface ConversationContextValue {
@@ -25,6 +26,7 @@ export interface ConversationContextValue {
   readonly toolCalls: ToolCallInfo[];
   readonly taskState: TaskState;
   readonly agentStatuses: AgentStatus[];
+  readonly planSteps: PlanStep[];
   readonly currentIteration: number;
   readonly reasoningSteps: string[];
   readonly thinkingContent: string;
@@ -69,6 +71,7 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
     toolCalls,
     taskState,
     agentStatuses,
+    planSteps,
     currentIteration,
     reasoningSteps,
     thinkingContent,
@@ -108,6 +111,7 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
     toolCalls,
     taskState: effectiveTaskState,
     agentStatuses,
+    planSteps,
     currentIteration,
     reasoningSteps,
     thinkingContent,

@@ -100,7 +100,7 @@ export function ArtifactFilesPanel({ artifacts, conversationId }: ArtifactFilesP
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                {category} &middot; {formatFileSize(artifact.size)}
+                {category} &middot; {formatFileSize(artifact.size, t)}
               </p>
             </div>
 

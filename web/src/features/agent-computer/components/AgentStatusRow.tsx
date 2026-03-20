@@ -62,12 +62,12 @@ export function AgentStatusRow({
         <span className={cn("flex-1 truncate", isDark ? "text-[var(--color-terminal-text)]" : "text-foreground")}>
           {agent.description.includes(" → ") ? (
             <>
-              {agent.description.split(" → ")[0]}
+              {agent.name || agent.description.split(" → ")[0]}
               <ArrowRightLeft className="inline h-3 w-3 mx-1 text-muted-foreground" />
               {agent.description.split(" → ").slice(1).join(" → ")}
             </>
           ) : (
-            agent.description
+            agent.name || agent.description
           )}
         </span>
         {hasTools && (

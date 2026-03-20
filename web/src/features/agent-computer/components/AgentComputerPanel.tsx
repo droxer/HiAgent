@@ -8,12 +8,15 @@ import {
   CircleX,
   X,
   FolderOpen,
+  GitFork,
+  Clock,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Progress } from "@/shared/components/ui/progress";
 import { formatToolPreview } from "../lib/format-tools";
 import { ToolArgsDisplay } from "./ToolArgsDisplay";
-import { HIDDEN_ACTIVITY_TOOLS, normalizeToolName } from "../lib/tool-constants";
+import { HIDDEN_ACTIVITY_TOOLS, normalizeToolName, normalizeToolNameI18n } from "../lib/tool-constants";
 import { normalizeSkillName } from "@/features/skills/lib/normalize-skill-name";
 import { ToolOutputRenderer } from "./ToolOutputRenderer";
 import { SkillActivityEntry } from "./SkillActivityEntry";
@@ -33,11 +36,102 @@ function getToolVerb(name: string, t: TFn): string {
   const key = `tools.verb.${name}`;
   const translated = t(key);
   // If key returns itself, fall back to generic
-  if (translated === key) return t("computer.usingToolGeneric", { name: normalizeToolName(name) });
+  if (translated === key) return t("computer.usingToolGeneric", { name: normalizeToolNameI18n(name, t) });
   return translated;
 }
 
 const COMPUTER_USE_TOOLS = new Set(["computer_action", "computer_screenshot"]);
+const AGENT_META_TOOLS = new Set(["agent_spawn", "agent_wait", "agent_send"]);
+
+/** Polished display for agent_spawn tool calls. */
+function SpawnAgentDisplay({ tc }: { readonly tc: ToolCallInfo }) {
+  const agentName = String(tc.input.name ?? "");
+  const taskDesc = String(tc.input.task_description ?? "");
+  const role = String(tc.input.role ?? "");
+
+  return (
+    <div className="ml-6 mb-1 rounded-md border border-border bg-secondary/50 px-3 py-2">
+      <div className="flex items-center gap-2">
+        <GitFork className="h-3.5 w-3.5 shrink-0 text-accent-purple" />
+        <span className="text-sm font-medium text-foreground">{agentName}</span>
+        {role && (
+          <span className="rounded-full bg-accent-purple/10 px-2 py-0.5 text-micro font-medium text-accent-purple">
+            {role}
+          </span>
+        )}
+      </div>
+      {taskDesc && (
+        <p className="mt-1 ml-5.5 text-xs text-muted-foreground leading-relaxed">
+          {taskDesc.length > 200 ? taskDesc.slice(0, 197) + "..." : taskDesc}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Polished display for agent_wait tool calls. */
+function WaitForAgentsDisplay({ tc, t }: { readonly tc: ToolCallInfo; readonly t: TFn }) {
+  const agentIds = Array.isArray(tc.input.agent_ids) ? tc.input.agent_ids as string[] : [];
+  const waitingAll = agentIds.length === 0;
+
+  return (
+    <div className="ml-6 mb-1 rounded-md border border-border bg-secondary/50 px-3 py-2">
+      <div className="flex items-center gap-2">
+        <Clock className="h-3.5 w-3.5 shrink-0 text-accent-amber" />
+        <span className="text-sm font-medium text-foreground">
+          {waitingAll
+            ? t("computer.waitingAllAgents")
+            : t("computer.waitingAgents", { count: agentIds.length })}
+        </span>
+      </div>
+      {!waitingAll && (
+        <div className="mt-1 ml-5.5 flex flex-wrap gap-1.5">
+          {agentIds.map((id) => (
+            <span
+              key={id}
+              className="inline-flex items-center rounded bg-muted px-1.5 py-0.5 font-mono text-micro text-muted-foreground"
+            >
+              {String(id).slice(0, 8)}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Polished display for agent_send tool calls. */
+function AgentSendDisplay({ tc, t }: { readonly tc: ToolCallInfo; readonly t: TFn }) {
+  const targetId = String(tc.input.agent_id ?? "");
+  const message = String(tc.input.message ?? "");
+  const isBroadcast = targetId === "all";
+
+  return (
+    <div className="ml-6 mb-1 rounded-md border border-border bg-secondary/50 px-3 py-2">
+      <div className="flex items-center gap-2">
+        <MessageSquare className="h-3.5 w-3.5 shrink-0 text-accent-purple" />
+        <span className="text-sm font-medium text-foreground">
+          {isBroadcast
+            ? t("computer.broadcastMessage")
+            : t("computer.sendToAgent", { id: targetId.slice(0, 8) })}
+        </span>
+      </div>
+      {message && (
+        <p className="mt-1 ml-5.5 text-xs text-muted-foreground leading-relaxed">
+          {message.length > 200 ? message.slice(0, 197) + "..." : message}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Renders the appropriate polished display for an agent meta tool call. */
+function AgentMetaDisplay({ tc, t }: { readonly tc: ToolCallInfo; readonly t: TFn }) {
+  if (tc.name === "agent_spawn") return <SpawnAgentDisplay tc={tc} />;
+  if (tc.name === "agent_wait") return <WaitForAgentsDisplay tc={tc} t={t} />;
+  if (tc.name === "agent_send") return <AgentSendDisplay tc={tc} t={t} />;
+  return null;
+}
 
 function getComputerUseStatusText(tc: ToolCallInfo, t: TFn): string {
   const action = tc.computerUseMetadata?.action ?? (tc.input.action as string | undefined);
@@ -292,9 +386,15 @@ export function AgentComputerPanel({
                 ? getBrowserStatusText(latestToolCall, t)
                 : COMPUTER_USE_TOOLS.has(latestToolCall.name)
                   ? getComputerUseStatusText(latestToolCall, t)
-                  : t("computer.usingTool", { verb: getToolVerb(latestToolCall.name, t) })}
+                  : latestToolCall.name === "agent_spawn"
+                    ? t("computer.spawningAgent", { name: String(latestToolCall.input.name ?? "agent") })
+                    : latestToolCall.name === "agent_wait"
+                      ? t("computer.waitingForAgents")
+                      : latestToolCall.name === "agent_send"
+                        ? t("computer.sendingMessage")
+                        : t("computer.usingTool", { verb: getToolVerb(latestToolCall.name, t) })}
           </span>
-          {latestToolCall.output === undefined && !SKILL_TOOL_NAMES.has(latestToolCall.name) && latestToolCall.name !== "browser_use" && !COMPUTER_USE_TOOLS.has(latestToolCall.name) && (
+          {latestToolCall.output === undefined && !SKILL_TOOL_NAMES.has(latestToolCall.name) && latestToolCall.name !== "browser_use" && !COMPUTER_USE_TOOLS.has(latestToolCall.name) && !AGENT_META_TOOLS.has(latestToolCall.name) && (
             <span className="ml-auto max-w-[240px] truncate font-mono text-sm text-muted-foreground-dim">
               {formatToolPreview(latestToolCall.input)}
             </span>
@@ -363,10 +463,21 @@ export function AgentComputerPanel({
                             </span>
                           )}
                         </>
+                      ) : AGENT_META_TOOLS.has(tc.name) ? (
+                        <>
+                          <span className="text-foreground">
+                            {normalizeToolNameI18n(tc.name, t)}
+                          </span>
+                          {tc.output === undefined && (
+                            <span className="text-ai-glow">
+                              {t("computer.running")}
+                            </span>
+                          )}
+                        </>
                       ) : (
                         <>
                           <span className="text-foreground">
-                            {normalizeToolName(tc.name)}
+                            {normalizeToolNameI18n(tc.name, t)}
                           </span>
                           {tc.output === undefined && (
                             <span className="text-ai-glow">
@@ -377,8 +488,13 @@ export function AgentComputerPanel({
                       )}
                     </div>
 
-                    {/* Args detail box — skip for browser_use and computer_use (info already in log line) */}
-                    {Object.keys(tc.input).length > 0 && tc.name !== "browser_use" && !COMPUTER_USE_TOOLS.has(tc.name) && (
+                    {/* Polished agent meta tool display */}
+                    {AGENT_META_TOOLS.has(tc.name) && (
+                      <AgentMetaDisplay tc={tc} t={t} />
+                    )}
+
+                    {/* Args detail box — skip for browser_use, computer_use, and agent_spawn (have custom displays) */}
+                    {Object.keys(tc.input).length > 0 && tc.name !== "browser_use" && !COMPUTER_USE_TOOLS.has(tc.name) && !AGENT_META_TOOLS.has(tc.name) && (
                       <div className="ml-6 mb-1">
                         <ToolArgsDisplay input={tc.input} />
                       </div>

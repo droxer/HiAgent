@@ -9,6 +9,7 @@ export { ConversationWorkspace } from "./components/ConversationWorkspace";
 export { TypingIndicator } from "./components/TypingIndicator";
 export { AssistantStateIndicator } from "./components/AssistantStateIndicator";
 export { StreamingCursor } from "./components/StreamingCursor";
+export { PlanChecklistPanel } from "./components/PlanChecklistPanel";
 export { useConversation } from "./hooks/use-conversation";
 export { useConversationContext } from "./hooks/use-conversation-context";
 export { usePendingAsk } from "./hooks/use-pending-ask";

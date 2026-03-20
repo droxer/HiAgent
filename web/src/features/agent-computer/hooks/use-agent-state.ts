@@ -11,6 +11,7 @@ import type {
   ToolCallInfo,
   TaskState,
   AgentStatus,
+  PlanStep,
 } from "@/shared/types";
 
 export function useAgentState(events: AgentEvent[]) {
@@ -290,6 +291,7 @@ export function useAgentState(events: AgentEvent[]) {
         const agentId = String(e.data.agent_id ?? e.data.id ?? "");
         agentMap.set(agentId, {
           agentId,
+          name: String(e.data.name ?? ""),
           description: String(e.data.description ?? e.data.task ?? ""),
           status: "running",
         });
@@ -416,6 +418,49 @@ export function useAgentState(events: AgentEvent[]) {
     return skill;
   }, [events]);
 
+  const planSteps = useMemo<PlanStep[]>(() => {
+    let steps: PlanStep[] = [];
+
+    for (const e of events) {
+      if (e.type === "plan_created") {
+        const rawSteps = e.data.steps as Array<{ name: string; description: string }> | undefined;
+        if (Array.isArray(rawSteps)) {
+          steps = rawSteps.map((s) => ({
+            name: String(s.name ?? ""),
+            description: String(s.description ?? ""),
+            status: "pending" as const,
+          }));
+        }
+      }
+
+      if (e.type === "agent_spawn") {
+        const agentName = String(e.data.name ?? "");
+        const agentId = String(e.data.agent_id ?? e.data.id ?? "");
+        // Match spawned agent to a plan step by name
+        const matchIdx = steps.findIndex(
+          (s) => s.status === "pending" && s.name === agentName,
+        );
+        if (matchIdx !== -1) {
+          steps = steps.map((s, i) =>
+            i === matchIdx ? { ...s, status: "running" as const, agentId } : s,
+          );
+        }
+      }
+
+      if (e.type === "agent_complete") {
+        const agentId = String(e.data.agent_id ?? e.data.id ?? "");
+        const hasError = Boolean(e.data.error);
+        steps = steps.map((s) =>
+          s.agentId === agentId
+            ? { ...s, status: hasError ? "error" as const : "complete" as const }
+            : s,
+        );
+      }
+    }
+
+    return steps;
+  }, [events]);
+
   const artifacts = useMemo<ArtifactInfo[]>(() => {
     return events
       .filter((e) => e.type === "artifact_created")
@@ -432,6 +477,7 @@ export function useAgentState(events: AgentEvent[]) {
     toolCalls,
     taskState,
     agentStatuses,
+    planSteps,
     currentIteration,
     reasoningSteps,
     thinkingContent,

@@ -23,6 +23,7 @@ const SSE_EVENT_NAMES: readonly string[] = [
   "user_response",
   "agent_spawn",
   "agent_complete",
+  "plan_created",
   "thinking",
   "sandbox_stdout",
   "sandbox_stderr",

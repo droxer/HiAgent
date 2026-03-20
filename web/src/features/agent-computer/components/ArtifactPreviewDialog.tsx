@@ -245,7 +245,7 @@ export function ArtifactPreviewDialog({
             )}
             {artifact.size > 0 && (
               <span className="text-xs text-muted-foreground">
-                {formatFileSize(artifact.size)}
+                {formatFileSize(artifact.size, t)}
               </span>
             )}
           </DialogTitle>

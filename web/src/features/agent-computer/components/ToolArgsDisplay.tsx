@@ -8,6 +8,45 @@ import { formatArgValue } from "../lib/format-tools";
 
 const VALUE_TRUNCATE = 120;
 
+type TFn = (key: string, params?: Record<string, string | number>) => string;
+
+const ARG_KEY_I18N: Record<string, string> = {
+  url: "tools.arg.url",
+  task: "tools.arg.task",
+  query: "tools.arg.query",
+  code: "tools.arg.code",
+  language: "tools.arg.language",
+  path: "tools.arg.path",
+  file_path: "tools.arg.filePath",
+  content: "tools.arg.content",
+  action: "tools.arg.action",
+  name: "tools.arg.name",
+  description: "tools.arg.description",
+  command: "tools.arg.command",
+  x: "tools.arg.x",
+  y: "tools.arg.y",
+  text: "tools.arg.text",
+  old_text: "tools.arg.oldText",
+  new_text: "tools.arg.newText",
+  pattern: "tools.arg.pattern",
+  sql: "tools.arg.sql",
+  packages: "tools.arg.packages",
+  key: "tools.arg.key",
+  value: "tools.arg.value",
+};
+
+function normalizeArgKey(key: string, t: TFn): string {
+  const i18nKey = ARG_KEY_I18N[key];
+  if (i18nKey) {
+    const translated = t(i18nKey);
+    if (translated !== i18nKey) return translated;
+  }
+  return key
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
 interface ToolArgsDisplayProps {
   readonly input: Record<string, unknown>;
   readonly compact?: boolean;
@@ -89,7 +128,7 @@ export function ToolArgsDisplay({ input, compact = false }: ToolArgsDisplayProps
             <div key={key} className="contents">
               {/* Key */}
               <span className="select-none text-muted-foreground whitespace-nowrap pt-px">
-                {key}
+                {normalizeArgKey(key, t)}
               </span>
 
               {/* Value */}
