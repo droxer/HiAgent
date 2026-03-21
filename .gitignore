@@ -45,6 +45,18 @@ uv.lock
 # Logs
 *.log
 
+# Tauri
+web/src-tauri/target/
+web/src-tauri/gen/
+web/src-tauri/Cargo.lock
+web/src-tauri/icons/android/
+web/src-tauri/icons/ios/
+web/src-tauri/icons/Square*.png
+web/src-tauri/icons/StoreLogo.png
+web/src-tauri/icons/64x64.png
+web/src-tauri/icons/icon.png
+web/dist/
+
 # Artifacts (generated images, etc.)
 backend/artifacts/
 docs/superpowers

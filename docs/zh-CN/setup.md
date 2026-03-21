@@ -194,8 +194,8 @@ make build-sandbox
 ```
 HiAgent/
 ├── backend/           # Python/FastAPI 后端
-│   ├── api/           # 路由、中间件、应用工厂
-│   ├── agent/         # 智能体运行时、工具、沙盒、技能
+│   ├── api/           # 路由、中间件、认证、应用工厂
+│   ├── agent/         # 智能体运行时、工具、沙盒、技能、记忆
 │   ├── config/        # 配置（Pydantic）
 │   ├── evals/         # 智能体评测系统（YAML 用例、评分、报告）
 │   ├── migrations/    # Alembic 数据库迁移
@@ -203,7 +203,7 @@ HiAgent/
 ├── web/               # Next.js 前端
 │   └── src/
 │       ├── app/       # 页面（App Router）
-│       ├── features/  # 功能模块（对话、智能体面板、技能、MCP）
+│       ├── features/  # 功能模块（对话、智能体面板、技能、MCP、资料库）
 │       ├── shared/    # 共享组件、hooks、状态管理、类型定义
 │       └── i18n/      # 国际化（en、zh-CN）
 ├── container/         # 沙盒 Dockerfiles
@@ -227,6 +227,9 @@ HiAgent/
 | `make test` | 运行后端测试 |
 | `make lint` | 后端代码检查 |
 | `make evals` | 运行智能体评测（mock 后端） |
+| `make pre-commit` | 安装 pre-commit 钩子 |
+| `make pre-commit-all` | 对所有文件运行 pre-commit |
+| `make lint-web` | 前端代码检查 |
 | `make clean` | 删除 `.venv`、`node_modules`、`.next` |
 
 ### 后端测试与代码检查

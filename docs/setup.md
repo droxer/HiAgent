@@ -194,8 +194,8 @@ This builds three images:
 ```
 HiAgent/
 ├── backend/           # Python/FastAPI backend
-│   ├── api/           # Routes, middleware, app factory
-│   ├── agent/         # Agent runtime, tools, sandbox, skills
+│   ├── api/           # Routes, middleware, auth, app factory
+│   ├── agent/         # Agent runtime, tools, sandbox, skills, memory
 │   ├── config/        # Settings (Pydantic)
 │   ├── evals/         # Agent evaluation system (YAML cases, grading, reporting)
 │   ├── migrations/    # Alembic database migrations
@@ -203,7 +203,7 @@ HiAgent/
 ├── web/               # Next.js frontend
 │   └── src/
 │       ├── app/       # Pages (App Router)
-│       ├── features/  # Feature modules (conversation, agent-computer, skills, mcp)
+│       ├── features/  # Feature modules (conversation, agent-computer, skills, mcp, library)
 │       ├── shared/    # Shared components, hooks, stores, types
 │       └── i18n/      # Internationalization (en, zh-CN)
 ├── container/         # Sandbox Dockerfiles
@@ -227,6 +227,9 @@ HiAgent/
 | `make test` | Run backend tests |
 | `make lint` | Lint backend code |
 | `make evals` | Run agent evals (mock backend) |
+| `make pre-commit` | Install pre-commit hooks |
+| `make pre-commit-all` | Run pre-commit on all files |
+| `make lint-web` | Lint frontend code |
 | `make clean` | Remove `.venv`, `node_modules`, `.next` |
 
 ### Backend Testing & Linting

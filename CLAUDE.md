@@ -17,6 +17,9 @@ make test             # Run backend tests: cd backend && uv run pytest
 make lint             # Lint backend: cd backend && uv run ruff check .
 make format           # Format backend: cd backend && uv run ruff format .
 make evals            # Run agent evals (mock backend by default)
+make pre-commit       # Install pre-commit hooks
+make pre-commit-all   # Run pre-commit on all files
+make lint-web         # Lint frontend: cd web && npx eslint src/
 ```
 
 **Backend testing/linting** (run from `backend/`):
@@ -58,7 +61,11 @@ HiAgent is a full-stack AI agent framework: Python/FastAPI backend + TypeScript/
   - `POST /conversations/{id}/respond` — Submit user responses to agent prompts
 - **`api/routes/artifacts.py`** — Artifact download and preview endpoints
 - **`api/routes/skills.py`** — Skill listing, installation, and management
+- **`api/routes/skill_files.py`** — Skill file browsing: directory tree and file content endpoints
 - **`api/routes/mcp.py`** — MCP server connection management
+- **`api/routes/auth.py`** — Authentication endpoints: user sync on Google OAuth login, profile retrieval, and preference updates (theme, locale)
+- **`api/routes/library.py`** — Library endpoint: artifacts grouped by conversation for browsing
+- **`api/auth/`** — Authentication middleware: `middleware.py` (proxy secret verification, rate limiting, NextAuth header extraction for `AuthUser`)
 - **`api/builders.py`** — Factory functions for orchestrator and sandbox provider creation
 - **`api/events.py`** — EventEmitter pub/sub for real-time updates
 - **`api/dependencies.py`** — FastAPI dependency injection (`AppState` container)
@@ -76,7 +83,7 @@ HiAgent is a full-stack AI agent framework: Python/FastAPI backend + TypeScript/
 - **`agent/sandbox/`** — Execution sandbox providers: `boxlite_provider.py` (primary, micro-VMs), `e2b_provider.py` (cloud), `local_provider.py` (dev)
 - **`agent/skills/`** — Skill system: `discovery.py` (finds skills), `loader.py` (immutable registry + matching), `parser.py` (SKILL.md frontmatter), `installer.py` (GitHub cloning), `registry_client.py` (external registry API), `models.py` (SkillMetadata, SkillContent, SkillCatalogEntry)
 - **`agent/memory/`** — Persistent per-conversation memory (`PersistentMemoryStore` + `MemoryEntry` SQLAlchemy model)
-- **`agent/state/`** — Conversation persistence: `database.py` (SQLAlchemy async engine), `models.py` (ConversationModel, MessageModel, EventModel, ArtifactModel, AgentRunModel), `repository.py` (data access), `schemas.py` (Pydantic DTOs)
+- **`agent/state/`** — Conversation persistence: `database.py` (SQLAlchemy async engine), `models.py` (ConversationModel, MessageModel, EventModel, ArtifactModel, AgentRunModel, UserModel), `repository.py` (data access), `schemas.py` (Pydantic DTOs)
 - **`agent/artifacts/`** — Sandbox artifact extraction (`ArtifactManager`) and storage (`StorageBackend` with local/R2)
 - **`agent/mcp/`** — Model Context Protocol: `client.py` (stdio-based MCP communication), `bridge.py` (tool registration), `config.py` (server configuration)
 - **`config/settings.py`** — Pydantic Settings configuration (immutable after load)
@@ -86,7 +93,7 @@ HiAgent is a full-stack AI agent framework: Python/FastAPI backend + TypeScript/
 ### Frontend (`web/`)
 
 - **Next.js 15** with App Router, React 19, Tailwind CSS 4, Turbopack
-- **`src/app/`** — Pages: conversation (main), skills browser, MCP configuration
+- **`src/app/`** — Pages: conversation (main), skills browser, MCP configuration, library (artifact browser), login (Google OAuth)
 - **`src/features/conversation/`** — Chat interface: `ConversationView.tsx` (welcome vs workspace toggle), `ConversationWorkspace.tsx` (60/40 split layout), `ChatInput.tsx` (message input with file upload + skill selector), `WelcomeScreen.tsx` (initial task input), `PendingAskOverlay.tsx` (user input modal)
 - **`src/features/conversation/api/conversation-api.ts`** — API layer: createConversation, sendFollowUpMessage, cancelTurn, respondToAskUser
 - **`src/features/conversation/hooks/use-conversation.ts`** — Conversation lifecycle and SSE event processing
@@ -95,6 +102,7 @@ HiAgent is a full-stack AI agent framework: Python/FastAPI backend + TypeScript/
 - **`src/features/agent-computer/lib/tool-constants.ts`** — Tool display names, categories, and normalization (normalizeToolNameI18n, normalizeAgentName, getToolCategory)
 - **`src/features/skills/`** — Skills browser: `SkillsPage.tsx`, `SkillSelector.tsx`, `SkillCard.tsx`
 - **`src/features/mcp/`** — MCP configuration: `MCPPage.tsx`, `MCPDialog.tsx`, `TransportToggle.tsx`
+- **`src/features/library/`** — Artifact library: `LibraryPage.tsx` (grouped by conversation), `LibraryArtifactCard.tsx`, `ConversationGroup.tsx`, `ViewModeToggle.tsx`
 - **`src/shared/hooks/use-sse.ts`** — SSE hook with auto-reconnect consuming `/api/conversations/{id}/events`
 - **`src/shared/stores/app-store.ts`** — Zustand persistent store for conversation history and app state
 - **`src/shared/types/events.ts`** — AgentEvent, EventType, TaskState type definitions
@@ -128,6 +136,9 @@ Required in `backend/.env` (see `.env.example`):
 - `SKILLS_ENABLED` — Optional, enable skill system (default: `true`)
 - `THINKING_BUDGET` — Optional, extended thinking token budget (default: `10000`, `0` = disabled)
 - `LITE_MODEL` — Optional, model for simple/quick sub-tasks (default: `claude-haiku-4-5-20251001`)
+- `AUTH_REQUIRED` — Optional, require Google authentication (default: `false`)
+- `PROXY_SECRET` — Optional, shared secret between Next.js proxy and backend (required in production)
+- `ENVIRONMENT` — Optional, `development` (default) or `production`
 
 Python 3.12+, Node.js with npm, `uv` package manager for backend.
 

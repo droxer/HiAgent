@@ -1,11 +1,33 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
+import Credentials from "next-auth/providers/credentials";
 
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 const PROXY_SECRET = process.env.PROXY_SECRET ?? "";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [Google],
+  providers: [
+    Google,
+    Credentials({
+      id: "desktop-token",
+      name: "Desktop Token",
+      credentials: {
+        email: { type: "text" },
+        name: { type: "text" },
+        image: { type: "text" },
+        googleId: { type: "text" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email) return null;
+        return {
+          id: (credentials.googleId as string) || (credentials.email as string),
+          email: credentials.email as string,
+          name: (credentials.name as string) || "",
+          image: (credentials.image as string) || "",
+        };
+      },
+    }),
+  ],
 
   session: {
     strategy: "jwt",
@@ -13,6 +35,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
   callbacks: {
     async jwt({ token, user, account, profile }) {
+      // Desktop token sign-in: user data comes from credentials, not Google profile
+      if (account?.provider === "desktop-token" && user) {
+        token.googleId = user.id;
+        token.picture = user.image;
+        token.userId = user.id;
+
+        // Sync to backend
+        try {
+          const syncHeaders: Record<string, string> = {
+            "X-User-Google-Id": user.id ?? "",
+            "X-User-Email": user.email ?? "",
+            "X-User-Name": user.name ?? "",
+            "X-User-Picture": user.image ?? "",
+          };
+          if (PROXY_SECRET) {
+            syncHeaders["X-Proxy-Secret"] = PROXY_SECRET;
+          }
+          await fetch(`${BACKEND_URL}/auth/me`, {
+            method: "POST",
+            headers: syncHeaders,
+          });
+        } catch (err) {
+          console.error("[auth] Failed to sync desktop user to backend:", err);
+        }
+        return token;
+      }
+
       // On initial sign-in, persist Google profile data in the JWT
       // and sync user record to backend
       if (account && profile) {

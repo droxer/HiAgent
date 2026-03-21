@@ -18,6 +18,9 @@ make test             # Run backend tests: cd backend && uv run pytest
 make lint             # Lint backend: cd backend && uv run ruff check .
 make format           # Format backend: cd backend && uv run ruff format .
 make evals            # Run agent evals (mock backend by default)
+make pre-commit       # Install pre-commit hooks
+make pre-commit-all   # Run pre-commit on all files
+make lint-web         # Lint frontend: cd web && npx eslint src/
 ```
 
 ### Backend Testing & Linting
@@ -73,13 +76,18 @@ HiAgent/
 │   │   │   ├── conversations.py  # Conversation CRUD + SSE streaming
 │   │   │   ├── artifacts.py      # Artifact download & preview
 │   │   │   ├── skills.py         # Skill discovery, install, uninstall
-│   │   │   └── mcp.py            # MCP server management
+│   │   │   ├── skill_files.py    # Skill file browsing (directory tree + file content)
+│   │   │   ├── mcp.py            # MCP server management
+│   │   │   ├── auth.py           # Auth endpoints (user sync, profile, preferences)
+│   │   │   └── library.py        # Library (artifacts grouped by conversation)
+│   │   ├── auth/              # Authentication middleware
+│   │   │   ├── __init__.py
+│   │   │   └── middleware.py  # Proxy secret verification, rate limiting, NextAuth headers
 │   │   ├── builders.py       # Factory functions (orchestrator, sandbox provider)
 │   │   ├── dependencies.py   # FastAPI dependency injection (AppState)
 │   │   ├── events.py         # EventEmitter pub/sub system
 │   │   ├── models.py         # Request/response Pydantic models
 │   │   ├── sse.py            # SSE streaming utilities
-│   │   ├── auth.py           # Authentication helpers
 │   │   └── db_subscriber.py  # Persists events to database
 │   ├── agent/
 │   │   ├── runtime/          # Agent orchestration engine
@@ -121,6 +129,7 @@ HiAgent/
 │   │   │   │   └── preview.py          # HTML/image preview
 │   │   │   └── meta/        # Agent coordination tools
 │   │   │       ├── plan_create.py         # Declare plan steps (plan mode)
+│   │   │       ├── plan_create.py         # Declare plan steps (plan mode)
 │   │   │       ├── spawn_task_agent.py    # Spawn sub-agents (with agent names)
 │   │   │       ├── wait_for_agents.py     # Wait for sub-agent completion
 │   │   │       └── send_message.py        # Agent-to-agent messaging
@@ -142,7 +151,7 @@ HiAgent/
 │   │   │   └── store.py     # PersistentMemoryStore (per-conversation)
 │   │   ├── state/            # Conversation persistence
 │   │   │   ├── database.py      # SQLAlchemy async engine/session factory
-│   │   │   ├── models.py        # ORM models (Conversation, Message, Event, Artifact, AgentRun)
+│   │   │   ├── models.py        # ORM models (Conversation, Message, Event, Artifact, AgentRun, User)
 │   │   │   ├── repository.py    # ConversationRepository — data access
 │   │   │   └── schemas.py       # Pydantic DTOs for public APIs
 │   │   ├── artifacts/        # Artifact management
@@ -174,7 +183,9 @@ HiAgent/
 │   │   │   └── (main)/      # Main layout group
 │   │   │       ├── page.tsx          # Conversation page
 │   │   │       ├── skills/page.tsx   # Skills browser
-│   │   │       └── mcp/page.tsx      # MCP configuration
+│   │   │       ├── mcp/page.tsx      # MCP configuration
+│   │   │       └── library/page.tsx  # Artifact library
+│   │   │   └── login/page.tsx        # Google OAuth login
 │   │   ├── features/
 │   │   │   ├── conversation/         # Chat interface
 │   │   │   │   ├── api/              # conversation-api.ts, history-api.ts
@@ -188,9 +199,13 @@ HiAgent/
 │   │   │   │   ├── api/              # skills-api.ts
 │   │   │   │   ├── components/       # SkillsPage, SkillSelector, SkillCard
 │   │   │   │   └── hooks/            # use-skills-cache
-│   │   │   └── mcp/                  # MCP configuration
-│   │   │       ├── api/              # mcp-api.ts
-│   │   │       └── components/       # MCPPage, MCPDialog, TransportToggle
+│   │   │   ├── mcp/                  # MCP configuration
+│   │   │   │   ├── api/              # mcp-api.ts
+│   │   │   │   └── components/       # MCPPage, MCPDialog, TransportToggle
+│   │   │   └── library/              # Artifact library
+│   │   │       ├── api/              # library-api.ts
+│   │   │       ├── components/       # LibraryPage, LibraryArtifactCard, ConversationGroup
+│   │   │       └── hooks/            # use-library, use-view-mode
 │   │   ├── shared/
 │   │   │   ├── components/           # Sidebar, TopBar, CommandPalette, MarkdownRenderer
 │   │   │   │   └── ui/              # Radix UI component library (30+ components)
@@ -271,6 +286,8 @@ task_complete event ──────────────────► Fr
 |--------|------|-------------|
 | `GET` | `/skills` | List all available skills (bundled + installed) |
 | `GET` | `/skills/{name}` | Get skill details |
+| `GET` | `/skills/{name}/files` | List skill directory tree as JSON |
+| `GET` | `/skills/{name}/files/{path}` | Get a single file's content as text |
 | `POST` | `/skills/install` | Install skill from GitHub URL. Body: `url` |
 | `DELETE` | `/skills/{name}` | Uninstall a skill |
 
@@ -281,6 +298,20 @@ task_complete event ──────────────────► Fr
 | `GET` | `/mcp/servers` | List connected MCP servers |
 | `POST` | `/mcp/servers` | Connect an MCP server. Body: transport config |
 | `DELETE` | `/mcp/servers/{name}` | Disconnect an MCP server |
+
+### Authentication
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/auth/me` | Upsert user record after Google OAuth login |
+| `GET` | `/user/me` | Get current user profile (including preferences) |
+| `PATCH` | `/user/me/preferences` | Update theme and/or locale. Body: `theme`, `locale` |
+
+### Library
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/library` | List artifacts grouped by conversation. Query: `limit`, `offset` |
 
 ### SSE Event Types
 
@@ -315,7 +346,7 @@ The runtime engine implements the ReAct (Reason + Act) loop:
 
 - **`AgentOrchestrator`** — Single-agent loop. Calls LLM, executes tool calls, emits events, repeats until `end_turn` or max iterations (50). Uses `AgentState` (frozen dataclass) for immutable state — every mutation returns a new instance.
 
-- **`PlannerOrchestrator`** — Extends the ReAct loop with task decomposition. Requires agents to call `plan_create` first to declare steps with names and descriptions. Then spawns worker agents via `SubAgentManager`, and coordinates results. Emits `plan_created` event.
+- **`PlannerOrchestrator`** — Extends the ReAct loop with task decomposition. Requires agents to call `plan_create` first to declare steps with names and descriptions. Then spawns worker agents via `SubAgentManager`, and coordinates results. Emits `plan_created` event. Planner mode auto-registers `plan_create` and `spawn_task_agent` tools.
 
 - **`SubAgentManager`** — Manages concurrent agents (max 5 concurrent, 20 total). Handles dependency tracking (`depends_on`), per-agent tool registries, and an async message bus for agent-to-agent communication. Tracks agent names for UI display.
 
@@ -395,7 +426,7 @@ A self-contained evaluation framework that hooks into the existing `EventEmitter
 
 ### State Persistence (`agent/state/`)
 
-SQLAlchemy async ORM with five models:
+SQLAlchemy async ORM with six models:
 
 | Model | Purpose |
 |-------|---------|
@@ -404,6 +435,7 @@ SQLAlchemy async ORM with five models:
 | `EventModel` | Raw event stream for replay |
 | `ArtifactModel` | Generated file metadata |
 | `AgentRunModel` | Sub-agent execution records |
+| `UserModel` | User profile (Google OAuth) with preferences (theme, locale) |
 
 Accessed through `ConversationRepository` (repository pattern). Public APIs return frozen Pydantic DTOs.
 
@@ -455,7 +487,10 @@ HiAgent works with any LLM provider that exposes an Anthropic-compatible API. Co
 | `LOG_LEVEL` | `INFO` | Logging level |
 | `CORS_ORIGINS` | `http://localhost:3000` | Allowed CORS origins |
 | `API_KEY` | — | API authentication key |
-| `RATE_LIMIT_PER_MINUTE` | — | Rate limiting threshold |
+| `RATE_LIMIT_PER_MINUTE` | `30` | Rate limiting threshold (per IP per minute) |
+| `AUTH_REQUIRED` | `false` | Require Google authentication for all requests |
+| `PROXY_SECRET` | — | Shared secret between Next.js proxy and backend (required in production) |
+| `ENVIRONMENT` | `development` | Environment mode: `development` or `production` |
 
 ---
 

@@ -8,7 +8,7 @@ SANDBOX_TAGS_default :=
 SANDBOX_TAGS_data_science :=
 SANDBOX_TAGS_browser := v3
 
-.PHONY: backend web dev install install-backend install-web build-web build-sandbox push-sandbox migrate clean test lint format evals pre-commit lint-web
+.PHONY: backend web dev install install-backend install-web build-web build-sandbox push-sandbox migrate clean test lint format evals pre-commit lint-web desktop build-desktop
 
 # Start both backend and web concurrently
 dev: install
@@ -105,6 +105,14 @@ pre-commit-all:
 #   make evals EVAL_ARGS="--tags search --output report.json"
 evals:
 	cd backend && uv run python -m evals $(EVAL_ARGS)
+
+# Tauri desktop app (dev mode)
+desktop:
+	cd web && npm run tauri:dev
+
+# Build Tauri desktop app for production
+build-desktop:
+	cd web && npm run tauri:build
 
 # Clean generated files
 clean:

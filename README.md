@@ -30,14 +30,16 @@ An open-source AI agent platform that turns natural language into sandboxed, mul
 
 ## Features
 
+- **Google OAuth authentication** with per-user skills and MCP server configurations
 - **Conversational interface** with file upload, skill selection, and follow-up messages
 - **20+ built-in tools** — web search, code execution, browser automation (with step tracking), computer use (with action metadata), file operations, database queries, image generation, document generation
 - **Plan mode** — Explicit task decomposition with step names, descriptions, and progress tracking via checklist panel
-- **Artifact management** — Files generated in the sandbox are extracted and available for download/preview
+- **Artifact management** — Files generated in the sandbox are extracted and available for download/preview, with a dedicated library page for browsing all artifacts
 - **Extended thinking** — Configurable thinking budget for deeper reasoning on complex tasks
 - **Persistent memory** — Agents remember context across conversation turns
 - **Conversation history** — Full persistence with PostgreSQL
 - **Agent evaluation system** — YAML-defined eval cases with programmatic and LLM-as-judge grading, covering tool use, skill invocation, sub-agent spawning, and agent handoff
+- **User preferences** — Persistent theme (dark/light/system) and locale settings per user
 - **Dark/light theme** with internationalization (English, Chinese)
 - **Keyboard-first UX** — Command palette (Cmd+K), responsive layout
 
@@ -81,4 +83,4 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## License
 
-Private
+[AGPL-3.0](LICENSE)
