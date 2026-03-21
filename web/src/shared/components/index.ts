@@ -2,6 +2,7 @@ export { EmptyState } from "./EmptyState";
 export { ErrorBanner } from "./ErrorBanner";
 export { ErrorBoundary } from "./ErrorBoundary";
 export { FileAttachmentChip } from "./FileAttachmentChip";
+export { FilePreview } from "./FilePreview";
 export { IconButton } from "./IconButton";
 export { Logo, LogoMark } from "./Logo";
 export { MarkdownRenderer } from "./MarkdownRenderer";

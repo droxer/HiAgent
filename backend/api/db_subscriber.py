@@ -223,6 +223,13 @@ def create_db_subscriber(
                         content={"text": result},
                         iteration=event.iteration,
                     )
+                    await repo.save_event(
+                        session,
+                        conversation_id,
+                        event_type=event.type.value,
+                        data=clean,
+                        iteration=event.iteration,
+                    )
                     logger.info(
                         "db_message_saved role=assistant conversation_id={}",
                         conversation_id,
@@ -235,6 +242,13 @@ def create_db_subscriber(
                         conversation_id,
                         role="assistant",
                         content={"text": result},
+                        iteration=event.iteration,
+                    )
+                    await repo.save_event(
+                        session,
+                        conversation_id,
+                        event_type=event.type.value,
+                        data=clean,
                         iteration=event.iteration,
                     )
                     logger.info(

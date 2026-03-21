@@ -75,14 +75,26 @@ export function ArtifactFilesPanel({ artifacts, conversationId }: ArtifactFilesP
         const ext = fileExtension(artifact.name);
         const canPreview = isPreviewable(artifact.contentType);
 
+        const handleRowClick = () => {
+          if (canPreview) {
+            setPreviewArtifact(artifact);
+          } else {
+            handleDownload(artifact);
+          }
+        };
+
         return (
           <motion.div
             key={artifact.id}
-            className={`group flex items-center gap-3 rounded-md border border-border border-l-2 bg-card p-3 transition-colors hover:bg-secondary`}
+            className={`group flex items-center gap-3 rounded-md border border-border border-l-2 bg-card p-3 cursor-pointer transition-colors hover:bg-secondary`}
             style={{ borderLeftColor: fileCategoryBorderColor(artifact.contentType) }}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.15, delay: i * 0.03 }}
+            onClick={handleRowClick}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleRowClick(); }}
           >
             <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${colors.bg}`}>
               <Icon className={`h-4 w-4 ${colors.icon}`} />
@@ -104,7 +116,11 @@ export function ArtifactFilesPanel({ artifacts, conversationId }: ArtifactFilesP
               </p>
             </div>
 
-            <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+            {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+            <div
+              className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+              onClick={(e) => e.stopPropagation()}
+            >
               {canPreview && (
                 <IconButton
                   icon={Eye}

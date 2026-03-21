@@ -110,6 +110,12 @@ export function isPreviewable(contentType: string): boolean {
     contentType.startsWith("image/") ||
     contentType === "application/pdf" ||
     contentType.startsWith("text/") ||
-    contentType === "application/json"
+    contentType === "application/json" ||
+    contentType.includes("wordprocessingml") ||
+    contentType.includes("spreadsheetml") ||
+    contentType.includes("presentationml") ||
+    contentType === "application/msword" ||
+    contentType === "application/vnd.ms-excel" ||
+    contentType === "application/vnd.ms-powerpoint"
   );
 }

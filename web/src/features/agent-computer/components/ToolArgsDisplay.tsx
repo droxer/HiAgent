@@ -33,6 +33,13 @@ const ARG_KEY_I18N: Record<string, string> = {
   packages: "tools.arg.packages",
   key: "tools.arg.key",
   value: "tools.arg.value",
+  prompt: "tools.arg.prompt",
+  aspect_ratio: "tools.arg.aspectRatio",
+  max_results: "tools.arg.maxResults",
+  max_length: "tools.arg.maxLength",
+  filename: "tools.arg.filename",
+  output_files: "tools.arg.outputFiles",
+  manager: "tools.arg.manager",
 };
 
 function normalizeArgKey(key: string, t: TFn): string {

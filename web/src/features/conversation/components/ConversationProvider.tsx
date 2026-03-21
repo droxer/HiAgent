@@ -77,11 +77,16 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
     reasoningSteps,
     thinkingContent,
     isStreaming,
-    assistantPhase,
+    assistantPhase: rawAssistantPhase,
     artifacts,
   } = useAgentState(effectiveEvents);
 
   const effectiveTaskState: TaskState = isLive ? taskState : "complete";
+  // Force phase to idle for completed (non-live) conversations so the
+  // thinking skeleton doesn't appear when history events lack terminal events.
+  const assistantPhase: AssistantPhase = isLive
+    ? rawAssistantPhase
+    : { phase: "idle" };
 
   // Merge DB-persisted messages with event-derived messages so that
   // intermediate assistant text (from llm_response events during multi-

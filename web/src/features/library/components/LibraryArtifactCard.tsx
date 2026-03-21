@@ -40,12 +40,18 @@ function ListCard({
   const category = fileCategory(artifact.content_type, t);
   const canPreview = isPreviewable(artifact.content_type);
 
+  const handleCardClick = canPreview ? onPreview : onDownload;
+
   return (
     <div
       className={cn(
-        "group flex items-center gap-3 rounded-lg border border-border bg-card p-3",
+        "group flex items-center gap-3 rounded-lg border border-border bg-card p-3 cursor-pointer",
         "transition-colors duration-150 hover:border-border-strong hover:bg-secondary/50",
       )}
+      onClick={handleCardClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleCardClick(); }}
     >
       <div
         className={cn(
@@ -76,7 +82,7 @@ function ListCard({
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={onPreview}
+            onClick={(e) => { e.stopPropagation(); onPreview(); }}
             aria-label={t("artifacts.preview")}
           >
             <Eye className="h-3.5 w-3.5" />
@@ -85,7 +91,7 @@ function ListCard({
         <Button
           variant="ghost"
           size="icon-sm"
-          onClick={onDownload}
+          onClick={(e) => { e.stopPropagation(); onDownload(); }}
           aria-label={t("artifacts.download")}
         >
           <Download className="h-3.5 w-3.5" />
@@ -116,12 +122,18 @@ function GridCard({
   const isImage =
     artifact.content_type.startsWith("image/") && !imgError;
 
+  const handleCardClick = canPreview ? onPreview : onDownload;
+
   return (
     <div
       className={cn(
-        "group flex flex-col rounded-lg border border-border bg-card overflow-hidden",
+        "group flex flex-col rounded-lg border border-border bg-card overflow-hidden cursor-pointer",
         "transition-colors duration-150 hover:border-border-strong hover:shadow-sm",
       )}
+      onClick={handleCardClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleCardClick(); }}
     >
       {/* Thumbnail area */}
       <div className="relative h-40 w-full">
@@ -132,8 +144,6 @@ function GridCard({
             alt={artifact.name}
             className="h-40 w-full object-cover bg-secondary"
             onError={() => setImgError(true)}
-            onClick={canPreview ? onPreview : undefined}
-            style={canPreview ? { cursor: "pointer" } : undefined}
           />
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center bg-secondary/50">
@@ -158,7 +168,7 @@ function GridCard({
             <Button
               variant="ghost"
               size="icon-sm"
-              onClick={onPreview}
+              onClick={(e) => { e.stopPropagation(); onPreview(); }}
               aria-label={t("artifacts.preview")}
               className={isImage ? "text-white hover:text-white hover:bg-white/20" : ""}
             >
@@ -168,7 +178,7 @@ function GridCard({
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={onDownload}
+            onClick={(e) => { e.stopPropagation(); onDownload(); }}
             aria-label={t("artifacts.download")}
             className={isImage ? "text-white hover:text-white hover:bg-white/20" : ""}
           >
