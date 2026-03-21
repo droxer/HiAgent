@@ -77,6 +77,16 @@ class ArtifactRecord:
 
 
 @dataclass(frozen=True)
+class ConversationArtifactsRecord:
+    """Read-only record grouping artifacts by conversation."""
+
+    conversation_id: uuid.UUID
+    conversation_title: str | None
+    conversation_created_at: datetime
+    artifacts: tuple[ArtifactRecord, ...]
+
+
+@dataclass(frozen=True)
 class AgentRunRecord:
     """Read-only agent run record."""
 

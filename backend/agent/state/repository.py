@@ -24,6 +24,7 @@ from agent.state.models import (
 from agent.state.schemas import (
     AgentRunRecord,
     ArtifactRecord,
+    ConversationArtifactsRecord,
     ConversationRecord,
     EventRecord,
     MessageRecord,
@@ -288,6 +289,63 @@ class ConversationRepository:
         result = await session.execute(stmt)
         model = result.scalar_one_or_none()
         return _to_artifact(model) if model else None
+
+    async def list_artifacts_grouped(
+        self,
+        session: AsyncSession,
+        limit: int = 20,
+        offset: int = 0,
+        user_id: uuid.UUID | None = None,
+    ) -> tuple[list[ConversationArtifactsRecord], int]:
+        """List conversations that have artifacts, with artifacts grouped per conversation."""
+        # Subquery: conversation IDs that have at least one artifact
+        has_artifacts = (
+            select(ArtifactModel.conversation_id)
+            .distinct()
+            .scalar_subquery()
+        )
+
+        # Count total conversations with artifacts
+        count_stmt = select(func.count()).select_from(ConversationModel).where(
+            ConversationModel.id.in_(has_artifacts)
+        )
+        if user_id is not None:
+            count_stmt = count_stmt.where(ConversationModel.user_id == user_id)
+        total = (await session.execute(count_stmt)).scalar_one()
+
+        # Fetch paginated conversations
+        conv_stmt = (
+            select(ConversationModel)
+            .where(ConversationModel.id.in_(has_artifacts))
+            .order_by(ConversationModel.updated_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        if user_id is not None:
+            conv_stmt = conv_stmt.where(ConversationModel.user_id == user_id)
+        conv_result = await session.execute(conv_stmt)
+        conversations = conv_result.scalars().all()
+
+        # For each conversation, load its artifacts
+        records: list[ConversationArtifactsRecord] = []
+        for conv in conversations:
+            art_stmt = (
+                select(ArtifactModel)
+                .where(ArtifactModel.conversation_id == conv.id)
+                .order_by(ArtifactModel.created_at.desc())
+            )
+            art_result = await session.execute(art_stmt)
+            artifacts = tuple(_to_artifact(a) for a in art_result.scalars().all())
+            records.append(
+                ConversationArtifactsRecord(
+                    conversation_id=conv.id,
+                    conversation_title=conv.title,
+                    conversation_created_at=conv.created_at,
+                    artifacts=artifacts,
+                )
+            )
+
+        return records, total
 
 
 # ---------------------------------------------------------------------------

@@ -46,6 +46,7 @@
   --color-sidebar-bg: #F5F0EB;
   --color-sidebar-active: #EDE8E3;
   --color-sidebar-hover: #EDE8E3;
+  --color-sidebar-foreground-muted: #635D58;
 
   --color-profile-ring: rgba(139, 92, 246, 0.2);
   --color-profile-ring-hover: rgba(139, 92, 246, 0.35);
@@ -177,6 +178,7 @@
   --color-sidebar-bg: #F5F0EB;
   --color-sidebar-active: #EDE8E3;
   --color-sidebar-hover: #EDE8E3;
+  --color-sidebar-foreground-muted: #635D58;
   --color-terminal-bg: #FAF9F6;
   --color-terminal-surface: #F5F0EB;
   --color-terminal-border: #E8E5E0;
@@ -224,6 +226,7 @@
   --color-sidebar-bg: #181614;
   --color-sidebar-active: #2B2826;
   --color-sidebar-hover: #2B2826;
+  --color-sidebar-foreground-muted: #A8A29E;
   --color-profile-ring: rgba(139, 92, 246, 0.25);
   --color-profile-ring-hover: rgba(139, 92, 246, 0.45);
   --color-terminal-bg: #181614;

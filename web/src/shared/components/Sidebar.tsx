@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Logo } from "@/shared/components/Logo";
-import { Plus, PanelLeftClose, PanelLeftOpen, Trash2, Blocks, Lightbulb } from "lucide-react";
+import { Plus, PanelLeftClose, PanelLeftOpen, Trash2, Blocks, FolderOpen, Lightbulb } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import {
   Tooltip,
@@ -146,7 +146,7 @@ export function Sidebar({
         <div className="flex items-center gap-2.5">
           <Logo size={28} className="rounded-md" />
           {!collapsed && (
-            <span className="text-base font-semibold tracking-[-0.03em] text-foreground whitespace-nowrap">
+            <span className="text-sm font-semibold text-foreground whitespace-nowrap">
               {t("sidebar.brand")}
             </span>
           )}
@@ -193,6 +193,28 @@ export function Sidebar({
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right">{t("sidebar.newTask")}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href="/library">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className={cn(
+                      "w-full",
+                      activePath === "/library"
+                        ? "bg-secondary text-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary",
+                    )}
+                    asChild
+                  >
+                    <span>
+                      <FolderOpen className="h-4 w-4" />
+                    </span>
+                  </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">{t("sidebar.library")}</TooltipContent>
             </Tooltip>
             <div className="border-t border-border mx-0.5" />
             <Tooltip>
@@ -263,18 +285,32 @@ export function Sidebar({
               )}>
                 <Plus className="h-3.5 w-3.5 transition-transform duration-200 group-hover/new:rotate-90" />
               </div>
-              <span className="text-base font-medium text-foreground">
+              <span className="text-sm font-medium text-foreground">
                 {t("sidebar.newTask")}
               </span>
             </button>
+            <Link
+              href="/library"
+              aria-label={t("sidebar.library")}
+              className={cn(
+                "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                activePath === "/library"
+                  ? "bg-secondary text-foreground"
+                  : "text-sidebar-foreground-muted hover:bg-secondary hover:text-foreground",
+              )}
+            >
+              <FolderOpen className="h-4 w-4" />
+              {t("sidebar.library")}
+            </Link>
             <div className="border-t border-border" />
             <Link
               href="/skills"
+              aria-label={t("sidebar.skills")}
               className={cn(
-                "flex items-center gap-2.5 rounded-md px-3 py-2 text-base font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                 activePath === "/skills"
                   ? "bg-secondary text-foreground"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                  : "text-sidebar-foreground-muted hover:bg-secondary hover:text-foreground",
               )}
             >
               <Lightbulb className="h-4 w-4" />
@@ -282,11 +318,12 @@ export function Sidebar({
             </Link>
             <Link
               href="/mcp"
+              aria-label={t("sidebar.mcp")}
               className={cn(
-                "flex items-center gap-2.5 rounded-md px-3 py-2 text-base font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                 activePath === "/mcp"
                   ? "bg-secondary text-foreground"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                  : "text-sidebar-foreground-muted hover:bg-secondary hover:text-foreground",
               )}
             >
               <Blocks className="h-4 w-4" />
@@ -360,10 +397,13 @@ export function Sidebar({
                   {isActive && (
                     <div className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-accent-purple" />
                   )}
-                  <span className={cn(
-                    "flex-1 truncate text-base transition-colors duration-200",
-                    isActive ? "text-foreground font-medium" : "text-muted-foreground",
-                  )}>
+                  <span
+                    title={task.title}
+                    className={cn(
+                      "flex-1 truncate text-sm transition-colors duration-200",
+                      isActive ? "text-foreground font-medium" : "text-sidebar-foreground-muted",
+                    )}
+                  >
                     {task.title}
                   </span>
                   {onDeleteTask && (

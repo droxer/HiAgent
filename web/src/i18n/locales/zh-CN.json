@@ -422,5 +422,19 @@
   "profile.theme": "主题",
   "profile.settings": "设置",
   "profile.signOut": "退出登录",
-  "profile.account": "账户"
+  "profile.account": "账户",
+
+  "sidebar.library": "资料库",
+  "library.title": "资料库",
+  "library.subtitle": "浏览所有对话中的产物",
+  "library.filterPlaceholder": "按名称筛选...",
+  "library.clearFilter": "清除筛选",
+  "library.noArtifacts": "暂无产物",
+  "library.noArtifactsHint": "智能体生成的产物将显示在这里",
+  "library.noMatching": "没有匹配的产物",
+  "library.untitledTask": "未命名任务",
+  "library.artifactCount": "{count} 个文件",
+  "library.loadMore": "加载更多",
+  "library.viewList": "列表视图",
+  "library.viewGrid": "网格视图"
 }

@@ -421,5 +421,19 @@
   "profile.theme": "主題",
   "profile.settings": "設定",
   "profile.signOut": "登出",
-  "profile.account": "帳戶"
+  "profile.account": "帳戶",
+
+  "sidebar.library": "資料庫",
+  "library.title": "資料庫",
+  "library.subtitle": "瀏覽所有對話中的產物",
+  "library.filterPlaceholder": "依名稱篩選...",
+  "library.clearFilter": "清除篩選",
+  "library.noArtifacts": "暫無產物",
+  "library.noArtifactsHint": "智慧體產生的產物將顯示在這裡",
+  "library.noMatching": "沒有符合的產物",
+  "library.untitledTask": "未命名任務",
+  "library.artifactCount": "{count} 個檔案",
+  "library.loadMore": "載入更多",
+  "library.viewList": "清單檢視",
+  "library.viewGrid": "格狀檢視"
 }
