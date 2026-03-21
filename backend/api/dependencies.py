@@ -17,7 +17,11 @@ if TYPE_CHECKING:
     from agent.llm.client import AnthropicClient
     from agent.skills.installer import SkillInstaller
     from agent.skills.loader import SkillRegistry
-    from agent.state.repository import ConversationRepository, UserRepository
+    from agent.state.repository import (
+        ConversationRepository,
+        SkillRepository,
+        UserRepository,
+    )
     from api.db_subscriber import PendingWrites
     from api.models import ConversationEntry, MCPState
 
@@ -39,6 +43,7 @@ class AppState:
     sandbox_pool: Any = None  # Optional E2B pool
     skill_registry: SkillRegistry | None = None
     skill_installer: SkillInstaller | None = None
+    skill_repo: SkillRepository | None = None
 
 
 def get_app_state(request: Request) -> AppState:

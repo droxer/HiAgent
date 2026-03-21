@@ -52,7 +52,9 @@ class Settings(BaseSettings):
 
     # Auth (user identity comes from NextAuth via proxy headers)
     AUTH_REQUIRED: bool = False  # When False, unauthenticated requests are allowed
-    PROXY_SECRET: str = ""  # Shared secret between Next.js proxy and backend; required in production
+    PROXY_SECRET: str = (
+        ""  # Shared secret between Next.js proxy and backend; required in production
+    )
     DEFAULT_SYSTEM_PROMPT: str = (
         "You are a helpful AI assistant with access to a sandboxed coding environment "
         "where you can write and execute code, manage files, browse the web, and more.\n\n"

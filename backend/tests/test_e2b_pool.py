@@ -71,9 +71,7 @@ class TestAcquire:
             exit_code=0, stdout="", stderr=""
         )
 
-        with patch(
-            "agent.sandbox.e2b_provider._import_e2b"
-        ) as mock_import:
+        with patch("agent.sandbox.e2b_provider._import_e2b") as mock_import:
             mock_cls = MagicMock()
             mock_cls.connect.return_value = fake_sandbox
             mock_import.return_value = mock_cls
@@ -96,9 +94,7 @@ class TestAcquire:
             )
         )
 
-        with patch(
-            "agent.sandbox.e2b_provider._import_e2b"
-        ) as mock_import:
+        with patch("agent.sandbox.e2b_provider._import_e2b") as mock_import:
             mock_cls = MagicMock()
             mock_cls.connect.side_effect = RuntimeError("sandbox gone")
             mock_import.return_value = mock_cls
@@ -139,9 +135,7 @@ class TestAcquire:
 
 class TestRelease:
     @pytest.mark.asyncio
-    async def test_adds_to_pool(
-        self, pool: SandboxPool, config: SandboxConfig
-    ) -> None:
+    async def test_adds_to_pool(self, pool: SandboxPool, config: SandboxConfig) -> None:
         from agent.sandbox.e2b_provider import E2BSession
 
         fake_sandbox = MagicMock()
@@ -201,9 +195,7 @@ class TestDrain:
         fake_sandbox = MagicMock()
         fake_sandbox.kill = MagicMock()
 
-        with patch(
-            "agent.sandbox.e2b_provider._import_e2b"
-        ) as mock_import:
+        with patch("agent.sandbox.e2b_provider._import_e2b") as mock_import:
             mock_cls = MagicMock()
             mock_cls.connect.return_value = fake_sandbox
             mock_import.return_value = mock_cls

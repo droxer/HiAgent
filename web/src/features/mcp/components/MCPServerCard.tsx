@@ -15,24 +15,40 @@ const transportStyle = {
 interface MCPServerCardProps {
   readonly server: MCPServer;
   readonly onDelete?: (name: string) => void;
+  readonly onToggle?: (name: string, enabled: boolean) => void;
 }
 
-export function MCPServerCard({ server, onDelete }: MCPServerCardProps) {
+export function MCPServerCard({ server, onDelete, onToggle }: MCPServerCardProps) {
   const { t } = useTranslation();
   const transport = transportStyle[server.transport];
   const TransportIcon = transport.icon;
+  const isDisabled = server.enabled === false;
 
   return (
-    <div className="group flex h-full flex-col rounded-lg border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:border-border-strong">
+    <div className={cn(
+      "group flex h-full flex-col rounded-lg border bg-card p-4 shadow-sm transition-all duration-200",
+      isDisabled
+        ? "border-border/60 hover:border-border"
+        : "border-border hover:border-border-strong",
+    )}>
       {/* Top row: icon + transport badge + delete */}
       <div className="flex items-start justify-between gap-2">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary">
-          <Blocks className="h-4 w-4 text-muted-foreground" />
+        <div className={cn(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-200",
+          isDisabled ? "bg-secondary/60" : "bg-secondary",
+        )}>
+          <Blocks className={cn(
+            "h-4 w-4 transition-colors duration-200",
+            isDisabled ? "text-muted-foreground-dim" : "text-muted-foreground",
+          )} />
         </div>
         <div className="flex items-center gap-1.5">
           <Badge
             variant="secondary"
-            className="text-micro font-mono font-medium px-1.5 py-0 shrink-0"
+            className={cn(
+              "text-micro font-mono font-medium px-1.5 py-0 shrink-0 transition-opacity duration-200",
+              isDisabled && "opacity-60",
+            )}
           >
             <TransportIcon className="mr-1 h-2.5 w-2.5" />
             {transport.label}
@@ -56,12 +72,18 @@ export function MCPServerCard({ server, onDelete }: MCPServerCardProps) {
       </div>
 
       {/* Name */}
-      <h3 className="mt-3 text-sm font-semibold leading-snug text-foreground">
+      <h3 className={cn(
+        "mt-3 text-sm font-semibold leading-snug transition-colors duration-200",
+        isDisabled ? "text-muted-foreground" : "text-foreground",
+      )}>
         {server.name}
       </h3>
 
       {/* Details: tool count + status */}
-      <div className="mt-1.5 min-h-[2.5rem] flex items-center gap-3 text-xs text-muted-foreground">
+      <div className={cn(
+        "mt-1.5 min-h-[2.5rem] flex items-center gap-3 text-xs transition-colors duration-200",
+        isDisabled ? "text-muted-foreground-dim" : "text-muted-foreground",
+      )}>
         <span className="flex items-center gap-1">
           <Wrench className="h-3 w-3" />
           {server.tool_count === 1
@@ -71,24 +93,46 @@ export function MCPServerCard({ server, onDelete }: MCPServerCardProps) {
         <span className="flex items-center gap-1.5">
           <span
             className={cn(
-              "h-1.5 w-1.5 rounded-full",
-              server.status === "connected"
-                ? "bg-accent-emerald"
-                : "bg-border-strong",
+              "h-1.5 w-1.5 rounded-full transition-colors duration-200",
+              isDisabled
+                ? "bg-border-strong"
+                : server.status === "connected"
+                  ? "bg-accent-emerald"
+                  : "bg-border-strong",
             )}
           />
-          {server.status === "connected"
+          {server.status === "connected" && !isDisabled
             ? t("mcp.connected")
             : t("mcp.disconnected")}
         </span>
       </div>
 
-      {/* Footer: command or URL */}
-      <div className="mt-auto pt-3">
-        {(server.command || server.url) && (
-          <span className="truncate font-mono text-micro text-muted-foreground-dim block">
-            {server.command || server.url}
-          </span>
+      {/* Footer: command/URL + status toggle */}
+      <div className="mt-auto flex items-center justify-between gap-2 pt-3">
+        <span className="truncate font-mono text-micro text-muted-foreground-dim">
+          {server.command || server.url || "\u00A0"}
+        </span>
+        {onToggle && (
+          <button
+            type="button"
+            role="switch"
+            aria-checked={!isDisabled}
+            aria-label={isDisabled ? t("mcp.enable") : t("mcp.disable")}
+            className={cn(
+              "flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-micro font-medium transition-colors duration-150",
+              "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+              isDisabled
+                ? "bg-secondary text-muted-foreground-dim hover:bg-secondary/80 hover:text-muted-foreground"
+                : "bg-accent-emerald/10 text-accent-emerald hover:bg-accent-emerald/15",
+            )}
+            onClick={() => onToggle(server.name, isDisabled)}
+          >
+            <span className={cn(
+              "h-1.5 w-1.5 rounded-full transition-colors duration-150",
+              isDisabled ? "bg-border-strong" : "bg-accent-emerald",
+            )} />
+            {isDisabled ? t("mcp.disabled") : t("mcp.enabled")}
+          </button>
         )}
       </div>
     </div>

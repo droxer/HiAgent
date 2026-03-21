@@ -67,8 +67,8 @@ export function ConversationWorkspace({
   thinkingContent,
   isStreaming,
   assistantPhase,
-  reasoningSteps,
-  currentIteration,
+  reasoningSteps: _reasoningSteps,
+  currentIteration: _currentIteration,
   isConnected,
   onSendMessage,
   onNavigateHome,
@@ -283,7 +283,6 @@ export function ConversationWorkspace({
                               return imageUrls.length > 0 ? (
                                 <div className="mt-4 flex flex-wrap gap-3">
                                   {imageUrls.map((url) => (
-                                    /* eslint-disable-next-line @next/next/no-img-element */
                                     <img
                                       key={url}
                                       src={url}

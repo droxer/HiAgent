@@ -5,7 +5,17 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import UUID
 
 from agent.state.models import Base
@@ -28,6 +38,7 @@ class MCPServerModel(Base):
     url = Column(String(1000), nullable=False, default="")
     env = Column(Text, nullable=False, default="{}")  # JSON object
     timeout = Column(Float, nullable=False, default=30.0)
+    enabled = Column(Boolean, nullable=False, default=True)
     user_id = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),

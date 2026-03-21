@@ -26,9 +26,7 @@ class StorageBackend(Protocol):
         """Persist *data* under *key* and return a retrieval identifier."""
         ...
 
-    async def get_url(
-        self, key: str, content_type: str, filename: str
-    ) -> str:
+    async def get_url(self, key: str, content_type: str, filename: str) -> str:
         """Return a URL (or file path) for retrieving the artifact."""
         ...
 
@@ -75,9 +73,7 @@ class LocalStorageBackend:
         logger.debug("local_storage_saved key={} size={}", key, len(data))
         return key
 
-    async def get_url(
-        self, key: str, content_type: str, filename: str
-    ) -> str:
+    async def get_url(self, key: str, content_type: str, filename: str) -> str:
         """Return the local file path for the artifact."""
         storage_real = os.path.realpath(self._storage_dir)
         candidate = os.path.realpath(os.path.join(self._storage_dir, key))
@@ -176,9 +172,7 @@ class R2StorageBackend:
             ExpiresIn=_PRESIGNED_URL_EXPIRY,
         )
 
-    async def get_url(
-        self, key: str, content_type: str, filename: str
-    ) -> str:
+    async def get_url(self, key: str, content_type: str, filename: str) -> str:
         """Return a public URL or a presigned URL for the artifact."""
         if self._public_url:
             return f"{self._public_url}/{key}"
@@ -255,6 +249,4 @@ def create_storage_backend(settings: object) -> StorageBackend:
             public_url=public_url,
         )
 
-    raise ValueError(
-        f"Unknown STORAGE_PROVIDER={provider!r}. Must be 'local' or 'r2'."
-    )
+    raise ValueError(f"Unknown STORAGE_PROVIDER={provider!r}. Must be 'local' or 'r2'.")

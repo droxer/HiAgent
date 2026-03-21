@@ -10,7 +10,9 @@ from api.db_subscriber import PendingWrites, create_db_subscriber
 from api.events import AgentEvent, EventType
 
 
-def _make_event(event_type: EventType, data: dict, iteration: int | None = None) -> AgentEvent:
+def _make_event(
+    event_type: EventType, data: dict, iteration: int | None = None
+) -> AgentEvent:
     return AgentEvent(type=event_type, data=data, iteration=iteration)
 
 
@@ -47,7 +49,9 @@ async def test_persists_turn_start_as_user_message(repo, session_factory) -> Non
     repo.save_message.assert_called_once()
 
 
-async def test_persists_turn_complete_as_assistant_message(repo, session_factory) -> None:
+async def test_persists_turn_complete_as_assistant_message(
+    repo, session_factory
+) -> None:
     conversation_id = uuid.uuid4()
     subscriber = create_db_subscriber(conversation_id, repo, session_factory)
     event = _make_event(EventType.TURN_COMPLETE, {"result": "done"})
@@ -166,7 +170,6 @@ async def test_pending_writes_tracks_increment_decrement(pending_writes) -> None
 
 async def test_pending_writes_drain_waits(pending_writes) -> None:
     """Verify wait_drained blocks until all tracked writes complete."""
-    import asyncio
 
     async with pending_writes.track():
         # Should timeout because we're still inside the tracked block
@@ -178,7 +181,9 @@ async def test_pending_writes_drain_waits(pending_writes) -> None:
     assert result is True
 
 
-async def test_pending_writes_passed_to_subscriber(repo, session_factory, pending_writes) -> None:
+async def test_pending_writes_passed_to_subscriber(
+    repo, session_factory, pending_writes
+) -> None:
     """When pending_writes is provided, writes are tracked."""
     conversation_id = uuid.uuid4()
     subscriber = create_db_subscriber(

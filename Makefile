@@ -8,7 +8,7 @@ SANDBOX_TAGS_default :=
 SANDBOX_TAGS_data_science :=
 SANDBOX_TAGS_browser := v3
 
-.PHONY: backend web dev install install-backend install-web build-web build-sandbox push-sandbox migrate clean test lint format evals
+.PHONY: backend web dev install install-backend install-web build-web build-sandbox push-sandbox migrate clean test lint format evals pre-commit lint-web
 
 # Start both backend and web concurrently
 dev: install
@@ -82,9 +82,21 @@ test:
 lint:
 	cd backend && uv run ruff check .
 
+# Lint web
+lint-web:
+	cd web && npx eslint src/
+
 # Format backend
 format:
 	cd backend && uv run ruff format .
+
+# Install pre-commit hooks
+pre-commit:
+	cd backend && uv run pre-commit install
+
+# Run pre-commit on all files
+pre-commit-all:
+	cd backend && uv run pre-commit run --all-files
 
 # Run agent evals (mock by default; use EVAL_ARGS for options)
 # Examples:

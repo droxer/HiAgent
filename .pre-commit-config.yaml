@@ -1,0 +1,44 @@
+repos:
+  # General file hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '\.snap$'
+      - id: end-of-file-fixer
+        exclude: '\.snap$'
+      - id: check-yaml
+      - id: check-json
+        exclude: 'tsconfig\.json$|web/tsconfig\.tsbuildinfo$'
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # Backend: ruff linting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.6
+    hooks:
+      - id: ruff
+        args: ['--fix']
+        files: ^backend/
+      - id: ruff-format
+        files: ^backend/
+
+  # Web: ESLint + TypeScript
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        entry: bash -c 'args=(); for f in "$@"; do args+=("${f#web/}"); done; cd web && npx eslint "${args[@]}"' --
+        language: system
+        files: ^web/src/.*\.(ts|tsx)$
+        types: [file]
+
+      # Web: TypeScript type check
+      - id: tsc
+        name: typescript
+        entry: bash -c 'cd web && npx tsc --noEmit'
+        language: system
+        files: ^web/src/.*\.(ts|tsx)$
+        pass_filenames: false

@@ -43,7 +43,9 @@ class _FakeClaudeClient:
 
 
 class _FakeSession:
-    def __init__(self, *, fail_upload: bool = False, verify_upload: bool = True) -> None:
+    def __init__(
+        self, *, fail_upload: bool = False, verify_upload: bool = True
+    ) -> None:
         self.fail_upload = fail_upload
         self.verify_upload = verify_upload
         self.files: set[str] = set()
@@ -87,7 +89,9 @@ class _FakeExecutor:
         self.current_template = None
         self.reset_calls += 1
 
-    async def get_sandbox_session(self, tool_tags: tuple[str, ...] = ()) -> _FakeSession:
+    async def get_sandbox_session(
+        self, tool_tags: tuple[str, ...] = ()
+    ) -> _FakeSession:
         self.template_requests.append(self.current_template or "default")
         return self.session
 
@@ -177,7 +181,9 @@ async def test_failed_upload_aborts_turn_and_skips_llm() -> None:
         system_prompt="test",
     )
 
-    result = await orchestrator.run("use this file", attachments=(_attachment("bad.csv"),))
+    result = await orchestrator.run(
+        "use this file", attachments=(_attachment("bad.csv"),)
+    )
 
     assert result.startswith("Error: Failed to upload attached files")
     assert client.calls == 0

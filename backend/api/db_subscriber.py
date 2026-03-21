@@ -15,10 +15,15 @@ from collections.abc import Callable, Coroutine
 from typing import Any
 
 from loguru import logger
-from sqlalchemy.exc import IntegrityError, OperationalError, InterfaceError, ProgrammingError
+from sqlalchemy.exc import (
+    IntegrityError,
+    OperationalError,
+    InterfaceError,
+    ProgrammingError,
+)
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from agent.state.repository import ConversationRepository
+from agent.state.repository import ConversationRepository, SkillRepository
 from api.events import AgentEvent, EventType, SubscriberCallback
 
 # Event types that should not be persisted (too noisy or ephemeral)
@@ -95,8 +100,7 @@ def _clean_data(data: dict[str, Any]) -> dict[str, Any]:
     """Remove non-serializable entries (e.g. callbacks) and convert
     dataclass values to plain dicts for JSONB storage."""
     cleaned = {
-        k: v for k, v in data.items()
-        if not callable(v) and k != "response_callback"
+        k: v for k, v in data.items() if not callable(v) and k != "response_callback"
     }
     return _make_serializable(cleaned)
 
@@ -117,7 +121,7 @@ async def _retry_with_backoff(
         except _RETRYABLE_EXCEPTIONS as exc:
             last_exc = exc
             if attempt < _MAX_RETRIES - 1:
-                delay = _BASE_DELAY * (3 ** attempt)
+                delay = _BASE_DELAY * (3**attempt)
                 logger.warning(
                     "db_subscriber_retry attempt={}/{} delay={:.2f}s "
                     "conversation_id={} event_type={} error={}",
@@ -135,7 +139,7 @@ async def _retry_with_backoff(
                 # FK violation may be a timing issue — conversation row
                 # not yet visible to this session.  Retry with backoff.
                 last_exc = exc
-                delay = _BASE_DELAY * (3 ** attempt)
+                delay = _BASE_DELAY * (3**attempt)
                 logger.warning(
                     "db_subscriber_fk_retry attempt={}/{} delay={:.2f}s "
                     "conversation_id={} event_type={}",
@@ -171,8 +175,7 @@ async def _retry_with_backoff(
 
     # All retries exhausted
     logger.error(
-        "db_subscriber_event_lost "
-        "conversation_id={} event_type={} error={} data={}",
+        "db_subscriber_event_lost conversation_id={} event_type={} error={} data={}",
         conversation_id,
         event.type.value,
         last_exc,
@@ -185,12 +188,12 @@ def create_db_subscriber(
     repo: ConversationRepository,
     session_factory: async_sessionmaker[AsyncSession],
     pending_writes: PendingWrites | None = None,
+    skill_repo: SkillRepository | None = None,
+    user_id: uuid.UUID | None = None,
 ) -> SubscriberCallback:
     """Create an async event subscriber that persists to PostgreSQL."""
 
-    logger.info(
-        "db_subscriber_created conversation_id={}", conversation_id
-    )
+    logger.info("db_subscriber_created conversation_id={}", conversation_id)
 
     async def _subscriber(event: AgentEvent) -> None:
         if event.type in _SKIP_EVENTS:
@@ -285,9 +288,13 @@ def create_db_subscriber(
                         session,
                         artifact_id=str(clean.get("artifact_id", "")),
                         conversation_id=conversation_id,
-                        storage_key=str(clean.get("storage_key", clean.get("artifact_id", ""))),
+                        storage_key=str(
+                            clean.get("storage_key", clean.get("artifact_id", ""))
+                        ),
                         original_name=str(clean.get("name", "")),
-                        content_type=str(clean.get("content_type", "application/octet-stream")),
+                        content_type=str(
+                            clean.get("content_type", "application/octet-stream")
+                        ),
                         size=int(clean.get("size", 0)),
                     )
                     # Also persist as a regular event so historical views
@@ -299,6 +306,25 @@ def create_db_subscriber(
                         data=clean,
                         iteration=event.iteration,
                     )
+
+                elif event.type == EventType.SKILL_ACTIVATED:
+                    await repo.save_event(
+                        session,
+                        conversation_id,
+                        event_type=event.type.value,
+                        data=clean,
+                        iteration=event.iteration,
+                    )
+                    skill_name = clean.get("name", "")
+                    if skill_name and skill_repo is not None:
+                        await skill_repo.record_activation(
+                            session, skill_name, user_id=user_id
+                        )
+                        logger.debug(
+                            "skill_activation_recorded name={} conversation_id={}",
+                            skill_name,
+                            conversation_id,
+                        )
 
                 elif event.type == EventType.CONVERSATION_TITLE:
                     title = clean.get("title", "")
@@ -319,13 +345,9 @@ def create_db_subscriber(
         try:
             if pending_writes is not None:
                 async with pending_writes.track():
-                    await _retry_with_backoff(
-                        _do_write, conversation_id, event, clean
-                    )
+                    await _retry_with_backoff(_do_write, conversation_id, event, clean)
             else:
-                await _retry_with_backoff(
-                    _do_write, conversation_id, event, clean
-                )
+                await _retry_with_backoff(_do_write, conversation_id, event, clean)
         except Exception:
             logger.error(
                 "db_subscriber_event_lost_unexpected "

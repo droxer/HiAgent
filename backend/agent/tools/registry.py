@@ -53,11 +53,7 @@ class ToolRegistry:
 
     def filter_by_names(self, names: set[str]) -> ToolRegistry:
         """Return a new registry containing only tools whose names are in *names*."""
-        filtered = {
-            name: tool
-            for name, tool in self._tools.items()
-            if name in names
-        }
+        filtered = {name: tool for name, tool in self._tools.items() if name in names}
         return ToolRegistry(tools=filtered)
 
     def remove_by_tag(self, tag: str) -> ToolRegistry:

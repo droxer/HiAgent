@@ -34,7 +34,9 @@ def _create_queue_subscriber(
         try:
             queue.put_nowait(event)
         except asyncio.QueueFull:
-            logger.warning("event_queue_full event_type={} — dropping event", event.type)
+            logger.warning(
+                "event_queue_full event_type={} — dropping event", event.type
+            )
 
     return _subscriber
 

@@ -92,9 +92,7 @@ async def proxy_preview(
     # Get the sandbox session from the executor
     sandbox_session = entry.executor._sandbox_sessions.get("default")
     if sandbox_session is None:
-        raise HTTPException(
-            status_code=503, detail="No sandbox session active"
-        )
+        raise HTTPException(status_code=503, detail="No sandbox session active")
 
     # Default preview port
     port = _DEFAULT_PREVIEW_PORT
@@ -113,10 +111,7 @@ async def proxy_preview(
     if result.exit_code != 0:
         raise HTTPException(
             status_code=502,
-            detail=(
-                f"Preview proxy failed: "
-                f"{result.stderr or 'connection refused'}"
-            ),
+            detail=(f"Preview proxy failed: {result.stderr or 'connection refused'}"),
         )
 
     # Parse the HTTP response from curl -i output

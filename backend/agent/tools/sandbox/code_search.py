@@ -202,8 +202,7 @@ class FileSearch(SandboxTool):
 
         # Count actual match lines (exclude context separator lines)
         match_count = sum(
-            1 for line in output.split("\n")
-            if line and not line.startswith("--")
+            1 for line in output.split("\n") if line and not line.startswith("--")
         )
 
         return ToolResult.ok(

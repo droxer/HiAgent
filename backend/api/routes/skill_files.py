@@ -16,21 +16,71 @@ from agent.skills.loader import SkillRegistry
 router = APIRouter(prefix="/skills", dependencies=common_dependencies)
 
 # Directories to skip when building the file tree
-_SKIP_DIRS = frozenset({
-    ".git", "__pycache__", "node_modules", ".venv", "venv", ".mypy_cache",
-    ".pytest_cache", ".ruff_cache", "__pypackages__", ".tox", ".eggs",
-})
+_SKIP_DIRS = frozenset(
+    {
+        ".git",
+        "__pycache__",
+        "node_modules",
+        ".venv",
+        "venv",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        "__pypackages__",
+        ".tox",
+        ".eggs",
+    }
+)
 
 # Binary extensions to exclude from the tree
-_BINARY_EXTS = frozenset({
-    ".ttf", ".woff", ".woff2", ".eot", ".otf",
-    ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".webp", ".svg",
-    ".pyc", ".pyo", ".so", ".dylib", ".dll", ".o", ".a",
-    ".zip", ".tar", ".gz", ".bz2", ".xz", ".7z", ".rar",
-    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
-    ".exe", ".bin", ".dat", ".db", ".sqlite",
-    ".mp3", ".mp4", ".wav", ".avi", ".mov",
-})
+_BINARY_EXTS = frozenset(
+    {
+        ".ttf",
+        ".woff",
+        ".woff2",
+        ".eot",
+        ".otf",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".bmp",
+        ".ico",
+        ".webp",
+        ".svg",
+        ".pyc",
+        ".pyo",
+        ".so",
+        ".dylib",
+        ".dll",
+        ".o",
+        ".a",
+        ".zip",
+        ".tar",
+        ".gz",
+        ".bz2",
+        ".xz",
+        ".7z",
+        ".rar",
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".xls",
+        ".xlsx",
+        ".ppt",
+        ".pptx",
+        ".exe",
+        ".bin",
+        ".dat",
+        ".db",
+        ".sqlite",
+        ".mp3",
+        ".mp4",
+        ".wav",
+        ".avi",
+        ".mov",
+    }
+)
 
 _MAX_DEPTH = 6
 _MAX_FILES = 500
@@ -54,7 +104,9 @@ def _resolve_skill_directory(name: str, state: AppState) -> Path:
     return skill.directory_path
 
 
-def _build_tree(root: str, depth: int = 0, counter: list[int] | None = None) -> list[dict[str, Any]]:
+def _build_tree(
+    root: str, depth: int = 0, counter: list[int] | None = None
+) -> list[dict[str, Any]]:
     """Recursively build a file tree from *root*.
 
     Returns a list of nodes sorted: directories first, then alphabetical,
@@ -83,22 +135,26 @@ def _build_tree(root: str, depth: int = 0, counter: list[int] | None = None) -> 
                 continue
             children = _build_tree(entry.path, depth + 1, counter)
             if children:  # Only include non-empty directories
-                dirs.append({
-                    "name": entry.name,
-                    "path": _rel_path(entry.path, root, depth),
-                    "type": "directory",
-                    "children": children,
-                })
+                dirs.append(
+                    {
+                        "name": entry.name,
+                        "path": _rel_path(entry.path, root, depth),
+                        "type": "directory",
+                        "children": children,
+                    }
+                )
         elif entry.is_file(follow_symlinks=False):
             ext = os.path.splitext(entry.name)[1].lower()
             if ext in _BINARY_EXTS:
                 continue
             counter[0] += 1
-            files.append({
-                "name": entry.name,
-                "path": _rel_path(entry.path, root, depth),
-                "type": "file",
-            })
+            files.append(
+                {
+                    "name": entry.name,
+                    "path": _rel_path(entry.path, root, depth),
+                    "type": "file",
+                }
+            )
 
     # Sort files: SKILL.md first, then alphabetical
     files.sort(key=lambda f: (0 if f["name"] == "SKILL.md" else 1, f["name"].lower()))
@@ -167,6 +223,8 @@ async def get_skill_file(
     try:
         content = requested.read_text(encoding="utf-8")
     except UnicodeDecodeError:
-        raise HTTPException(status_code=415, detail="Binary file cannot be displayed as text")
+        raise HTTPException(
+            status_code=415, detail="Binary file cannot be displayed as text"
+        )
 
     return PlainTextResponse(content)

@@ -476,9 +476,7 @@ class AgentOrchestrator:
                         f"npm install {packages_str}", timeout=120
                     )
                 else:
-                    logger.warning(
-                        "unknown_dependency_manager manager={}", manager
-                    )
+                    logger.warning("unknown_dependency_manager manager={}", manager)
                     continue
 
                 if not result.success:

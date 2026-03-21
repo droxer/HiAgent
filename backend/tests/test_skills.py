@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import subprocess
 import tempfile
+import unittest.mock
 import zipfile
 from pathlib import Path
 from types import MappingProxyType
@@ -309,12 +310,7 @@ class TestParseSkillMd:
             os.makedirs(skill_dir)
             skill_file = os.path.join(skill_dir, "SKILL.md")
             with open(skill_file, "w") as f:
-                f.write(
-                    "---\n"
-                    "name: plain\n"
-                    "description: Plain skill\n"
-                    "---\nBody"
-                )
+                f.write("---\nname: plain\ndescription: Plain skill\n---\nBody")
 
             skill = parse_skill_md(skill_file)
             assert skill.metadata.sandbox_template is None
@@ -366,8 +362,12 @@ class TestSkillDiscoverer:
             "skills",
             "bundled",
         )
-        discoverer = SkillDiscoverer(bundled_dir=bundled_dir)
-        skills = discoverer.discover_all()
+        with tempfile.TemporaryDirectory() as fake_home:
+            with unittest.mock.patch(
+                "agent.skills.discovery.Path.home", return_value=Path(fake_home)
+            ):
+                discoverer = SkillDiscoverer(bundled_dir=bundled_dir)
+                skills = discoverer.discover_all()
         names = {s.metadata.name for s in skills}
         assert "deep-research" in names
         assert "data-analysis" in names
@@ -768,7 +768,9 @@ class TestZipSlipPrevention:
             extract_dir = os.path.join(tmp, "extracted")
 
             with zipfile.ZipFile(archive_path, "w") as zf:
-                zf.writestr("skill/SKILL.md", "---\nname: ok\ndescription: OK\n---\nBody")
+                zf.writestr(
+                    "skill/SKILL.md", "---\nname: ok\ndescription: OK\n---\nBody"
+                )
 
             _safe_extract_zip(archive_path, extract_dir)
             assert os.path.isfile(os.path.join(extract_dir, "skill", "SKILL.md"))
@@ -926,7 +928,11 @@ class TestInstallFromUpload:
 
     @pytest.mark.asyncio
     async def test_upload_size_limit(self) -> None:
-        from agent.skills.installer import SkillInstaller, UploadedFile, _MAX_DOWNLOAD_SIZE
+        from agent.skills.installer import (
+            SkillInstaller,
+            UploadedFile,
+            _MAX_DOWNLOAD_SIZE,
+        )
 
         with tempfile.TemporaryDirectory() as tmp:
             installer = SkillInstaller(install_dir=os.path.join(tmp, "installed"))
@@ -1042,7 +1048,7 @@ class TestToolRegistryFilterByNames:
         skill = _make_skill("test")
         reg = SkillRegistry((skill,))
         tool_a = ActivateSkill(skill_registry=reg)
-        tool_b = ActivateSkill(skill_registry=reg, active_skill_name="test")
+        ActivateSkill(skill_registry=reg, active_skill_name="test")
 
         tool_reg = ToolReg()
         tool_reg = tool_reg.register(tool_a)

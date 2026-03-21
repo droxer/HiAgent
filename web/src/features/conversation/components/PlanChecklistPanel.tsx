@@ -23,7 +23,7 @@ function StepIcon({ status }: { readonly status: PlanStep["status"] }) {
   }
 }
 
-export function PlanChecklistPanel({ planSteps, taskState }: PlanChecklistPanelProps) {
+export function PlanChecklistPanel({ planSteps, taskState: _taskState }: PlanChecklistPanelProps) {
   const { t } = useTranslation();
 
   if (planSteps.length === 0) {

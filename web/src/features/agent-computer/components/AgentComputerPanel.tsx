@@ -16,7 +16,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Progress } from "@/shared/components/ui/progress";
 import { formatToolPreview } from "../lib/format-tools";
 import { ToolArgsDisplay } from "./ToolArgsDisplay";
-import { HIDDEN_ACTIVITY_TOOLS, normalizeToolName, normalizeToolNameI18n } from "../lib/tool-constants";
+import { HIDDEN_ACTIVITY_TOOLS, normalizeToolNameI18n } from "../lib/tool-constants";
 import { normalizeSkillName } from "@/features/skills/lib/normalize-skill-name";
 import { ToolOutputRenderer } from "./ToolOutputRenderer";
 import { SkillActivityEntry } from "./SkillActivityEntry";
@@ -26,7 +26,7 @@ import { EmptyState } from "@/shared/components/EmptyState";
 import { cn } from "@/shared/lib/utils";
 import { useTranslation } from "@/i18n";
 import { PulsingDot } from "@/shared/components/PulsingDot";
-import type { ToolCallInfo, AgentStatus, TaskState, ArtifactInfo, ComputerUseMetadata } from "@/shared/types";
+import type { ToolCallInfo, AgentStatus, TaskState, ArtifactInfo } from "@/shared/types";
 
 const SKILL_TOOL_NAMES = new Set(["activate_skill", "load_skill"]);
 
@@ -210,8 +210,6 @@ export function AgentComputerPanel({
         `[data-step-id="${highlightedStepId}"]`,
       );
       if (!el && highlightedStepId.startsWith("agent-")) {
-        // Extract agentId from "agent-{agentId}-{timestamp}"
-        const parts = highlightedStepId.split("-");
         // agentId may contain dashes, so match by prefix
         const allStepEls = contentRef.current?.querySelectorAll("[data-step-id]") ?? [];
         for (const candidate of allStepEls) {

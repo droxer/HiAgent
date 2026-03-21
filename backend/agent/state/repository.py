@@ -19,6 +19,7 @@ from agent.state.models import (
     ConversationModel,
     EventModel,
     MessageModel,
+    SkillModel,
     UserModel,
 )
 from agent.state.schemas import (
@@ -28,6 +29,7 @@ from agent.state.schemas import (
     ConversationRecord,
     EventRecord,
     MessageRecord,
+    SkillRecord,
     UserRecord,
 )
 
@@ -111,9 +113,7 @@ class ConversationRepository:
         session: AsyncSession,
         conversation_id: uuid.UUID,
     ) -> ConversationRecord | None:
-        stmt = select(ConversationModel).where(
-            ConversationModel.id == conversation_id
-        )
+        stmt = select(ConversationModel).where(ConversationModel.id == conversation_id)
         result = await session.execute(stmt)
         model = result.scalar_one_or_none()
         return _to_conversation(model) if model else None
@@ -130,9 +130,7 @@ class ConversationRepository:
         if user_id is not None:
             count_stmt = count_stmt.where(ConversationModel.user_id == user_id)
         if search:
-            count_stmt = count_stmt.where(
-                ConversationModel.title.ilike(f"%{search}%")
-            )
+            count_stmt = count_stmt.where(ConversationModel.title.ilike(f"%{search}%"))
         total = (await session.execute(count_stmt)).scalar_one()
 
         stmt = (
@@ -155,9 +153,7 @@ class ConversationRepository:
         conversation_id: uuid.UUID,
     ) -> bool:
         """Delete a conversation by ID. Returns True if found and deleted."""
-        stmt = select(ConversationModel).where(
-            ConversationModel.id == conversation_id
-        )
+        stmt = select(ConversationModel).where(ConversationModel.id == conversation_id)
         result = await session.execute(stmt)
         model = result.scalar_one_or_none()
         if model is None:
@@ -172,9 +168,7 @@ class ConversationRepository:
         conversation_id: uuid.UUID,
         title: str | None = None,
     ) -> ConversationRecord:
-        stmt = select(ConversationModel).where(
-            ConversationModel.id == conversation_id
-        )
+        stmt = select(ConversationModel).where(ConversationModel.id == conversation_id)
         result = await session.execute(stmt)
         model = result.scalar_one_or_none()
         if model is None:
@@ -300,14 +294,14 @@ class ConversationRepository:
         """List conversations that have artifacts, with artifacts grouped per conversation."""
         # Subquery: conversation IDs that have at least one artifact
         has_artifacts = (
-            select(ArtifactModel.conversation_id)
-            .distinct()
-            .scalar_subquery()
+            select(ArtifactModel.conversation_id).distinct().scalar_subquery()
         )
 
         # Count total conversations with artifacts
-        count_stmt = select(func.count()).select_from(ConversationModel).where(
-            ConversationModel.id.in_(has_artifacts)
+        count_stmt = (
+            select(func.count())
+            .select_from(ConversationModel)
+            .where(ConversationModel.id.in_(has_artifacts))
         )
         if user_id is not None:
             count_stmt = count_stmt.where(ConversationModel.user_id == user_id)
@@ -447,3 +441,217 @@ class UserRepository:
         await session.refresh(model)
         await session.commit()
         return _to_user(model)
+
+
+# ---------------------------------------------------------------------------
+# Skill repository
+# ---------------------------------------------------------------------------
+
+
+def _to_skill(model: SkillModel) -> SkillRecord:
+    return SkillRecord(
+        id=model.id,
+        user_id=model.user_id,
+        name=model.name,
+        description=model.description,
+        source_type=model.source_type,
+        source_path=model.source_path,
+        enabled=model.enabled,
+        activation_count=model.activation_count,
+        last_activated_at=model.last_activated_at,
+        installed_at=model.installed_at,
+        updated_at=model.updated_at,
+    )
+
+
+class SkillRepository:
+    """Async repository for skill metadata persistence.
+
+    Bundled skills are shared (user_id=NULL) and synced once at startup.
+    User-installed skills have a user_id and are per-user.
+    """
+
+    async def sync_shared_skills(
+        self,
+        session: AsyncSession,
+        discovered: list[tuple[str, str, str, str]],
+    ) -> None:
+        """Sync filesystem-discovered bundled skills (user_id=NULL).
+
+        ``discovered`` is a list of (name, description, source_type, source_path)
+        tuples. Stale shared skills are removed. New ones are inserted.
+        Existing ones have description/source updated while preserving
+        activation_count.
+        """
+        discovered_names = {name for name, _, _, _ in discovered}
+
+        # Fetch existing bundled skills
+        stmt = select(SkillModel).where(SkillModel.source_type == "bundled")
+        result = await session.execute(stmt)
+        existing = {m.name: m for m in result.scalars().all()}
+
+        # Remove skills no longer on disk
+        for name, model in existing.items():
+            if name not in discovered_names:
+                await session.delete(model)
+
+        # Upsert discovered skills
+        for name, description, source_type, source_path in discovered:
+            model = existing.get(name)
+            if model is None:
+                session.add(
+                    SkillModel(
+                        user_id=None,
+                        name=name,
+                        description=description,
+                        source_type=source_type,
+                        source_path=source_path,
+                    )
+                )
+            else:
+                model.description = description
+                model.source_type = source_type
+                model.source_path = source_path
+                model.updated_at = datetime.now(timezone.utc)
+
+        await session.commit()
+
+    async def sync_user_skills(
+        self,
+        session: AsyncSession,
+        user_id: uuid.UUID,
+        discovered: list[tuple[str, str, str, str]],
+    ) -> None:
+        """Sync user-installed skills for a specific user.
+
+        ``discovered`` is a list of (name, description, source_type, source_path)
+        tuples for non-bundled skills.
+        """
+        discovered_names = {name for name, _, _, _ in discovered}
+
+        stmt = select(SkillModel).where(SkillModel.user_id == user_id)
+        result = await session.execute(stmt)
+        existing = {m.name: m for m in result.scalars().all()}
+
+        for name, model in existing.items():
+            if name not in discovered_names:
+                await session.delete(model)
+
+        for name, description, source_type, source_path in discovered:
+            model = existing.get(name)
+            if model is None:
+                session.add(
+                    SkillModel(
+                        user_id=user_id,
+                        name=name,
+                        description=description,
+                        source_type=source_type,
+                        source_path=source_path,
+                    )
+                )
+            else:
+                model.description = description
+                model.source_type = source_type
+                model.source_path = source_path
+                model.updated_at = datetime.now(timezone.utc)
+
+        await session.commit()
+
+    async def list_skills(
+        self,
+        session: AsyncSession,
+        user_id: uuid.UUID | None = None,
+    ) -> list[SkillRecord]:
+        """Return skills visible to a user (bundled + user-owned), ordered by activation count."""
+        from sqlalchemy import or_
+
+        conditions = [SkillModel.source_type == "bundled"]
+        if user_id is not None:
+            conditions.append(SkillModel.user_id == user_id)
+
+        stmt = (
+            select(SkillModel)
+            .where(or_(*conditions))
+            .order_by(SkillModel.activation_count.desc())
+        )
+        result = await session.execute(stmt)
+        return [_to_skill(m) for m in result.scalars().all()]
+
+    async def get_skill(
+        self,
+        session: AsyncSession,
+        name: str,
+        user_id: uuid.UUID | None = None,
+    ) -> SkillRecord | None:
+        """Find a skill by name — checks user-owned first, then bundled."""
+        from sqlalchemy import or_
+
+        conditions = [SkillModel.source_type == "bundled"]
+        if user_id is not None:
+            conditions.append(SkillModel.user_id == user_id)
+
+        stmt = (
+            select(SkillModel)
+            .where(SkillModel.name == name, or_(*conditions))
+            .order_by(SkillModel.user_id.desc().nulls_last())
+            .limit(1)
+        )
+        result = await session.execute(stmt)
+        model = result.scalar_one_or_none()
+        return _to_skill(model) if model else None
+
+    async def record_activation(
+        self,
+        session: AsyncSession,
+        name: str,
+        user_id: uuid.UUID | None = None,
+    ) -> None:
+        """Increment activation count. Prefers user-owned row, falls back to bundled."""
+        from sqlalchemy import or_
+
+        conditions = [SkillModel.source_type == "bundled"]
+        if user_id is not None:
+            conditions.append(SkillModel.user_id == user_id)
+
+        stmt = (
+            select(SkillModel)
+            .where(SkillModel.name == name, or_(*conditions))
+            .order_by(SkillModel.user_id.desc().nulls_last())
+            .limit(1)
+        )
+        result = await session.execute(stmt)
+        model = result.scalar_one_or_none()
+        if model is not None:
+            model.activation_count = model.activation_count + 1
+            model.last_activated_at = datetime.now(timezone.utc)
+            await session.commit()
+
+    async def set_enabled(
+        self,
+        session: AsyncSession,
+        name: str,
+        enabled: bool,
+        user_id: uuid.UUID | None = None,
+    ) -> SkillRecord | None:
+        """Toggle a skill's enabled state. Returns None if not found."""
+        from sqlalchemy import or_
+
+        conditions = [SkillModel.source_type == "bundled"]
+        if user_id is not None:
+            conditions.append(SkillModel.user_id == user_id)
+
+        stmt = (
+            select(SkillModel)
+            .where(SkillModel.name == name, or_(*conditions))
+            .order_by(SkillModel.user_id.desc().nulls_last())
+            .limit(1)
+        )
+        result = await session.execute(stmt)
+        model = result.scalar_one_or_none()
+        if model is None:
+            return None
+        model.enabled = enabled
+        model.updated_at = datetime.now(timezone.utc)
+        await session.commit()
+        await session.refresh(model)
+        return _to_skill(model)

@@ -26,6 +26,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pre-commit>=4.5.1",
     "pytest",
     "pytest-asyncio",
     "pytest-cov",

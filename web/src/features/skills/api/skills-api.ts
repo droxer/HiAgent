@@ -6,6 +6,7 @@ export interface Skill {
   readonly source_path: string;
   readonly source_type: "bundled" | "user" | "project";
   readonly instructions?: string;
+  readonly enabled: boolean;
 }
 
 export interface SkillInstallParams {
@@ -59,6 +60,24 @@ export async function uninstallSkill(name: string): Promise<void> {
     const detail = await res.text();
     throw new Error(`Failed to uninstall skill: ${detail}`);
   }
+}
+
+export async function toggleSkill(
+  name: string,
+  enabled: boolean,
+): Promise<{ name: string; enabled: boolean }> {
+  const res = await fetch(
+    `${API_BASE}/skills/${encodeURIComponent(name)}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled }),
+    },
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to toggle skill: ${res.status}`);
+  }
+  return res.json();
 }
 
 export async function uploadSkill(files: readonly File[]): Promise<Skill> {

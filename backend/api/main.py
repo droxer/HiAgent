@@ -17,7 +17,11 @@ from agent.skills.discovery import SkillDiscoverer
 from agent.skills.installer import SkillInstaller
 from agent.skills.loader import SkillRegistry
 from agent.state.database import get_engine, get_session_factory, init_db
-from agent.state.repository import ConversationRepository, UserRepository
+from agent.state.repository import (
+    ConversationRepository,
+    SkillRepository,
+    UserRepository,
+)
 from agent.tools.registry import ToolRegistry
 from api.builders import _build_sandbox_provider
 from api.db_subscriber import PendingWrites
@@ -60,11 +64,13 @@ def _create_app() -> FastAPI:
     # Discover and register skills
     skill_registry: SkillRegistry | None = None
     skill_installer: SkillInstaller | None = None
+    skill_repo: SkillRepository | None = None
     if settings.SKILLS_ENABLED:
         discoverer = SkillDiscoverer(trust_project=settings.SKILLS_TRUST_PROJECT)
         discovered_skills = discoverer.discover_all()
         skill_registry = SkillRegistry(discovered_skills)
         skill_installer = SkillInstaller()
+        skill_repo = SkillRepository()
         logger.info("Skills system initialized with {} skills", len(discovered_skills))
 
     # Build the shared AppState container
@@ -81,12 +87,32 @@ def _create_app() -> FastAPI:
         sandbox_pool=sandbox_pool,
         skill_registry=skill_registry,
         skill_installer=skill_installer,
+        skill_repo=skill_repo,
     )
 
     @asynccontextmanager
     async def _lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         # Verify database connectivity (Alembic manages schema)
         await init_db(db_engine)
+
+        # Sync bundled skills to database as shared (user_id=NULL)
+        if skill_repo and skill_registry:
+            bundled_skills = [
+                (
+                    s.metadata.name,
+                    s.metadata.description,
+                    s.source_type,
+                    str(s.directory_path),
+                )
+                for s in skill_registry.all_skills()
+                if s.source_type == "bundled"
+            ]
+            if bundled_skills:
+                async with db_session_factory() as session:
+                    await skill_repo.sync_shared_skills(session, bundled_skills)
+                logger.info(
+                    "bundled_skills_synced_to_database count={}", len(bundled_skills)
+                )
 
         # Discover MCP tools from env var
         (
@@ -95,8 +121,11 @@ def _create_app() -> FastAPI:
             mcp_state.configs,
         ) = await mcp._discover_mcp_tools(mcp_state, ToolRegistry())
 
-        # Restore persisted MCP servers from database
-        await mcp._restore_persisted_servers(mcp_state, db_session_factory)
+        # Restore persisted MCP servers from database.
+        # Per-user servers are restored lazily when users connect, so we
+        # skip the global restore here (env-var servers are already loaded).
+        # Individual user servers are restored via _restore_persisted_servers
+        # when a conversation is created.
 
         # Start stale-conversation reaper
         asyncio.create_task(conversations._cleanup_stale_conversations(app_state))

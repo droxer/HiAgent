@@ -40,10 +40,6 @@ function isPptxType(ct: string): boolean {
   return ct.includes("presentationml") || ct === "application/vnd.ms-powerpoint";
 }
 
-function isOfficeType(ct: string): boolean {
-  return isDocxType(ct) || isXlsxType(ct) || isPptxType(ct);
-}
-
 /* ------------------------------------------------------------------ */
 /*  Extension → highlight.js language map                             */
 /* ------------------------------------------------------------------ */
@@ -315,7 +311,6 @@ export function FilePreview({
     return (
       <div className={className}>
         <div className="flex justify-center overflow-auto">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={inlineUrl}
             alt={fileName}

@@ -23,7 +23,6 @@ export function ImageOutput({ output, conversationId, artifactIds, className }: 
       <div className="flex flex-col items-center gap-3 rounded border border-border bg-background p-2">
         {hasArtifacts ? (
           artifactIds.map((aid) => (
-            /* eslint-disable-next-line @next/next/no-img-element */
             <img
               key={aid}
               src={`/api/conversations/${conversationId}/artifacts/${aid}`}
@@ -35,7 +34,6 @@ export function ImageOutput({ output, conversationId, artifactIds, className }: 
             />
           ))
         ) : looksLikeUri ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
           <img src={output} alt={t("output.agentOutput")} className="max-h-80 rounded object-contain" />
         ) : (
           <p className="text-xs text-muted-foreground italic">

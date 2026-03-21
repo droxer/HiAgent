@@ -17,7 +17,6 @@ export function FileAttachmentChip({ name, size, previewUrl, onRemove }: FileAtt
   return (
     <div className="flex items-center gap-2 rounded-md bg-secondary/80 px-2.5 py-1.5 text-xs text-foreground">
       {previewUrl ? (
-        /* eslint-disable-next-line @next/next/no-img-element */
         <img src={previewUrl} alt={name} className="h-8 w-8 rounded object-cover" />
       ) : (
         <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />

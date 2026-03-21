@@ -47,7 +47,7 @@ export function getFileIcon(name: string) {
 function collectExpandedPaths(
   nodes: readonly FileTreeNode[],
   selectedPath: string | null,
-  parentPath: string = "",
+  _parentPath: string = "",
 ): Set<string> {
   const result = new Set<string>();
   if (!selectedPath) return result;

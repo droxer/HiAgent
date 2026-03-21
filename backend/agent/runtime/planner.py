@@ -330,9 +330,7 @@ class PlannerOrchestrator:
                         f"npm install {packages_str}", timeout=120
                     )
                 else:
-                    logger.warning(
-                        "unknown_dependency_manager manager={}", manager
-                    )
+                    logger.warning("unknown_dependency_manager manager={}", manager)
                     continue
 
                 if not result.success:
@@ -365,6 +363,7 @@ class PlannerOrchestrator:
     ) -> LLMResponse | None:
         """Call the LLM with streaming and return the response, or None on failure."""
         try:
+
             async def _on_text_delta(delta: str) -> None:
                 await self._emitter.emit(
                     EventType.TEXT_DELTA,

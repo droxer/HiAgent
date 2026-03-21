@@ -29,7 +29,7 @@ import { Progress } from "@/shared/components/ui/progress";
 import { cn } from "@/shared/lib/utils";
 import { useTranslation } from "@/i18n";
 import { PulsingDot } from "@/shared/components/PulsingDot";
-import type { AgentEvent, TaskState, ToolCallInfo, AgentStatus } from "@/shared/types";
+import type { AgentEvent, TaskState, ToolCallInfo } from "@/shared/types";
 import { normalizeToolNameI18n, normalizeAgentName, getToolCategory } from "@/features/agent-computer/lib/tool-constants";
 import type { ToolCategory } from "@/features/agent-computer/lib/tool-constants";
 import { normalizeSkillName } from "@/features/skills/lib/normalize-skill-name";
@@ -37,7 +37,7 @@ import { normalizeSkillName } from "@/features/skills/lib/normalize-skill-name";
 interface AgentProgressCardProps {
   events: AgentEvent[];
   toolCalls: ToolCallInfo[];
-  agentStatuses: AgentStatus[];
+  agentStatuses: unknown[];
   taskState: TaskState;
   thinkingContent: string;
   onClick?: () => void;
@@ -323,7 +323,7 @@ function TaskStateBadge({ state, t }: { readonly state: TaskState; readonly t: T
 export function AgentProgressCard({
   events,
   toolCalls,
-  agentStatuses,
+  agentStatuses: _agentStatuses,
   taskState,
   thinkingContent,
   onClick,

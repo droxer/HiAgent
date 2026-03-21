@@ -150,9 +150,7 @@ class E2BSession:
                 file_bytes = fh.read()
             # E2B files.write accepts both str and bytes; pass raw bytes
             # to preserve binary content (images, Excel, Parquet, etc.)
-            await asyncio.to_thread(
-                self._sandbox.files.write, remote_path, file_bytes
-            )
+            await asyncio.to_thread(self._sandbox.files.write, remote_path, file_bytes)
         except FileNotFoundError:
             raise
         except (KeyboardInterrupt, SystemExit):
@@ -198,9 +196,7 @@ class E2BSession:
             env_vars=self._config.env_vars,
         )
 
-    async def run_code(
-        self, code: str, language: str = "python"
-    ) -> CodeResult:
+    async def run_code(self, code: str, language: str = "python") -> CodeResult:
         """Execute code via the E2B code interpreter."""
         try:
             execution = await asyncio.to_thread(
@@ -252,9 +248,13 @@ class E2BSession:
             if timeout is not None:
                 kwargs["timeout"] = timeout
             if on_stdout is not None:
-                kwargs["on_stdout"] = lambda data: on_stdout(data.line if hasattr(data, "line") else str(data))
+                kwargs["on_stdout"] = lambda data: on_stdout(
+                    data.line if hasattr(data, "line") else str(data)
+                )
             if on_stderr is not None:
-                kwargs["on_stderr"] = lambda data: on_stderr(data.line if hasattr(data, "line") else str(data))
+                kwargs["on_stderr"] = lambda data: on_stderr(
+                    data.line if hasattr(data, "line") else str(data)
+                )
 
             result = await asyncio.to_thread(
                 self._sandbox.commands.run, command, **kwargs

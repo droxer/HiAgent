@@ -116,7 +116,10 @@ class TestComputerAction:
     def test_key_rejects_shell_injection(self) -> None:
         tool = ComputerAction()
         # Semicolons, pipes, backticks, spaces, $() should all be rejected
-        assert tool._build_command("key", None, None, "Return; rm -rf /", None, None, 3) is None
+        assert (
+            tool._build_command("key", None, None, "Return; rm -rf /", None, None, 3)
+            is None
+        )
         assert tool._build_command("key", None, None, "a | b", None, None, 3) is None
         assert tool._build_command("key", None, None, "`whoami`", None, None, 3) is None
         assert tool._build_command("key", None, None, "$(id)", None, None, 3) is None
@@ -167,7 +170,9 @@ class TestComputerAction:
 
     def test_unknown_action_returns_none(self) -> None:
         tool = ComputerAction()
-        assert tool._build_command("unknown_action", None, None, "", None, None, 3) is None
+        assert (
+            tool._build_command("unknown_action", None, None, "", None, None, 3) is None
+        )
 
     @pytest.mark.asyncio
     async def test_invalid_action_fails(self) -> None:

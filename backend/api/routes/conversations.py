@@ -54,9 +54,7 @@ async def _resolve_user_id(
     if auth_user is None:
         return None
     async with state.db_session_factory() as session:
-        existing = await state.user_repo.find_by_google_id(
-            session, auth_user.google_id
-        )
+        existing = await state.user_repo.find_by_google_id(session, auth_user.google_id)
         if existing is not None:
             return existing.id
         user = await state.user_repo.upsert_from_google(
@@ -85,11 +83,41 @@ async def _verify_conversation_ownership(
     if user_id is None:
         return
     async with state.db_session_factory() as session:
-        convo = await state.db_repo.get_conversation(session, uuid.UUID(conversation_id))
+        convo = await state.db_repo.get_conversation(
+            session, uuid.UUID(conversation_id)
+        )
     if convo is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
     if convo.user_id is not None and convo.user_id != user_id:
         raise HTTPException(status_code=404, detail="Conversation not found")
+
+
+async def _build_user_skill_registry(
+    state: AppState,
+    user_id: uuid.UUID | None,
+) -> Any:
+    """Return a SkillRegistry scoped to bundled + current user's skills.
+
+    Queries the DB for skill names visible to this user, then filters
+    the global in-memory registry to only those names.  Falls back to
+    the full registry when the DB skill repo is unavailable.
+    """
+    global_registry = getattr(state, "skill_registry", None)
+    if global_registry is None:
+        return None
+
+    skill_repo = getattr(state, "skill_repo", None)
+    if skill_repo is None:
+        return global_registry
+
+    async with state.db_session_factory() as session:
+        db_records = await skill_repo.list_skills(session, user_id=user_id)
+
+    if not db_records:
+        return global_registry
+
+    visible_names = {r.name for r in db_records if r.enabled}
+    return global_registry.filter_by_names(visible_names)
 
 
 # ---------------------------------------------------------------------------
@@ -209,6 +237,9 @@ async def _reconstruct_conversation(
         conversation_id=conv_uuid,
     )
 
+    # Build a user-scoped skill registry for this conversation's owner
+    user_skill_registry = await _build_user_skill_registry(state, convo.user_id)
+
     orchestrator, executor = _build_orchestrator(
         state.claude_client,
         emitter,
@@ -217,7 +248,7 @@ async def _reconstruct_conversation(
         initial_messages=tuple(initial_messages),
         persistent_store=persistent_store,
         mcp_state=state.mcp_state,
-        skill_registry=getattr(state, "skill_registry", None),
+        skill_registry=user_skill_registry,
     )
 
     entry = ConversationEntry(
@@ -232,7 +263,12 @@ async def _reconstruct_conversation(
 
     # Re-register DB subscriber for new events
     db_sub = create_db_subscriber(
-        conv_uuid, state.db_repo, state.db_session_factory, state.db_pending_writes
+        conv_uuid,
+        state.db_repo,
+        state.db_session_factory,
+        state.db_pending_writes,
+        skill_repo=state.skill_repo,
+        user_id=convo.user_id,
     )
     emitter.subscribe(db_sub)
 
@@ -427,6 +463,20 @@ async def create_conversation(
         conversation_id=conv_uuid,
     )
 
+    # Resolve user before building orchestrator so we can scope resources
+    user_id = await _resolve_user_id(auth_user, state)
+
+    # Lazily restore per-user MCP servers if not already loaded
+    if user_id and state.mcp_state:
+        from api.routes.mcp import _restore_persisted_servers
+
+        await _restore_persisted_servers(
+            state.mcp_state, state.db_session_factory, user_id=user_id
+        )
+
+    # Build a user-scoped skill registry (bundled + current user's skills only)
+    user_skill_registry = await _build_user_skill_registry(state, user_id)
+
     orchestrator: Any
     executor: Any
     if use_planner:
@@ -437,7 +487,7 @@ async def create_conversation(
             state.storage_backend,
             persistent_store=persistent_store,
             mcp_state=state.mcp_state,
-            skill_registry=getattr(state, "skill_registry", None),
+            skill_registry=user_skill_registry,
         )
     else:
         orchestrator, executor = _build_orchestrator(
@@ -447,7 +497,7 @@ async def create_conversation(
             state.storage_backend,
             persistent_store=persistent_store,
             mcp_state=state.mcp_state,
-            skill_registry=getattr(state, "skill_registry", None),
+            skill_registry=user_skill_registry,
         )
 
     entry = ConversationEntry(
@@ -461,7 +511,6 @@ async def create_conversation(
     state.conversations[conversation_id] = entry
 
     # Persist conversation and register DB subscriber
-    user_id = await _resolve_user_id(auth_user, state)
     async with state.db_session_factory() as session:
         await state.db_repo.create_conversation(
             session, title=message[:80], conversation_id=conv_uuid, user_id=user_id
@@ -483,7 +532,12 @@ async def create_conversation(
         logger.error("conversation_visibility_timeout id={}", conv_uuid)
 
     db_sub = create_db_subscriber(
-        conv_uuid, state.db_repo, state.db_session_factory, state.db_pending_writes
+        conv_uuid,
+        state.db_repo,
+        state.db_session_factory,
+        state.db_pending_writes,
+        skill_repo=state.skill_repo,
+        user_id=user_id,
     )
     emitter.subscribe(db_sub)
 

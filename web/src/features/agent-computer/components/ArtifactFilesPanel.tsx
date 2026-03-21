@@ -116,7 +116,6 @@ export function ArtifactFilesPanel({ artifacts, conversationId }: ArtifactFilesP
               </p>
             </div>
 
-            {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
             <div
               className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
               onClick={(e) => e.stopPropagation()}
@@ -139,7 +138,6 @@ export function ArtifactFilesPanel({ artifacts, conversationId }: ArtifactFilesP
 
             {artifact.contentType.startsWith("image/") && conversationId && (
               <div className="shrink-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`/api/conversations/${conversationId}/artifacts/${artifact.id}`}
                   alt={artifact.name}

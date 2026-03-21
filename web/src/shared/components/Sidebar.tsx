@@ -53,7 +53,7 @@ export function Sidebar({
   onWidthChange,
   onLoadMore,
   onDeleteTask,
-  onClose,
+  onClose: _onClose,
   isMobile = false,
   activePath,
   userMenu,

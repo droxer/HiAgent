@@ -80,7 +80,7 @@ export function FileContentViewer({
   content,
   isLoading,
 }: FileContentViewerProps) {
-  const { t } = useTranslation();
+  const { t: _t } = useTranslation();
 
   const rendered = useMemo(() => {
     if (isLoading) return null;

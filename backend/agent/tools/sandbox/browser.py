@@ -22,16 +22,23 @@ _MAX_STEPS_LIMIT = 100
 _BROWSER_USE_VERSION = "0.12.2"
 _DEFAULT_MAX_FAILURES = 5
 
-_BROWSER_USE_SCRIPT = r'''
+_BROWSER_USE_SCRIPT = (
+    r'''
 import asyncio
 import base64
 import json
 import os
 import traceback
 
-RESULT_START = "''' + _RESULT_START + r'''"
-RESULT_END = "''' + _RESULT_END + r'''"
-SCREENSHOT_PATH = "''' + _SCREENSHOT_PATH + r'''"
+RESULT_START = "'''
+    + _RESULT_START
+    + r'''"
+RESULT_END = "'''
+    + _RESULT_END
+    + r'''"
+SCREENSHOT_PATH = "'''
+    + _SCREENSHOT_PATH
+    + r'''"
 
 
 def _collect_extracted_content(history) -> str:
@@ -143,6 +150,7 @@ async def main():
 
 asyncio.run(main())
 '''
+)
 
 
 def _parse_result(stdout: str) -> dict[str, Any] | None:
@@ -151,7 +159,7 @@ def _parse_result(stdout: str) -> dict[str, Any] | None:
     end_idx = stdout.find(_RESULT_END)
     if start_idx == -1 or end_idx == -1:
         return None
-    json_str = stdout[start_idx + len(_RESULT_START):end_idx].strip()
+    json_str = stdout[start_idx + len(_RESULT_START) : end_idx].strip()
     try:
         return json.loads(json_str)
     except json.JSONDecodeError:

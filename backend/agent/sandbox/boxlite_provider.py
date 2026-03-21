@@ -116,9 +116,7 @@ class BoxliteSession:
         """Read file content from the micro-VM via ``cat``."""
         result = await self.exec(f"cat {shlex.quote(path)}")
         if not result.success:
-            raise FileNotFoundError(
-                f"Cannot read '{path}' in sandbox: {result.stderr}"
-            )
+            raise FileNotFoundError(f"Cannot read '{path}' in sandbox: {result.stderr}")
         return result.stdout
 
     async def write_file(self, path: str, content: str) -> None:
@@ -178,19 +176,14 @@ class BoxliteSession:
             f"echo {shlex.quote(encoded)} | base64 -d > {shlex.quote(path)}"
         )
         if not fallback.success:
-            raise OSError(
-                f"Failed to write file to '{path}': "
-                f"{fallback.stderr}"
-            )
+            raise OSError(f"Failed to write file to '{path}': {fallback.stderr}")
 
     async def _file_exists(self, path: str) -> bool:
         """Return True when *path* exists as a regular file in the VM."""
         result = await self.exec(f"test -f {shlex.quote(path)}")
         return result.success
 
-    async def _upload_file_via_base64(
-        self, local_path: str, remote_path: str
-    ) -> None:
+    async def _upload_file_via_base64(self, local_path: str, remote_path: str) -> None:
         """Fallback upload path that does not rely on ``copy_in``."""
         with open(local_path, "rb") as fh:
             encoded = base64.b64encode(fh.read()).decode("ascii")
@@ -337,9 +330,7 @@ class BoxliteSession:
 
     # -- code interpreter (ExtendedSandboxSession) ---------------------------
 
-    async def run_code(
-        self, code: str, language: str = "python"
-    ) -> CodeResult:
+    async def run_code(self, code: str, language: str = "python") -> CodeResult:
         """Execute code via the shell and return a ``CodeResult``.
 
         This is a lightweight code-interpreter implementation for Boxlite
@@ -348,7 +339,12 @@ class BoxliteSession:
         the calling tool can extract artifacts separately.
         """
         _ext_map = {"python": ".py", "javascript": ".js", "bash": ".sh", "sh": ".sh"}
-        _rt_map = {"python": "python3", "javascript": "node", "bash": "bash", "sh": "sh"}
+        _rt_map = {
+            "python": "python3",
+            "javascript": "node",
+            "bash": "bash",
+            "sh": "sh",
+        }
 
         ext = _ext_map.get(language, ".py")
         runtime = _rt_map.get(language, "python3")
@@ -357,9 +353,7 @@ class BoxliteSession:
         try:
             await self.write_file(target, code)
         except Exception as exc:
-            return CodeResult(
-                stdout="", stderr=str(exc), error=str(exc), results=()
-            )
+            return CodeResult(stdout="", stderr=str(exc), error=str(exc), results=())
 
         result = await self.exec(f"{runtime} {shlex.quote(target)}", timeout=120)
 

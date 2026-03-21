@@ -91,8 +91,7 @@ class SendToAgent(LocalTool):
                     "agent_id": {
                         "type": "string",
                         "description": (
-                            "Target agent ID. Use 'all' to broadcast to "
-                            "all agents."
+                            "Target agent ID. Use 'all' to broadcast to all agents."
                         ),
                     },
                     "message": {
@@ -126,9 +125,7 @@ class SendToAgent(LocalTool):
 class ReceiveMessages(LocalTool):
     """Receive pending messages from other agents."""
 
-    def __init__(
-        self, message_bus: AgentMessageBus, receiver_id: str = ""
-    ) -> None:
+    def __init__(self, message_bus: AgentMessageBus, receiver_id: str = "") -> None:
         self._bus = message_bus
         self._receiver_id = receiver_id
 

@@ -165,9 +165,9 @@ class TestR2StorageBackend:
     async def test_exists_returns_false_on_error(
         self, backend: R2StorageBackend, mock_client: MagicMock
     ) -> None:
-        mock_client.head_object.side_effect = (
-            mock_client.exceptions.ClientError
-        ) = type("ClientError", (Exception,), {})
+        mock_client.head_object.side_effect = mock_client.exceptions.ClientError = type(
+            "ClientError", (Exception,), {}
+        )
         assert await backend.exists("missing.png") is False
 
 
@@ -277,12 +277,8 @@ class TestArtifactManagerWithBackend:
         self, tmp_path: os.PathLike
     ) -> None:
         local_backend = LocalStorageBackend(storage_dir=str(tmp_path))
-        mgr = ArtifactManager(
-            storage_dir=str(tmp_path), storage_backend=local_backend
-        )
-        artifact = await mgr.register_local_artifact(
-            data=b"hello", filename="test.txt"
-        )
+        mgr = ArtifactManager(storage_dir=str(tmp_path), storage_backend=local_backend)
+        artifact = await mgr.register_local_artifact(data=b"hello", filename="test.txt")
         path = mgr.get_path(artifact)
         assert os.path.isfile(path)
         assert path.endswith(".txt")

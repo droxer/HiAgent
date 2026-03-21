@@ -165,9 +165,7 @@ class ExtendedSandboxSession(SandboxSession, Protocol):
     Providers that support richer features implement this protocol instead.
     """
 
-    async def run_code(
-        self, code: str, language: str = "python"
-    ) -> CodeResult:
+    async def run_code(self, code: str, language: str = "python") -> CodeResult:
         """Execute code via a code interpreter with rich output support."""
         ...
 

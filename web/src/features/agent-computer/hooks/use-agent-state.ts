@@ -54,7 +54,7 @@ export function useAgentState(events: AgentEvent[]) {
       } else if (e.type === "llm_response") {
         // LLM response finalizes the streamed text
         const text = String(e.data.text ?? "");
-        const toolCallCount = Number(e.data.tool_call_count ?? 0);
+        const _toolCallCount = Number(e.data.tool_call_count ?? 0);
         // Reset streaming buffer — this response covers the accumulated deltas
         streamingText = "";
         streamingTimestamp = 0;

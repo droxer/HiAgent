@@ -112,12 +112,34 @@ class ConversationEntry:
 
 @dataclass
 class MCPState:
-    """Container for MCP lifecycle state, stored on app.state."""
+    """Container for MCP lifecycle state, stored on app.state.
+
+    Keys in ``clients`` and ``configs`` are namespaced:
+    - Global (env-var) servers: key = server name
+    - Per-user servers: key = ``{user_id}:{server_name}``
+    """
 
     registry: ToolRegistry | None = None
     clients: dict[str, MCPClient] = field(default_factory=dict)
     configs: dict[str, MCPServerConfig] = field(default_factory=dict)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+
+    @staticmethod
+    def user_key(user_id: Any, name: str) -> str:
+        """Build a namespaced key for a per-user MCP server."""
+        return f"{user_id}:{name}"
+
+    def configs_for_user(self, user_id: Any) -> dict[str, MCPServerConfig]:
+        """Return configs visible to a user (global + user-owned)."""
+        prefix = f"{user_id}:"
+        result: dict[str, MCPServerConfig] = {}
+        for key, cfg in self.configs.items():
+            if ":" not in key:
+                # Global server (from env var)
+                result[key] = cfg
+            elif key.startswith(prefix):
+                result[key] = cfg
+        return result
 
 
 class MessageRequest(BaseModel):
@@ -160,6 +182,7 @@ class MCPServerResponse(BaseModel):
     url: str = ""
     status: str  # "connected" | "disconnected"
     tool_count: int = 0
+    enabled: bool = True
 
 
 class MCPServerCreateRequest(BaseModel):

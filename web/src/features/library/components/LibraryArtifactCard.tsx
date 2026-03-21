@@ -24,7 +24,7 @@ interface LibraryArtifactCardProps {
 
 function ListCard({
   artifact,
-  artifactUrl,
+  artifactUrl: _artifactUrl,
   onPreview,
   onDownload,
 }: {

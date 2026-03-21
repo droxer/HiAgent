@@ -5,11 +5,8 @@ import { motion } from "framer-motion";
 import {
   Blocks,
   Plus,
-  Terminal,
-  Radio,
   Unplug,
   Search,
-  X,
 } from "lucide-react";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { ErrorBanner } from "@/shared/components/ErrorBanner";
@@ -42,6 +39,7 @@ import {
   fetchMCPServers,
   addMCPServer,
   removeMCPServer,
+  toggleMCPServer,
   type MCPServer,
 } from "../api/mcp-api";
 
@@ -157,6 +155,16 @@ export function MCPPage() {
       );
     }
   };
+
+  const handleToggle = useCallback(async (name: string, enabled: boolean) => {
+    setError(null);
+    try {
+      await toggleMCPServer(name, enabled);
+      await loadServers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to toggle server");
+    }
+  }, [loadServers]);
 
   const connectedCount = servers.filter(
     (s) => s.status === "connected",
@@ -291,6 +299,7 @@ export function MCPPage() {
                   <MCPServerCard
                     server={server}
                     onDelete={setServerToDelete}
+                    onToggle={handleToggle}
                   />
                 </motion.div>
               ))}

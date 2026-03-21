@@ -58,7 +58,9 @@ def _verify_proxy_secret(request: Request) -> None:
     settings = get_settings()
     if not settings.PROXY_SECRET:
         if settings.ENVIRONMENT == "production":
-            logger.warning("PROXY_SECRET is not set in production — backend is unprotected")
+            logger.warning(
+                "PROXY_SECRET is not set in production — backend is unprotected"
+            )
         return
 
     provided = request.headers.get("x-proxy-secret", "")

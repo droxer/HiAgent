@@ -100,9 +100,8 @@ class CodeRun(SandboxTool):
 
         try:
             command = f"{runtime} {shlex.quote(target)}"
-            use_streaming = (
-                event_emitter is not None
-                and isinstance(session, ExtendedSandboxSession)
+            use_streaming = event_emitter is not None and isinstance(
+                session, ExtendedSandboxSession
             )
 
             if use_streaming:

@@ -6,8 +6,6 @@ Create Date: 2026-03-20
 """
 
 from alembic import op
-import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import UUID
 
 revision = "008"
 down_revision = "007"
@@ -47,4 +45,6 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_constraint("uq_mcp_servers_user_name", "mcp_servers", type_="unique")
     op.drop_constraint("fk_mcp_servers_user_id", "mcp_servers", type_="foreignkey")
-    op.drop_constraint("fk_memory_entries_user_id", "memory_entries", type_="foreignkey")
+    op.drop_constraint(
+        "fk_memory_entries_user_id", "memory_entries", type_="foreignkey"
+    )

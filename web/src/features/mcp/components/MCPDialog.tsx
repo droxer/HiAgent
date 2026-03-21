@@ -38,6 +38,7 @@ import {
   fetchMCPServers,
   addMCPServer,
   removeMCPServer,
+  toggleMCPServer,
   type MCPServer,
 } from "../api/mcp-api";
 import { useTranslation } from "@/i18n";
@@ -156,6 +157,16 @@ export function MCPDialog({
     }
   };
 
+  const handleToggle = useCallback(async (name: string, enabled: boolean) => {
+    setError(null);
+    try {
+      await toggleMCPServer(name, enabled);
+      await loadServers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to toggle server");
+    }
+  }, [loadServers]);
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -212,16 +223,23 @@ export function MCPDialog({
                     variants={listItem}
                     initial="hidden"
                     animate="show"
-                    className="group flex items-center gap-3 rounded-lg border border-border px-4 py-3 shadow-sm transition-all duration-200 hover:border-border-strong hover:shadow-md"
+                    className={cn(
+                      "group flex items-center gap-3 rounded-lg border px-4 py-3 shadow-sm transition-all duration-200",
+                      server.enabled === false
+                        ? "border-border/60 hover:border-border"
+                        : "border-border hover:border-border-strong hover:shadow-md",
+                    )}
                   >
                     {/* Status dot */}
                     <span
                       aria-hidden="true"
                       className={cn(
-                        "h-2 w-2 shrink-0 rounded-full transition-colors",
-                        server.status === "connected"
-                          ? "bg-accent-emerald"
-                          : "bg-border-strong",
+                        "h-2 w-2 shrink-0 rounded-full transition-colors duration-200",
+                        server.enabled === false
+                          ? "bg-border-strong"
+                          : server.status === "connected"
+                            ? "bg-accent-emerald"
+                            : "bg-border-strong",
                       )}
                     />
                     <span className="sr-only">
@@ -231,12 +249,18 @@ export function MCPDialog({
                     {/* Server info */}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="truncate text-sm font-medium text-foreground">
+                        <span className={cn(
+                          "truncate text-sm font-medium transition-colors duration-200",
+                          server.enabled === false ? "text-muted-foreground" : "text-foreground",
+                        )}>
                           {server.name}
                         </span>
                         <Badge
                           variant="secondary"
-                          className="gap-1 font-mono text-xs"
+                          className={cn(
+                            "gap-1 font-mono text-xs transition-opacity duration-200",
+                            server.enabled === false && "opacity-60",
+                          )}
                         >
                           {server.transport === "stdio" ? (
                             <Terminal className="h-3 w-3" />
@@ -246,7 +270,10 @@ export function MCPDialog({
                           {server.transport}
                         </Badge>
                       </div>
-                      <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <div className={cn(
+                        "mt-0.5 flex items-center gap-1.5 text-xs transition-colors duration-200",
+                        server.enabled === false ? "text-muted-foreground-dim" : "text-muted-foreground",
+                      )}>
                         <Wrench className="h-3 w-3" />
                         <span>
                           {server.tool_count === 1
@@ -263,6 +290,28 @@ export function MCPDialog({
                         )}
                       </div>
                     </div>
+
+                    {/* Toggle */}
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={server.enabled !== false}
+                      aria-label={server.enabled !== false ? t("mcp.disable") : t("mcp.enable")}
+                      className={cn(
+                        "flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-micro font-medium transition-colors duration-150",
+                        "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                        server.enabled === false
+                          ? "bg-secondary text-muted-foreground-dim hover:bg-secondary/80 hover:text-muted-foreground"
+                          : "bg-accent-emerald/10 text-accent-emerald hover:bg-accent-emerald/15",
+                      )}
+                      onClick={() => handleToggle(server.name, server.enabled === false)}
+                    >
+                      <span className={cn(
+                        "h-1.5 w-1.5 rounded-full transition-colors duration-150",
+                        server.enabled === false ? "bg-border-strong" : "bg-accent-emerald",
+                      )} />
+                      {server.enabled === false ? t("mcp.disabled") : t("mcp.enabled")}
+                    </button>
 
                     {/* Delete */}
                     <Button

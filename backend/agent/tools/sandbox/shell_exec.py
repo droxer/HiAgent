@@ -88,9 +88,8 @@ class ShellExec(SandboxTool):
             return ToolResult.fail("Command must not be empty")
 
         try:
-            use_streaming = (
-                event_emitter is not None
-                and isinstance(session, ExtendedSandboxSession)
+            use_streaming = event_emitter is not None and isinstance(
+                session, ExtendedSandboxSession
             )
 
             if use_streaming:
@@ -103,9 +102,7 @@ class ShellExec(SandboxTool):
                     workdir=workdir,
                 )
             else:
-                result = await session.exec(
-                    command, timeout=timeout, workdir=workdir
-                )
+                result = await session.exec(command, timeout=timeout, workdir=workdir)
         except Exception as exc:
             return ToolResult.fail(f"Shell execution failed: {exc}")
 

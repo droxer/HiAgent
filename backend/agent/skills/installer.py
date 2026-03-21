@@ -28,6 +28,7 @@ class UploadedFile:
     filename: str
     data: bytes
 
+
 # Private/internal IP ranges that should be blocked to prevent SSRF
 _BLOCKED_HOSTS = frozenset(
     {
@@ -90,9 +91,7 @@ class SkillInstaller:
                     timeout=_GIT_TIMEOUT,
                 )
             except FileNotFoundError as exc:
-                raise RuntimeError(
-                    "git is not installed or not found on PATH"
-                ) from exc
+                raise RuntimeError("git is not installed or not found on PATH") from exc
             except subprocess.TimeoutExpired as exc:
                 raise RuntimeError(
                     f"Git clone timed out after {_GIT_TIMEOUT}s"
@@ -129,9 +128,7 @@ class SkillInstaller:
         timeout = httpx.Timeout(connect=10.0, read=30.0, pool=10.0)
         async with httpx.AsyncClient(timeout=timeout) as client:
             # Use streaming to avoid OOM on large responses
-            async with client.stream(
-                "GET", url, follow_redirects=True
-            ) as response:
+            async with client.stream("GET", url, follow_redirects=True) as response:
                 # SSRF: validate the final URL after redirects
                 final_url = str(response.url)
                 _validate_https_url(final_url)
@@ -292,8 +289,13 @@ class SkillInstaller:
 
             for f in files:
                 target_path = os.path.realpath(os.path.join(upload_dir, f.filename))
-                if not target_path.startswith(real_upload_dir + os.sep) and target_path != real_upload_dir:
-                    raise ValueError(f"Path traversal detected in filename: {f.filename}")
+                if (
+                    not target_path.startswith(real_upload_dir + os.sep)
+                    and target_path != real_upload_dir
+                ):
+                    raise ValueError(
+                        f"Path traversal detected in filename: {f.filename}"
+                    )
                 os.makedirs(os.path.dirname(target_path), exist_ok=True)
                 with open(target_path, "wb") as fh:
                     fh.write(f.data)
@@ -345,9 +347,7 @@ def _validate_not_internal(url: str) -> None:
         if len(parts) >= 2 and parts[1].isdigit():
             second_octet = int(parts[1])
             if 16 <= second_octet <= 31:
-                raise ValueError(
-                    f"URL points to a private IP address: {hostname}"
-                )
+                raise ValueError(f"URL points to a private IP address: {hostname}")
 
 
 def _safe_extract_zip(archive_path: str, extract_dir: str) -> None:
@@ -358,7 +358,10 @@ def _safe_extract_zip(archive_path: str, extract_dir: str) -> None:
     with zipfile.ZipFile(archive_path, "r") as zf:
         for member in zf.namelist():
             target = os.path.realpath(os.path.join(extract_dir, member))
-            if not target.startswith(real_extract_dir + os.sep) and target != real_extract_dir:
+            if (
+                not target.startswith(real_extract_dir + os.sep)
+                and target != real_extract_dir
+            ):
                 raise ValueError(f"Zip contains path traversal entry: {member}")
         zf.extractall(extract_dir)
 

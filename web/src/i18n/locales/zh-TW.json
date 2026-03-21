@@ -192,6 +192,10 @@
   "skills.noFileSelected": "選擇檔案以檢視",
   "skills.loadingFiles": "載入檔案中...",
   "skills.binaryFile": "二進位檔案 — 無法顯示",
+  "skills.enable": "啟用技能",
+  "skills.disable": "停用技能",
+  "skills.enabled": "已啟用",
+  "skills.disabled": "已停用",
 
   "mcp.title": "MCP",
   "mcp.subtitle": "連線 MCP 伺服器以擴充智慧體的能力",
@@ -220,6 +224,10 @@
   "mcp.filterPlaceholder": "篩選伺服器...",
   "mcp.clearFilter": "清除篩選",
   "mcp.noServersMatching": "沒有匹配 \"{filter}\" 的伺服器",
+  "mcp.enable": "啟用伺服器",
+  "mcp.disable": "停用伺服器",
+  "mcp.enabled": "已啟用",
+  "mcp.disabled": "已停用",
 
   "error.title": "發生錯誤",
   "error.fallback": "發生了非預期的錯誤。",

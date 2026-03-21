@@ -1,7 +1,19 @@
 """Tests for agent handoff functionality."""
 
+from unittest.mock import MagicMock
+
 import pytest
-from agent.runtime.task_runner import AgentResult, HandoffRequest, TaskAgentConfig
+
+from agent.runtime.sub_agent_manager import SubAgentManager, _format_handoff_context
+from agent.runtime.task_runner import (
+    AgentResult,
+    HandoffRequest,
+    TaskAgentConfig,
+    TaskAgentRunner,
+)
+from agent.tools.meta.handoff import AgentHandoff
+from agent.tools.registry import ToolRegistry
+from api.events import EventEmitter
 
 
 class TestHandoffRequest:
@@ -58,12 +70,6 @@ class TestAgentResultHandoff:
         assert result.handoff is req
 
 
-from unittest.mock import MagicMock
-from agent.runtime.task_runner import TaskAgentRunner
-from agent.tools.registry import ToolRegistry
-from api.events import EventEmitter
-
-
 class TestTaskAgentRunnerHandoff:
     @pytest.mark.asyncio
     async def test_on_handoff_sets_request(self):
@@ -88,14 +94,9 @@ class TestTaskAgentRunnerHandoff:
         assert runner._handoff_request.target_role == "reviewer"
 
 
-from agent.tools.meta.handoff import AgentHandoff
-
-
 class TestAgentHandoffTool:
     def test_definition(self):
-        tool = AgentHandoff(
-            on_handoff=self._noop_callback, max_handoffs=3
-        )
+        tool = AgentHandoff(on_handoff=self._noop_callback, max_handoffs=3)
         defn = tool.definition()
         assert defn.name == "agent_handoff"
         assert "target_role" in str(defn.input_schema)
@@ -108,8 +109,10 @@ class TestAgentHandoffTool:
     @pytest.mark.asyncio
     async def test_execute_success(self):
         captured = []
+
         async def capture(req):
             captured.append(req)
+
         tool = AgentHandoff(on_handoff=capture, max_handoffs=3)
         result = await tool.execute(
             target_role="reviewer",
@@ -137,12 +140,11 @@ class TestAgentHandoffTool:
     @pytest.mark.asyncio
     async def test_execute_no_handoffs_remaining(self):
         tool = AgentHandoff(on_handoff=self._noop_callback, max_handoffs=0)
-        result = await tool.execute(target_role="reviewer", task_description="Review code")
+        result = await tool.execute(
+            target_role="reviewer", task_description="Review code"
+        )
         assert not result.success
         assert "task_complete" in result.error.lower()
-
-
-from agent.runtime.sub_agent_manager import SubAgentManager, _format_handoff_context
 
 
 class TestSubAgentManagerHandoff:
@@ -219,9 +221,7 @@ class TestSubAgentManagerHandoff:
 
         result = await manager._run_agent(
             "test-agent",
-            TaskAgentConfig(
-                task_description="code it", role="coder", max_handoffs=3
-            ),
+            TaskAgentConfig(task_description="code it", role="coder", max_handoffs=3),
         )
         assert result.success
         assert result.summary == "review complete"
@@ -238,23 +238,31 @@ class TestSubAgentManagerHandoff:
             call_count += 1
             if call_count == 1:
                 return AgentResult(
-                    agent_id=agent_id, success=True, summary="coded",
+                    agent_id=agent_id,
+                    success=True,
+                    summary="coded",
                     handoff=HandoffRequest(
-                        target_role="reviewer", task_description="review",
-                        context="", source_messages=(), remaining_handoffs=2,
+                        target_role="reviewer",
+                        task_description="review",
+                        context="",
+                        source_messages=(),
+                        remaining_handoffs=2,
                     ),
                 )
             if call_count == 2:
                 return AgentResult(
-                    agent_id=agent_id, success=True, summary="reviewed",
+                    agent_id=agent_id,
+                    success=True,
+                    summary="reviewed",
                     handoff=HandoffRequest(
-                        target_role="deployer", task_description="deploy",
-                        context="", source_messages=(), remaining_handoffs=1,
+                        target_role="deployer",
+                        task_description="deploy",
+                        context="",
+                        source_messages=(),
+                        remaining_handoffs=1,
                     ),
                 )
-            return AgentResult(
-                agent_id=agent_id, success=True, summary="deployed"
-            )
+            return AgentResult(agent_id=agent_id, success=True, summary="deployed")
 
         manager = SubAgentManager(
             claude_client=MagicMock(),
@@ -268,9 +276,8 @@ class TestSubAgentManagerHandoff:
         )
 
         result = await manager._run_agent(
-            "a", TaskAgentConfig(
-                task_description="build", role="coder", max_handoffs=3
-            ),
+            "a",
+            TaskAgentConfig(task_description="build", role="coder", max_handoffs=3),
         )
         assert call_count == 3
         assert result.summary == "deployed"
@@ -282,9 +289,7 @@ class TestFormatHandoffContext:
             {"role": "user", "content": "hello"},
             {"role": "assistant", "content": "I found a bug"},
         )
-        result = _format_handoff_context(
-            messages, "Needs security review", "coder"
-        )
+        result = _format_handoff_context(messages, "Needs security review", "coder")
         assert "coder" in result
         assert "hello" in result
         assert "I found a bug" in result

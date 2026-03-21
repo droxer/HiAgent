@@ -34,6 +34,7 @@ import {
   installSkill,
   uninstallSkill,
   uploadSkill,
+  toggleSkill,
 } from "../api/skills-api";
 import { useTranslation } from "@/i18n";
 
@@ -84,7 +85,7 @@ async function readDirectoryEntries(
   async function readDir(entry: FileSystemDirectoryEntry, path: string) {
     const reader = entry.createReader();
     // readEntries may not return all entries in one call
-    let batch: FileSystemEntry[] = [];
+    let batch: FileSystemEntry[];
     do {
       batch = await new Promise<FileSystemEntry[]>((resolve, reject) =>
         reader.readEntries(resolve, reject),
@@ -221,6 +222,16 @@ export function SkillsPage() {
     }
   }, [skillToDelete]);
 
+  const handleToggle = useCallback(async (name: string, enabled: boolean) => {
+    setError(null);
+    try {
+      await toggleSkill(name, enabled);
+      refetch();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to toggle skill");
+    }
+  }, [refetch]);
+
   const bundledSkills = skills.filter((s) => s.source_type === "bundled");
   const installedSkills = skills.filter((s) => s.source_type !== "bundled");
 
@@ -348,6 +359,7 @@ export function SkillsPage() {
                   <SkillCard
                     skill={skill}
                     onDelete={setSkillToDelete}
+                    onToggle={handleToggle}
                   />
                 </motion.div>
               ))}

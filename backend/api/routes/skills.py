@@ -12,8 +12,10 @@ from pydantic import BaseModel
 from agent.skills.installer import SkillInstaller, UploadedFile as UploadedFileModel
 from agent.skills.loader import SkillRegistry
 from agent.skills.registry_client import SkillRegistryClient
-from api.auth import common_dependencies
-from api.dependencies import AppState, get_app_state
+from agent.state.repository import SkillRepository
+from api.auth import AuthUser, common_dependencies, get_current_user
+from api.dependencies import AppState, get_app_state, get_db_session
+from api.routes.conversations import _resolve_user_id
 
 router = APIRouter(prefix="/skills", dependencies=common_dependencies)
 
@@ -47,6 +49,9 @@ class SkillResponse(BaseModel):
     source_path: str
     source_type: str  # "bundled", "user", or "project"
     instructions: str | None = None
+    enabled: bool = True
+    activation_count: int = 0
+    last_activated_at: str | None = None
 
 
 class SkillListResponse(BaseModel):
@@ -68,6 +73,11 @@ def _get_skill_installer(state: AppState) -> SkillInstaller:
     return installer
 
 
+def _get_skill_repo(state: AppState) -> SkillRepository | None:
+    """Retrieve the SkillRepository from app state (may be None)."""
+    return getattr(state, "skill_repo", None)
+
+
 def _get_skill_registry(state: AppState) -> SkillRegistry:
     """Retrieve the SkillRegistry from app state."""
     registry = getattr(state, "skill_registry", None)
@@ -84,18 +94,44 @@ def _get_skill_registry(state: AppState) -> SkillRegistry:
 @router.get("")
 async def list_skills(
     state: AppState = Depends(get_app_state),
+    session: Any = Depends(get_db_session),
+    auth_user: AuthUser | None = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """GET /skills — list all discovered skills with source info."""
+    """GET /skills — list bundled + current user's skills with DB metadata."""
     registry = _get_skill_registry(state)
+    skill_repo = _get_skill_repo(state)
+
+    user_id = await _resolve_user_id(auth_user, state)
+
+    # Query DB for skills visible to this user (shared + user-owned)
+    db_records: dict[str, Any] = {}
+    if skill_repo is not None:
+        for record in await skill_repo.list_skills(session, user_id=user_id):
+            db_records[record.name] = record
+
+    # Only include skills that exist in the DB for this user
+    # (shared/bundled skills have user_id=NULL, user skills have user_id set)
+    visible_names = set(db_records.keys()) if db_records else set()
 
     skills = []
     for skill in registry.all_skills():
+        name = skill.metadata.name
+        if visible_names and name not in visible_names:
+            continue
+        db_record = db_records.get(name)
         skills.append(
             SkillResponse(
-                name=skill.metadata.name,
+                name=name,
                 description=skill.metadata.description,
                 source_path=str(skill.directory_path),
                 source_type=skill.source_type,
+                enabled=db_record.enabled if db_record else True,
+                activation_count=db_record.activation_count if db_record else 0,
+                last_activated_at=(
+                    db_record.last_activated_at.isoformat()
+                    if db_record and db_record.last_activated_at
+                    else None
+                ),
             )
         )
 
@@ -179,9 +215,7 @@ async def install_skill(
         elif request.name:
             source = "registry"
         else:
-            raise HTTPException(
-                status_code=400, detail="url is required"
-            )
+            raise HTTPException(status_code=400, detail="url is required")
 
     try:
         if source == "git":
@@ -302,3 +336,35 @@ async def uninstall_skill(
         state.skill_registry = registry.remove_skill(name)
 
     return {"detail": f"Skill '{name}' uninstalled"}
+
+
+class SkillToggleRequest(BaseModel):
+    """Body for PATCH /skills/{name}."""
+
+    enabled: bool
+
+
+@router.patch("/{name}")
+async def toggle_skill(
+    name: str,
+    request: SkillToggleRequest,
+    state: AppState = Depends(get_app_state),
+    session: Any = Depends(get_db_session),
+    auth_user: AuthUser | None = Depends(get_current_user),
+) -> dict[str, Any]:
+    """PATCH /skills/{name} — toggle a skill's enabled state."""
+    skill_repo = _get_skill_repo(state)
+    if skill_repo is None:
+        raise HTTPException(status_code=503, detail="Skills system not initialized")
+
+    user_id = await _resolve_user_id(auth_user, state)
+    record = await skill_repo.set_enabled(
+        session, name, request.enabled, user_id=user_id
+    )
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"Skill '{name}' not found")
+
+    return {
+        "name": record.name,
+        "enabled": record.enabled,
+    }

@@ -17,6 +17,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
     Uuid,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -50,9 +51,7 @@ class UserModel(Base):
         DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
     )
 
-    conversations: Mapped[list[ConversationModel]] = relationship(
-        back_populates="user"
-    )
+    conversations: Mapped[list[ConversationModel]] = relationship(back_populates="user")
 
 
 class ConversationModel(Base):
@@ -132,9 +131,7 @@ class EventModel(Base):
 
 class ArtifactModel(Base):
     __tablename__ = "artifacts"
-    __table_args__ = (
-        Index("ix_artifacts_conversation", "conversation_id"),
-    )
+    __table_args__ = (Index("ix_artifacts_conversation", "conversation_id"),)
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True)
     conversation_id: Mapped[uuid.UUID] = mapped_column(
@@ -151,11 +148,40 @@ class ArtifactModel(Base):
     conversation: Mapped[ConversationModel] = relationship(back_populates="artifacts")
 
 
+class SkillModel(Base):
+    __tablename__ = "skills"
+    __table_args__ = (
+        Index("ix_skills_user_id", "user_id"),
+        Index("ix_skills_source_type", "source_type"),
+        Index("ix_skills_user_name", "user_id", "name", unique=True),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=True
+    )
+    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    source_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    source_path: Mapped[str] = mapped_column(String(1000), nullable=False)
+    enabled: Mapped[bool] = mapped_column(default=True, nullable=False)
+    activation_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    last_activated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    installed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    user: Mapped[UserModel] = relationship()
+
+
 class AgentRunModel(Base):
     __tablename__ = "agent_runs"
-    __table_args__ = (
-        Index("ix_agent_runs_conversation", "conversation_id"),
-    )
+    __table_args__ = (Index("ix_agent_runs_conversation", "conversation_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     conversation_id: Mapped[uuid.UUID] = mapped_column(

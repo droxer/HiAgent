@@ -207,9 +207,7 @@ class SandboxPool:
                 await asyncio.to_thread(sandbox.kill)
                 logger.info("Drained pooled sandbox {}", entry.sandbox_id)
             except Exception as exc:
-                logger.warning(
-                    "Failed to drain sandbox {}: {}", entry.sandbox_id, exc
-                )
+                logger.warning("Failed to drain sandbox {}: {}", entry.sandbox_id, exc)
 
         await asyncio.gather(*[_kill_entry(e) for e in all_entries])
         logger.info("Sandbox pool drained ({} sandboxes)", len(all_entries))

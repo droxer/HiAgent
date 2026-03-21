@@ -208,6 +208,7 @@ class TaskAgentRunner:
             )
 
         try:
+
             async def _on_text_delta(delta: str) -> None:
                 await self._emitter.emit(
                     EventType.TEXT_DELTA,

@@ -154,3 +154,8 @@ class SkillRegistry:
         """Return a new registry without the named skill."""
         filtered = tuple(s for s in self._skills if s.metadata.name != name)
         return SkillRegistry(filtered)
+
+    def filter_by_names(self, allowed_names: set[str]) -> SkillRegistry:
+        """Return a new registry containing only skills whose names are in *allowed_names*."""
+        filtered = tuple(s for s in self._skills if s.metadata.name in allowed_names)
+        return SkillRegistry(filtered)

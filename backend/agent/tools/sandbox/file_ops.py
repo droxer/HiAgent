@@ -36,7 +36,12 @@ class FileRead(SandboxTool):
         )
 
     async def execute(self, session: Any, **kwargs: Any) -> ToolResult:
-        path: str = kwargs.get("path") or kwargs.get("file_path") or kwargs.get("filepath") or ""
+        path: str = (
+            kwargs.get("path")
+            or kwargs.get("file_path")
+            or kwargs.get("filepath")
+            or ""
+        )
         if not path.strip():
             return ToolResult.fail(
                 f"path must not be empty (received keys: {[k for k in kwargs if k not in ('session', 'event_emitter')]})"
@@ -77,7 +82,12 @@ class FileWrite(SandboxTool):
 
     async def execute(self, session: Any, **kwargs: Any) -> ToolResult:
         # Accept common alternative parameter names from LLMs
-        path: str = kwargs.get("path") or kwargs.get("file_path") or kwargs.get("filepath") or ""
+        path: str = (
+            kwargs.get("path")
+            or kwargs.get("file_path")
+            or kwargs.get("filepath")
+            or ""
+        )
         content: str = kwargs.get("content") or kwargs.get("text") or ""
 
         if not path.strip():
@@ -133,7 +143,12 @@ class FileEdit(SandboxTool):
         )
 
     async def execute(self, session: Any, **kwargs: Any) -> ToolResult:
-        path: str = kwargs.get("path") or kwargs.get("file_path") or kwargs.get("filepath") or ""
+        path: str = (
+            kwargs.get("path")
+            or kwargs.get("file_path")
+            or kwargs.get("filepath")
+            or ""
+        )
         old_text: str = kwargs.get("old_text", "")
         new_text: str = kwargs.get("new_text", "")
 

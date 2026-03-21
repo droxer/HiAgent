@@ -77,9 +77,7 @@ class AgentHandoff(LocalTool):
         if not task_description.strip():
             return ToolResult.fail("task_description must not be empty")
         if self._max_handoffs <= 0:
-            return ToolResult.fail(
-                "No handoffs remaining. Use task_complete instead."
-            )
+            return ToolResult.fail("No handoffs remaining. Use task_complete instead.")
 
         request = HandoffRequest(
             target_role=target_role,

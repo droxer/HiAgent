@@ -162,12 +162,14 @@ class DbQuery(SandboxTool):
         if not sql.strip():
             return ToolResult.fail("SQL query must not be empty")
 
-        config = json.dumps({
-            "path": path,
-            "sql": sql,
-            "params": params,
-            "max_rows": _MAX_ROWS,
-        })
+        config = json.dumps(
+            {
+                "path": path,
+                "sql": sql,
+                "params": params,
+                "max_rows": _MAX_ROWS,
+            }
+        )
         await session.write_file(_CONFIG_PATH, config)
 
         script = """\
@@ -356,9 +358,7 @@ print(json.dumps(schema, indent=2))
                 for col in t["columns"]:
                     pk = " [PK]" if col["pk"] else ""
                     nn = " NOT NULL" if col["notnull"] else ""
-                    lines.append(
-                        f"  - {col['name']}: {col['type']}{pk}{nn}"
-                    )
+                    lines.append(f"  - {col['name']}: {col['type']}{pk}{nn}")
                 if t["indexes"]:
                     lines.append(f"  Indexes: {', '.join(t['indexes'])}")
                 lines.append("")

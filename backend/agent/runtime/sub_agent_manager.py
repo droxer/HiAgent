@@ -7,7 +7,12 @@ import uuid
 from typing import Callable
 
 from agent.llm.client import AnthropicClient
-from agent.runtime.task_runner import AgentResult, HandoffRequest, TaskAgentConfig, TaskAgentRunner
+from agent.runtime.task_runner import (
+    AgentResult,
+    HandoffRequest,
+    TaskAgentConfig,
+    TaskAgentRunner,
+)
 from agent.tools.executor import ToolExecutor
 from agent.tools.local.task_complete import TaskComplete
 from agent.tools.meta.handoff import AgentHandoff
@@ -41,7 +46,8 @@ def _format_handoff_context(
             content = msg.get("content", "")
             if isinstance(content, list):
                 text_parts = [
-                    b.get("text", "") for b in content
+                    b.get("text", "")
+                    for b in content
                     if isinstance(b, dict) and b.get("type") == "text"
                 ]
                 content = "\n".join(text_parts)

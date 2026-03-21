@@ -10,7 +10,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from agent.mcp.client import MCPCallResult, MCPStdioClient, MCPToolSchema, MCP_PROTOCOL_VERSION
+from agent.mcp.client import (
+    MCPCallResult,
+    MCPStdioClient,
+    MCPToolSchema,
+    MCP_PROTOCOL_VERSION,
+)
 from agent.mcp.config import MCPServerConfig
 from agent.mcp.bridge import MCPBridgedTool
 from agent.tools.base import ExecutionContext
@@ -197,14 +202,16 @@ class TestMCPStdioClientCallTool:
         client = MCPStdioClient(command="echo", server_name="test")
 
         response_line = (
-            json.dumps({
-                "jsonrpc": "2.0",
-                "id": 1,
-                "result": {
-                    "content": [{"type": "text", "text": "hello world"}],
-                    "isError": False,
-                },
-            })
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "result": {
+                        "content": [{"type": "text", "text": "hello world"}],
+                        "isError": False,
+                    },
+                }
+            )
             + "\n"
         ).encode()
 
@@ -224,14 +231,16 @@ class TestMCPStdioClientCallTool:
         client = MCPStdioClient(command="echo", server_name="test")
 
         response_line = (
-            json.dumps({
-                "jsonrpc": "2.0",
-                "id": 1,
-                "result": {
-                    "content": [{"type": "text", "text": "something went wrong"}],
-                    "isError": True,
-                },
-            })
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "result": {
+                        "content": [{"type": "text", "text": "something went wrong"}],
+                        "isError": True,
+                    },
+                }
+            )
             + "\n"
         ).encode()
 

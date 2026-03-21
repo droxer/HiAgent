@@ -87,6 +87,23 @@ class ConversationArtifactsRecord:
 
 
 @dataclass(frozen=True)
+class SkillRecord:
+    """Read-only skill record."""
+
+    id: uuid.UUID
+    user_id: uuid.UUID | None
+    name: str
+    description: str
+    source_type: str
+    source_path: str
+    enabled: bool
+    activation_count: int
+    last_activated_at: datetime | None
+    installed_at: datetime
+    updated_at: datetime
+
+
+@dataclass(frozen=True)
 class AgentRunRecord:
     """Read-only agent run record."""
 

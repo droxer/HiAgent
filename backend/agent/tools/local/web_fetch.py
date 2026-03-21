@@ -64,6 +64,7 @@ def _validate_url(url: str) -> str | None:
 
     return None
 
+
 _SCRIPT_STYLE_RE = re.compile(
     r"<(script|style)[^>]*>.*?</\1>", re.DOTALL | re.IGNORECASE
 )

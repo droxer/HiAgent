@@ -92,12 +92,19 @@ class ComputerScreenshot(SandboxTool):
 class ComputerAction(SandboxTool):
     """Perform mouse and keyboard actions on the virtual desktop."""
 
-    _VALID_ACTIONS = frozenset({
-        "click", "double_click", "right_click",
-        "move", "drag",
-        "type", "key",
-        "scroll_up", "scroll_down",
-    })
+    _VALID_ACTIONS = frozenset(
+        {
+            "click",
+            "double_click",
+            "right_click",
+            "move",
+            "drag",
+            "type",
+            "key",
+            "scroll_up",
+            "scroll_down",
+        }
+    )
 
     def definition(self) -> ToolDefinition:
         return ToolDefinition(
@@ -119,10 +126,15 @@ class ComputerAction(SandboxTool):
                             "'move', 'drag', 'type', 'key', 'scroll_up', 'scroll_down'."
                         ),
                         "enum": [
-                            "click", "double_click", "right_click",
-                            "move", "drag",
-                            "type", "key",
-                            "scroll_up", "scroll_down",
+                            "click",
+                            "double_click",
+                            "right_click",
+                            "move",
+                            "drag",
+                            "type",
+                            "key",
+                            "scroll_up",
+                            "scroll_down",
                         ],
                     },
                     "x": {
@@ -179,9 +191,7 @@ class ComputerAction(SandboxTool):
 
         cmd = self._build_command(action, x, y, text, end_x, end_y, amount)
         if cmd is None:
-            return ToolResult.fail(
-                f"Missing required parameters for action '{action}'"
-            )
+            return ToolResult.fail(f"Missing required parameters for action '{action}'")
 
         result = await session.exec(f"DISPLAY=:99 {cmd}", timeout=10)
         if result.exit_code != 0:

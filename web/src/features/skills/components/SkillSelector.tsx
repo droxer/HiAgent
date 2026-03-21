@@ -29,7 +29,7 @@ export function SkillSelector({
   const [filter, setFilter] = useState("");
 
   const { getAllSkills } = useSkillsCache();
-  const skills = getAllSkills();
+  const skills = getAllSkills().filter((s) => s.enabled !== false);
 
   const filtered = filter
     ? skills.filter(

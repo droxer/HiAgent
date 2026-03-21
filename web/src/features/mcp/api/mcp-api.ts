@@ -7,6 +7,7 @@ export interface MCPServer {
   readonly url: string;
   readonly status: "connected" | "disconnected";
   readonly tool_count: number;
+  readonly enabled: boolean;
 }
 
 export interface MCPServerCreateParams {
@@ -39,6 +40,24 @@ export async function addMCPServer(
   if (!res.ok) {
     const detail = await res.text();
     throw new Error(`Failed to add MCP server: ${detail}`);
+  }
+  return res.json();
+}
+
+export async function toggleMCPServer(
+  name: string,
+  enabled: boolean,
+): Promise<{ name: string; enabled: boolean }> {
+  const res = await fetch(
+    `${API_BASE}/mcp/servers/${encodeURIComponent(name)}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled }),
+    },
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to toggle MCP server: ${res.status}`);
   }
   return res.json();
 }

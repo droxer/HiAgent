@@ -189,6 +189,10 @@
   "skills.chooseFolder": "or choose a folder",
   "skills.dropZoneActive": "Drop files here...",
   "skills.clearFilter": "Clear filter",
+  "skills.enable": "Enable skill",
+  "skills.disable": "Disable skill",
+  "skills.enabled": "Enabled",
+  "skills.disabled": "Disabled",
 
   "mcp.title": "MCP",
   "mcp.subtitle": "Connect MCP servers to extend your agent's capabilities",
@@ -217,6 +221,10 @@
   "mcp.filterPlaceholder": "Filter servers...",
   "mcp.clearFilter": "Clear filter",
   "mcp.noServersMatching": "No servers matching \"{filter}\"",
+  "mcp.enable": "Enable server",
+  "mcp.disable": "Disable server",
+  "mcp.enabled": "Enabled",
+  "mcp.disabled": "Disabled",
 
   "error.title": "Something went wrong",
   "error.fallback": "An unexpected error occurred.",

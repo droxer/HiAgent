@@ -29,6 +29,7 @@ class MCPServerConfig:
     url: str = ""
     env: tuple[tuple[str, str], ...] = ()
     timeout: float = 30.0
+    enabled: bool = True
 
     def __post_init__(self) -> None:
         if self.transport not in _VALID_TRANSPORTS:

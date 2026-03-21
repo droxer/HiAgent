@@ -7,28 +7,45 @@ import uuid
 
 import pytest
 import pytest_asyncio
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy import event
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-from agent.state.models import Base
 from agent.state.repository import ConversationRepository
 
-TEST_DB_URL = "postgresql+asyncpg://ha:ha@localhost:5432/hiagent"
+from .conftest import TEST_DB_URL
 
 
 @pytest_asyncio.fixture
 async def session():
-    """Create a session with clean data. Uses TRUNCATE, never drops tables."""
+    """Create an isolated session using a rolled-back transaction.
+
+    Wraps each test in a top-level transaction that is always rolled
+    back, so tests never modify the real database.  Repository methods
+    call ``session.commit()`` internally; we intercept those commits
+    by starting a SAVEPOINT via ``begin_nested`` and patching
+    ``commit`` to restart the savepoint instead of finalising the
+    outer transaction.
+    """
     engine = create_async_engine(TEST_DB_URL)
-    factory = async_sessionmaker(engine, expire_on_commit=False)
-    # Truncate all tables before each test (preserves schema)
-    async with engine.begin() as conn:
-        await conn.execute(
-            __import__("sqlalchemy").text(
-                "TRUNCATE conversations, messages, events, agent_runs CASCADE"
-            )
-        )
-    async with factory() as sess:
+    async with engine.connect() as conn:
+        txn = await conn.begin()
+        sess = AsyncSession(bind=conn, expire_on_commit=False)
+
+        # Each time repo code calls session.commit(), restart the
+        # SAVEPOINT so subsequent operations still work.
+        await conn.begin_nested()
+
+        @event.listens_for(sess.sync_session, "after_transaction_end")
+        def _restart_savepoint(session_sync, transaction):
+            if conn.closed:
+                return
+            if not conn.in_nested_transaction():
+                conn.sync_connection.begin_nested()
+
         yield sess
+
+        await sess.close()
+        await txn.rollback()
     await engine.dispose()
 
 
@@ -118,7 +135,9 @@ class TestEvents:
         assert len(events) == 1
         assert events[0].event_type == "task_start"
 
-    async def test_save_event_flushes_before_commit(self, repo, session: AsyncSession) -> None:
+    async def test_save_event_flushes_before_commit(
+        self, repo, session: AsyncSession
+    ) -> None:
         """Verify save_event persists correctly with flush+commit pattern."""
         convo = await repo.create_conversation(session, title="Flush test")
         await repo.save_event(
@@ -136,23 +155,26 @@ class TestEvents:
 
 
 class TestArtifacts:
-    async def test_save_artifact_flushes_before_commit(self, repo, session: AsyncSession) -> None:
+    async def test_save_artifact_flushes_before_commit(
+        self, repo, session: AsyncSession
+    ) -> None:
         """Verify save_artifact persists correctly with flush+refresh+commit."""
         convo = await repo.create_conversation(session, title="Artifact flush test")
+        artifact_id = uuid.uuid4().hex[:32]
         artifact = await repo.save_artifact(
             session,
-            artifact_id="abc123",
+            artifact_id=artifact_id,
             conversation_id=convo.id,
-            storage_key="store/abc123",
+            storage_key=f"store/{artifact_id}",
             original_name="image.png",
             content_type="image/png",
             size=1024,
         )
-        assert artifact.id == "abc123"
+        assert artifact.id == artifact_id
         assert artifact.original_name == "image.png"
         assert artifact.size == 1024
 
         # Re-read from DB
-        fetched = await repo.get_artifact(session, "abc123")
+        fetched = await repo.get_artifact(session, artifact_id)
         assert fetched is not None
-        assert fetched.storage_key == "store/abc123"
+        assert fetched.storage_key == f"store/{artifact_id}"

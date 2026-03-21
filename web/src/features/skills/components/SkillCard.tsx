@@ -24,29 +24,46 @@ const SOURCE_LABEL_KEY: Record<string, string> = {
 interface SkillCardProps {
   readonly skill: Skill;
   readonly onDelete?: (name: string) => void;
+  readonly onToggle?: (name: string, enabled: boolean) => void;
 }
 
-export function SkillCard({ skill, onDelete }: SkillCardProps) {
+export function SkillCard({ skill, onDelete, onToggle }: SkillCardProps) {
   const { t } = useTranslation();
   const config = sourceStyle[skill.source_type] ?? sourceStyle.bundled;
   const Icon = config.icon;
   const labelKey = SOURCE_LABEL_KEY[skill.source_type] ?? SOURCE_LABEL_KEY.bundled;
   const showDelete = skill.source_type === "user" && onDelete;
+  const isDisabled = skill.enabled === false;
 
   return (
     <Link
       href={`/skills/${encodeURIComponent(skill.name)}`}
-      className="group flex h-full cursor-pointer flex-col rounded-lg border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:border-border-strong"
+      className={cn(
+        "group flex h-full cursor-pointer flex-col rounded-lg border bg-card p-4 shadow-sm transition-all duration-200",
+        isDisabled
+          ? "border-border/60 hover:border-border"
+          : "border-border hover:border-border-strong",
+      )}
     >
       {/* Top row: icon + badge + optional delete */}
       <div className="flex items-start justify-between gap-2">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary">
-          <Lightbulb className="h-4 w-4 text-muted-foreground" />
+        <div className={cn(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-200",
+          isDisabled ? "bg-secondary/60" : "bg-secondary",
+        )}>
+          <Lightbulb className={cn(
+            "h-4 w-4 transition-colors duration-200",
+            isDisabled ? "text-muted-foreground-dim" : "text-muted-foreground",
+          )} />
         </div>
         <div className="flex items-center gap-1.5">
           <Badge
             variant="secondary"
-            className={cn("text-micro font-medium px-1.5 py-0 shrink-0", config.className)}
+            className={cn(
+              "text-micro font-medium px-1.5 py-0 shrink-0 transition-opacity duration-200",
+              isDisabled && "opacity-60",
+              config.className,
+            )}
           >
             <Icon className="mr-1 h-2.5 w-2.5" />
             {t(labelKey)}
@@ -74,24 +91,56 @@ export function SkillCard({ skill, onDelete }: SkillCardProps) {
       </div>
 
       {/* Name */}
-      <h3 className="mt-3 text-sm font-semibold leading-snug text-foreground">
+      <h3 className={cn(
+        "mt-3 text-sm font-semibold leading-snug transition-colors duration-200",
+        isDisabled ? "text-muted-foreground" : "text-foreground",
+      )}>
         {normalizeSkillName(skill.name)}
       </h3>
 
-      {/* Description — clamp to 2 lines, min-h for uniform grid cells */}
+      {/* Description */}
       <div className="mt-1.5 min-h-[2.5rem]">
         {skill.description && (
-          <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+          <p className={cn(
+            "line-clamp-2 text-xs leading-relaxed transition-colors duration-200",
+            isDisabled ? "text-muted-foreground-dim" : "text-muted-foreground",
+          )}>
             {skill.description}
           </p>
         )}
       </div>
 
-      {/* Slug / identifier — pushed to bottom */}
-      <div className="mt-auto pt-3">
-        <span className="font-mono text-micro text-muted-foreground-dim">
+      {/* Footer: slug + status toggle */}
+      <div className="mt-auto flex items-center justify-between gap-2 pt-3">
+        <span className="font-mono text-micro text-muted-foreground-dim truncate">
           {skill.name}
         </span>
+        {onToggle && (
+          <button
+            type="button"
+            role="switch"
+            aria-checked={!isDisabled}
+            aria-label={isDisabled ? t("skills.enable") : t("skills.disable")}
+            className={cn(
+              "flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-micro font-medium transition-colors duration-150",
+              "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+              isDisabled
+                ? "bg-secondary text-muted-foreground-dim hover:bg-secondary/80 hover:text-muted-foreground"
+                : "bg-accent-emerald/10 text-accent-emerald hover:bg-accent-emerald/15",
+            )}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggle(skill.name, isDisabled);
+            }}
+          >
+            <span className={cn(
+              "h-1.5 w-1.5 rounded-full transition-colors duration-150",
+              isDisabled ? "bg-border-strong" : "bg-accent-emerald",
+            )} />
+            {isDisabled ? t("skills.disabled") : t("skills.enabled")}
+          </button>
+        )}
       </div>
     </Link>
   );

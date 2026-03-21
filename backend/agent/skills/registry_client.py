@@ -39,9 +39,7 @@ class SkillRegistryClient:
         self._installer = installer
         self._shared_client = http_client
 
-    async def _request(
-        self, method: str, path: str, **kwargs: Any
-    ) -> httpx.Response:
+    async def _request(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
         """Issue an HTTP request, reusing a shared client if available."""
         url = f"{self._registry_url}{path}"
         if self._shared_client is not None:
