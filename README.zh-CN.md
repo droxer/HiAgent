@@ -6,7 +6,7 @@
 
 <h1 align="center">HiAgent</h1>
 
-一个开源 AI 智能体平台，将自然语言转化为沙盒化的多步骤操作——支持实时流式输出、多智能体协同规划以及可扩展的技能系统。
+一个替你完成工作的开源 AI 智能体平台。用自然语言描述任何任务——HiAgent 自动规划、编码、浏览并在安全沙盒中交付结果，全程实时展示每一步进展。
 
 ## 功能概览
 
@@ -49,8 +49,9 @@
 
 - Python 3.12+、Node.js（含 npm）、[`uv`](https://docs.astral.sh/uv/)
 - PostgreSQL（可选，用于对话持久化）
+- Rust 1.77+（可选，用于桌面应用）
 
-### 安装与启动
+### Web 应用
 
 ```bash
 make install
@@ -64,12 +65,29 @@ make dev
 
 打开 [http://localhost:3000](http://localhost:3000) 即可使用。
 
+### 桌面应用
+
+HiAgent 同时提供基于 [Tauri v2](https://v2.tauri.app/) 的原生桌面应用。它将 Web UI 封装在原生窗口中，自动管理后端和前端进程。
+
+```bash
+# 开发模式
+make desktop
+
+# 生产构建（.app / .msi / .deb）
+make build-desktop
+```
+
+桌面应用将后端和前端作为子进程管理——如果它们已在运行（例如通过 `make dev`），则直接连接现有服务。Google OAuth 在系统浏览器中打开，认证完成后自动将会话传递回桌面窗口。
+
+详见 [桌面应用指南](docs/desktop-app.md)。
+
 ## 技术栈
 
 | 层级 | 技术 |
 |------|------|
 | 后端 | Python 3.12+, FastAPI, Anthropic SDK, SQLAlchemy (async), Alembic |
 | 前端 | Next.js 15, React 19, Tailwind CSS 4, Zustand, Framer Motion, Radix UI |
+| 桌面 | Tauri v2, Rust, WKWebView (macOS) / WebView2 (Windows) |
 | 沙盒 | Boxlite micro-VMs, E2B (cloud), Docker |
 | 数据库 | PostgreSQL, Redis（可选） |
 | 包管理 | uv（后端）, npm（前端） |
@@ -78,6 +96,7 @@ make dev
 
 - [本地部署指南](docs/zh-CN/setup.md) — 从零开始在本地运行 HiAgent 的完整步骤
 - [开发指南](docs/zh-CN/development.md) — 命令、架构、API 参考、环境变量及贡献流程
+- [桌面应用指南](docs/desktop-app.md) — Tauri 桌面应用配置、OAuth 流程及故障排除
 - [设计风格指南](docs/zh-CN/DESIGN_STYLE_GUIDE.md) — UI 组件规范、色彩系统、排版与无障碍设计
 - [品牌指南](docs/zh-CN/brand-guidelines.md) — 品牌标识、色彩方案与视觉设计语言
 

@@ -6,7 +6,7 @@
 
 <p align="center"><strong>English</strong> | <a href="README.zh-CN.md">简体中文</a></p>
 
-An open-source AI agent platform that turns natural language into sandboxed, multi-step actions — with real-time streaming, multi-agent planning, and an extensible skill system.
+An open-source AI agent platform that does the work for you. Describe any task in plain language — HiAgent plans, codes, browses, and delivers results in a secure sandbox, streaming every step in real time.
 
 ## What It Does
 
@@ -49,8 +49,9 @@ An open-source AI agent platform that turns natural language into sandboxed, mul
 
 - Python 3.12+, Node.js (with npm), [`uv`](https://docs.astral.sh/uv/)
 - PostgreSQL (optional, for conversation persistence)
+- Rust 1.77+ (optional, for desktop app)
 
-### Setup
+### Web
 
 ```bash
 make install
@@ -64,12 +65,29 @@ make dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+### Desktop App
+
+HiAgent also ships as a native desktop app built with [Tauri v2](https://v2.tauri.app/). It wraps the same web UI in a native window with automatic backend/frontend process management.
+
+```bash
+# Dev mode
+make desktop
+
+# Production build (.app / .msi / .deb)
+make build-desktop
+```
+
+The desktop app manages backend and frontend as sidecar processes — if they're already running (e.g. via `make dev`), it connects to the existing services. Google OAuth opens in the system browser and hands the session back to the desktop window automatically.
+
+See [Desktop App Guide](docs/desktop-app.md) for configuration and troubleshooting.
+
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
 | Backend | Python 3.12+, FastAPI, Anthropic SDK, SQLAlchemy (async), Alembic |
 | Frontend | Next.js 15, React 19, Tailwind CSS 4, Zustand, Framer Motion, Radix UI |
+| Desktop | Tauri v2, Rust, WKWebView (macOS) / WebView2 (Windows) |
 | Sandbox | Boxlite micro-VMs, E2B (cloud), Docker |
 | Database | PostgreSQL, Redis (optional) |
 | Package Manager | uv (backend), npm (frontend) |
@@ -78,6 +96,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 - [Local Setup Guide](docs/setup.md) — Step-by-step instructions to get HiAgent running on your machine
 - [Development Guide](docs/development.md) — Commands, architecture, API reference, environment variables, and contribution workflow
+- [Desktop App Guide](docs/desktop-app.md) — Tauri desktop app setup, configuration, OAuth flow, and troubleshooting
 - [Design Style Guide](docs/DESIGN_STYLE_GUIDE.md) — UI component patterns, color system, typography, and accessibility
 - [Brand Guidelines](docs/brand-guidelines.md) — Brand identity, color palette, and visual design language
 
