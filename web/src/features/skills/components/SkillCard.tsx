@@ -1,25 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Trash2, Package, FolderGit2, Globe, Lightbulb } from "lucide-react";
+import { Trash2, Lightbulb } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { cn } from "@/shared/lib/utils";
 import { useTranslation } from "@/i18n";
 import { normalizeSkillName } from "../lib/normalize-skill-name";
+import { SOURCE_STYLE, SOURCE_LABEL_KEY } from "../lib/skill-source-styles";
 import type { Skill } from "../api/skills-api";
-
-const sourceStyle = {
-  bundled: { icon: Package, className: "bg-secondary text-muted-foreground" },
-  user: { icon: Globe, className: "bg-accent-emerald/10 text-accent-emerald" },
-  project: { icon: FolderGit2, className: "bg-accent-purple/10 text-accent-purple" },
-} as const;
-
-const SOURCE_LABEL_KEY: Record<string, string> = {
-  bundled: "skills.source.bundled",
-  user: "skills.source.user",
-  project: "skills.source.project",
-};
 
 interface SkillCardProps {
   readonly skill: Skill;
@@ -29,7 +18,7 @@ interface SkillCardProps {
 
 export function SkillCard({ skill, onDelete, onToggle }: SkillCardProps) {
   const { t } = useTranslation();
-  const config = sourceStyle[skill.source_type] ?? sourceStyle.bundled;
+  const config = SOURCE_STYLE[skill.source_type] ?? SOURCE_STYLE.bundled;
   const Icon = config.icon;
   const labelKey = SOURCE_LABEL_KEY[skill.source_type] ?? SOURCE_LABEL_KEY.bundled;
   const showDelete = skill.source_type === "user" && onDelete;
@@ -51,7 +40,7 @@ export function SkillCard({ skill, onDelete, onToggle }: SkillCardProps) {
           "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-200",
           isDisabled ? "bg-secondary/60" : "bg-secondary",
         )}>
-          <Lightbulb className={cn(
+          <Lightbulb aria-hidden="true" className={cn(
             "h-4 w-4 transition-colors duration-200",
             isDisabled ? "text-muted-foreground-dim" : "text-muted-foreground",
           )} />
@@ -65,7 +54,7 @@ export function SkillCard({ skill, onDelete, onToggle }: SkillCardProps) {
               config.className,
             )}
           >
-            <Icon className="mr-1 h-2.5 w-2.5" />
+            <Icon aria-hidden="true" className="mr-1 h-2.5 w-2.5" />
             {t(labelKey)}
           </Badge>
           {showDelete && (
@@ -84,7 +73,7 @@ export function SkillCard({ skill, onDelete, onToggle }: SkillCardProps) {
                 onDelete(skill.name);
               }}
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 aria-hidden="true" className="h-3 w-3" />
             </Button>
           )}
         </div>

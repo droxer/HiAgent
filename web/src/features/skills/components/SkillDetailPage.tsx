@@ -6,9 +6,6 @@ import {
   ArrowLeft,
   Lightbulb,
   Trash2,
-  Package,
-  FolderGit2,
-  Globe,
   FileCode,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
@@ -28,25 +25,12 @@ import { ErrorBanner } from "@/shared/components/ErrorBanner";
 import { useSkillsCache } from "../hooks/use-skills-cache";
 import { useSkillFiles } from "../hooks/use-skill-files";
 import { normalizeSkillName } from "../lib/normalize-skill-name";
+import { SOURCE_STYLE, SOURCE_LABEL_KEY } from "../lib/skill-source-styles";
 import { uninstallSkill } from "../api/skills-api";
 import { useTranslation } from "@/i18n";
 import { FileTree } from "./FileTree";
 import { FileContentViewer } from "./FileContentViewer";
 
-const sourceStyle = {
-  bundled: { icon: Package, className: "bg-secondary text-muted-foreground" },
-  user: { icon: Globe, className: "bg-accent-emerald/10 text-accent-emerald" },
-  project: {
-    icon: FolderGit2,
-    className: "bg-accent-purple/10 text-accent-purple",
-  },
-} as const;
-
-const SOURCE_LABEL_KEY: Record<string, string> = {
-  bundled: "skills.source.bundled",
-  user: "skills.source.user",
-  project: "skills.source.project",
-};
 
 interface SkillDetailPageProps {
   readonly name: string;
@@ -120,7 +104,7 @@ export function SkillDetailPage({ name }: SkillDetailPageProps) {
     return <DetailSkeleton />;
   }
 
-  const config = sourceStyle[skill.source_type] ?? sourceStyle.bundled;
+  const config = SOURCE_STYLE[skill.source_type] ?? SOURCE_STYLE.bundled;
   const SourceIcon = config.icon;
   const labelKey =
     SOURCE_LABEL_KEY[skill.source_type] ?? SOURCE_LABEL_KEY.bundled;
@@ -141,7 +125,7 @@ export function SkillDetailPage({ name }: SkillDetailPageProps) {
           </Button>
 
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary">
-            <Lightbulb className="h-4 w-4 text-muted-foreground" />
+            <Lightbulb aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
           </div>
 
           <div className="min-w-0 flex-1">
@@ -162,7 +146,7 @@ export function SkillDetailPage({ name }: SkillDetailPageProps) {
               config.className,
             )}
           >
-            <SourceIcon className="mr-1 h-2.5 w-2.5" />
+            <SourceIcon aria-hidden="true" className="mr-1 h-2.5 w-2.5" />
             {t(labelKey)}
           </Badge>
 
@@ -190,7 +174,7 @@ export function SkillDetailPage({ name }: SkillDetailPageProps) {
       {/* ── Body: File Tree + Content Viewer ── */}
       <div className="flex flex-1 flex-col md:flex-row overflow-hidden">
         {/* Sidebar: File Tree */}
-        <div className="w-full md:w-[250px] md:shrink-0 max-h-[200px] md:max-h-none overflow-y-auto border-r border-border">
+        <div className="w-full md:w-[250px] md:shrink-0 max-h-[280px] md:max-h-none overflow-y-auto border-r border-border">
           {isLoadingTree ? (
             <div className="p-3 space-y-2">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -232,7 +216,7 @@ export function SkillDetailPage({ name }: SkillDetailPageProps) {
             </div>
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-3">
-              <FileCode className="h-10 w-10 text-muted-foreground-dim" />
+              <FileCode aria-hidden="true" className="h-10 w-10 text-muted-foreground-dim" />
               <p className="text-sm text-muted-foreground-dim">
                 {t("skills.noFileSelected")}
               </p>

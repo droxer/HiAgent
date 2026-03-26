@@ -155,7 +155,7 @@ export function FileContentViewer({
       {/* Breadcrumb header */}
       <div className="shrink-0 border-b border-border px-4 py-2.5">
         <div className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
-          <FileIcon className="h-3.5 w-3.5 shrink-0 opacity-60" />
+          <FileIcon aria-hidden="true" className="h-3.5 w-3.5 shrink-0 opacity-60" />
           {segments.map((seg, i) => (
             <span key={i} className="flex items-center gap-1">
               {i > 0 && <span className="opacity-40">/</span>}

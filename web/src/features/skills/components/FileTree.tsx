@@ -109,7 +109,7 @@ export function FileTree({ nodes, selectedPath, onSelectFile }: FileTreeProps) {
   }, [manualExpanded, manualCollapsed, autoExpanded]);
 
   return (
-    <div className="py-1">
+    <div role="tree" className="py-1">
       {nodes.map((node) => (
         <TreeNode
           key={node.path}
@@ -161,9 +161,12 @@ function TreeNode({
     <>
       <button
         type="button"
+        role="treeitem"
+        aria-selected={isDir ? undefined : isSelected}
+        aria-expanded={isDir ? expanded : undefined}
         onClick={handleClick}
         className={cn(
-          "flex w-full items-center gap-1.5 rounded-sm px-2 py-1 text-left font-mono text-xs",
+          "flex w-full items-center gap-1.5 rounded-sm px-2 py-1.5 text-left font-mono text-xs",
           "hover:bg-secondary/50 transition-colors",
           isSelected && "bg-secondary text-foreground",
           !isSelected && "text-muted-foreground",
@@ -172,14 +175,14 @@ function TreeNode({
       >
         {isDir ? (
           expanded ? (
-            <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
+            <ChevronDown aria-hidden="true" className="h-3 w-3 shrink-0 opacity-60" />
           ) : (
-            <ChevronRight className="h-3 w-3 shrink-0 opacity-60" />
+            <ChevronRight aria-hidden="true" className="h-3 w-3 shrink-0 opacity-60" />
           )
         ) : (
-          <span className="h-3 w-3 shrink-0" />
+          <span aria-hidden="true" className="h-3 w-3 shrink-0" />
         )}
-        <FileIcon className={cn(
+        <FileIcon aria-hidden="true" className={cn(
           "h-3.5 w-3.5 shrink-0",
           isDir ? "text-muted-foreground" : "opacity-60",
         )} />

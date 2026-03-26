@@ -14,15 +14,12 @@ interface SkillSelectorProps {
   readonly onSelect: (skillName: string | null) => void;
   /** Display variant */
   readonly variant?: "default" | "welcome" | "shelf";
-  /** @deprecated Use variant instead */
-  readonly buttonSize?: "icon-xs" | "icon-sm";
 }
 
 export function SkillSelector({
   selectedSkill,
   onSelect,
   variant = "default",
-  buttonSize,
 }: SkillSelectorProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -69,7 +66,7 @@ export function SkillSelector({
                   "focus-visible:ring-[3px] focus-visible:ring-ring/50 rounded",
                 )}
               >
-                <Lightbulb className="h-3.5 w-3.5" />
+                <Lightbulb aria-hidden="true" className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline max-w-[10rem] truncate">
                   {normalizeSkillName(selectedSkill)}
                 </span>
@@ -92,19 +89,18 @@ export function SkillSelector({
         ) : (
           /* Inactive trigger — plain pill or shelf icon */
           <PopoverTrigger asChild>
-            {variant === "shelf" || buttonSize ? (
+            {variant === "shelf" ? (
               <Button
                 type="button"
                 variant="ghost"
-                size={buttonSize ?? "icon-xs"}
+                size="icon-xs"
                 aria-label={t("skills.selector.select")}
                 className={cn(
-                  "text-muted-foreground hover:bg-secondary hover:text-foreground",
-                  variant === "shelf" && "h-6 w-6",
+                  "h-6 w-6 text-muted-foreground hover:bg-secondary hover:text-foreground",
                   selectedSkill && "text-accent-purple",
                 )}
               >
-                <Lightbulb className={variant === "shelf" ? "h-3 w-3" : "h-4 w-4"} />
+                <Lightbulb aria-hidden="true" className="h-3 w-3" />
               </Button>
             ) : (
               <Button
@@ -117,7 +113,7 @@ export function SkillSelector({
                   variant === "welcome" ? "h-8 px-3 bg-secondary/50" : "h-7 bg-secondary/40",
                 )}
               >
-                <Lightbulb className="h-3.5 w-3.5" />
+                <Lightbulb aria-hidden="true" className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{t("chat.skillLabel")}</span>
               </Button>
             )}
@@ -133,7 +129,7 @@ export function SkillSelector({
           {skills.length > 4 && (
             <div className="border-b border-border px-3 py-2">
               <div className="flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1.5">
-                <Search className="h-3.5 w-3.5 text-muted-foreground" />
+                <Search aria-hidden="true" className="h-3.5 w-3.5 text-muted-foreground" />
                 <input
                   type="text"
                   value={filter}
@@ -147,7 +143,7 @@ export function SkillSelector({
           )}
 
           {/* Skill grid */}
-          <div className="max-h-72 overflow-y-auto p-2">
+          <div className="max-h-60 sm:max-h-72 overflow-y-auto p-2">
             {filtered.length === 0 ? (
               <div className="px-3 py-6 text-center text-xs text-muted-foreground">
                 {skills.length === 0
@@ -173,7 +169,7 @@ export function SkillSelector({
                       {/* Selected indicator */}
                       {isSelected && (
                         <div className="absolute top-1.5 right-1.5">
-                          <Check className="h-3.5 w-3.5 text-accent-purple" strokeWidth={2.5} />
+                          <Check aria-hidden="true" className="h-3.5 w-3.5 text-accent-purple" strokeWidth={2.5} />
                         </div>
                       )}
 
@@ -187,7 +183,7 @@ export function SkillSelector({
                               : "bg-secondary/80 text-muted-foreground group-hover:text-foreground",
                           )}
                         >
-                          <Lightbulb className="h-3 w-3" />
+                          <Lightbulb aria-hidden="true" className="h-3 w-3" />
                         </div>
                         <span className={cn(
                           "truncate text-xs font-medium",
@@ -199,7 +195,7 @@ export function SkillSelector({
 
                       {/* Description */}
                       {skill.description && (
-                        <div className="line-clamp-2 pl-6.5 text-xs leading-snug text-muted-foreground">
+                        <div className="line-clamp-2 pl-7 text-xs leading-snug text-muted-foreground">
                           {skill.description}
                         </div>
                       )}

@@ -258,7 +258,7 @@ export function SkillsPage() {
         <div className="mx-auto flex max-w-5xl items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary">
-              <Lightbulb className="h-4 w-4 text-muted-foreground" />
+              <Lightbulb aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
             </div>
             <div>
               <h1 className="text-lg font-semibold tracking-tight text-foreground">
@@ -271,7 +271,7 @@ export function SkillsPage() {
           </div>
           {skills.length > 0 && (
             <div className="flex items-center gap-1.5 rounded-md bg-secondary px-2.5 py-1">
-              <Package className="h-3 w-3 text-muted-foreground" />
+              <Package aria-hidden="true" className="h-3 w-3 text-muted-foreground" />
               <span className="text-xs font-medium text-muted-foreground">
                 {t("skills.builtIn", { count: bundledSkills.length })}
                 {installedSkills.length > 0 && t("skills.installed", { count: installedSkills.length })}

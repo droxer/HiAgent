@@ -2,28 +2,18 @@
 
 import { useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lightbulb, ChevronRight, Check, Package, Globe, FolderGit2 } from "lucide-react";
+import { Lightbulb, ChevronRight, Check } from "lucide-react";
 import { PulsingDot } from "@/shared/components/PulsingDot";
 import { cn } from "@/shared/lib/utils";
 import { normalizeSkillName } from "@/features/skills/lib/normalize-skill-name";
+import { SOURCE_STYLE, SOURCE_LABEL_KEY } from "@/features/skills/lib/skill-source-styles";
 import { useSkillsCache } from "@/features/skills/hooks/use-skills-cache";
+import { Badge } from "@/shared/components/ui/badge";
 import { useTranslation } from "@/i18n";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import type { ToolCallInfo } from "@/shared/types";
 
 /* ── helpers ── */
-
-const SOURCE_STYLE = {
-  bundled: { icon: Package, color: "bg-secondary text-muted-foreground" },
-  user:    { icon: Globe, color: "bg-accent-emerald/10 text-accent-emerald" },
-  project: { icon: FolderGit2, color: "bg-accent-purple/10 text-accent-purple" },
-} as const;
-
-const SOURCE_LABEL_KEY: Record<string, string> = {
-  bundled: "skills.source.bundled",
-  user: "skills.source.user",
-  project: "skills.source.project",
-};
 
 /** Count non-empty lines in output. */
 function countLines(output?: string): number {
@@ -125,6 +115,7 @@ export function SkillActivityEntry({ toolCall }: SkillActivityEntryProps) {
         <div className="flex items-start gap-3 px-3.5 py-2.5">
           {/* Icon container */}
           <div
+            role="img"
             aria-label={isComplete ? (isError ? t("skills.activity.skillFailed") : t("skills.activity.skillLoaded")) : t("skills.activity.skillLoading")}
             className={cn(
               "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
@@ -157,39 +148,48 @@ export function SkillActivityEntry({ toolCall }: SkillActivityEntryProps) {
               </span>
 
               {isComplete && !isError && (
-                <motion.span
+                <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.15 }}
-                  className="inline-flex items-center gap-1 rounded-full bg-[var(--color-ai-surface)] px-1.5 py-0.5 text-micro font-medium text-accent-purple"
                 >
-                  <Check className="h-2.5 w-2.5" />
-                  {t("skills.activity.loaded")}
-                </motion.span>
+                  <Badge
+                    variant="secondary"
+                    className="gap-1 rounded-full border-0 bg-[var(--color-ai-surface)] px-1.5 py-0.5 text-micro font-medium text-accent-purple"
+                  >
+                    <Check className="h-2.5 w-2.5" />
+                    {t("skills.activity.loaded")}
+                  </Badge>
+                </motion.div>
               )}
 
               {!isComplete && (
-                <span className="text-micro font-medium text-accent-purple/70">
+                <Badge variant="secondary" className="rounded-full border-0 bg-accent-purple/10 px-1.5 py-0.5 text-micro font-medium text-accent-purple/70">
                   {t("skills.activity.loading")}
-                </span>
+                </Badge>
               )}
 
               {isError && (
-                <span className="text-micro font-medium text-accent-rose/70">
+                <Badge variant="secondary" className="rounded-full border-0 bg-accent-rose/10 px-1.5 py-0.5 text-micro font-medium text-accent-rose/70">
                   {t("skills.activity.failed")}
-                </span>
+                </Badge>
               )}
 
               {/* Source type badge — skeleton while loading, real badge when ready */}
               {sourceStyle && sourceLabelKey ? (
-                <motion.span
+                <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.2 }}
-                  className={cn("ml-auto shrink-0 rounded px-1.5 py-0.5 text-micro font-medium", sourceStyle.color)}
+                  className="ml-auto shrink-0"
                 >
-                  {t(sourceLabelKey)}
-                </motion.span>
+                  <Badge
+                    variant="secondary"
+                    className={cn("border-0 px-1.5 py-0 text-micro font-medium", sourceStyle.className)}
+                  >
+                    {t(sourceLabelKey)}
+                  </Badge>
+                </motion.div>
               ) : showSkeleton ? (
                 <span className="ml-auto shrink-0">
                   <Skeleton className="h-4 w-12" />
@@ -207,7 +207,7 @@ export function SkillActivityEntry({ toolCall }: SkillActivityEntryProps) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2 }}
-                className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground"
+                className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground"
               >
                 {skillMeta.description}
               </motion.p>
@@ -255,7 +255,7 @@ export function SkillActivityEntry({ toolCall }: SkillActivityEntryProps) {
                 transition={{ duration: 0.15 }}
                 className="flex items-center"
               >
-                <ChevronRight className="h-3 w-3" />
+                <ChevronRight aria-hidden="true" className="h-3 w-3" />
               </motion.span>
             </button>
           )}
@@ -272,7 +272,7 @@ export function SkillActivityEntry({ toolCall }: SkillActivityEntryProps) {
               className="overflow-hidden"
             >
               <div className="border-t border-[var(--color-ai-border)] px-3.5 py-2">
-                <pre className="max-h-40 overflow-auto font-mono text-micro leading-relaxed text-muted-foreground-dim">
+                <pre className="max-h-48 md:max-h-64 overflow-auto font-mono text-micro leading-relaxed text-muted-foreground-dim">
                   {toolCall.output}
                 </pre>
               </div>
