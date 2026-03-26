@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { geist, geistMono, inter, jetbrainsMono, notoSansSC, notoSansTC } from "./fonts";
+import { inter, jetbrainsMono, notoSansSC, notoSansTC } from "./fonts";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -26,7 +26,7 @@ export default function RootLayout({
       lang="en"
       suppressHydrationWarning
       /* I18nProvider sets lang attribute client-side based on locale */
-      className={`${geist.variable} ${inter.variable} ${geistMono.variable} ${jetbrainsMono.variable} ${notoSansSC.variable} ${notoSansTC.variable}`}
+      className={`${inter.variable} ${jetbrainsMono.variable} ${notoSansSC.variable} ${notoSansTC.variable}`}
     >
       <body className="font-sans antialiased">
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground">
