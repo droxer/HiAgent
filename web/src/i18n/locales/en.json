@@ -541,5 +541,12 @@
   "explorer.emptyFolder": "No files in this category",
   "explorer.selectFile": "Select a file to preview",
   "explorer.noPreview": "Preview unavailable",
-  "explorer.downloadFile": "Download"
+  "explorer.downloadFile": "Download",
+  "explorer.selectedCount": "{count} selected",
+  "explorer.downloadAll": "Download All",
+  "explorer.delete": "Delete",
+  "explorer.cancel": "Cancel",
+  "explorer.deleteConfirmTitle": "Delete files?",
+  "explorer.deleteConfirmDesc": "{count} files will be permanently deleted. This cannot be undone.",
+  "explorer.deleteConfirm": "Delete"
 }

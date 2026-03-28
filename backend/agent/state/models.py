@@ -147,6 +147,7 @@ class ArtifactModel(Base):
     original_name: Mapped[str] = mapped_column(String(300), nullable=False)
     content_type: Mapped[str] = mapped_column(String(100), nullable=False)
     size: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    file_path: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )

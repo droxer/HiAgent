@@ -36,6 +36,7 @@ async def list_library(
                         "content_type": art.content_type,
                         "size": art.size,
                         "created_at": art.created_at.isoformat(),
+                        "file_path": art.file_path,
                     }
                     for art in rec.artifacts
                 ],

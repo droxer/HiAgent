@@ -6,17 +6,13 @@ import { useTranslation } from "@/i18n";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { downloadFile } from "@/shared/lib/download";
 import { ArtifactPreviewDialog } from "@/features/agent-computer/components/ArtifactPreviewDialog";
-import { ExplorerSidebar } from "./ExplorerSidebar";
 import { ExplorerFileList } from "./ExplorerFileList";
-import { ExplorerPreviewPane } from "./ExplorerPreviewPane";
 import {
-  groupArtifactsByType,
   groupByConversation,
-  classifyContentType,
   buildArtifactUrl,
 } from "./artifactExplorerUtils";
 import { useArtifactExplorer } from "./useArtifactExplorer";
-import type { ArtifactExplorerItem, FolderNode, ConversationNode } from "./artifactExplorerUtils";
+import type { ArtifactExplorerItem, ConversationNode } from "./artifactExplorerUtils";
 import type { LibraryGroup } from "@/features/library/types";
 import type { ArtifactInfo } from "@/shared/types";
 
@@ -34,42 +30,6 @@ export interface ArtifactExplorerProps {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function filterItemsForFolder(
-  allItems: readonly ArtifactExplorerItem[],
-  selectedFolderId: string | null,
-  mode: "panel" | "page",
-): readonly ArtifactExplorerItem[] {
-  if (selectedFolderId === null) {
-    return allItems;
-  }
-
-  if (mode === "panel") {
-    // selectedFolderId is a TypeBucket id like "images", "documents", etc.
-    return allItems.filter(
-      (item) => classifyContentType(item.contentType) === selectedFolderId,
-    );
-  }
-
-  // Page mode: selectedFolderId is "convId:typeBucket"
-  const colonIdx = selectedFolderId.indexOf(":");
-  if (colonIdx === -1) {
-    return allItems;
-  }
-
-  const convId = selectedFolderId.slice(0, colonIdx);
-  const typeBucket = selectedFolderId.slice(colonIdx + 1);
-
-  return allItems.filter(
-    (item) =>
-      item.conversationId === convId &&
-      classifyContentType(item.contentType) === typeBucket,
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Public component
 // ---------------------------------------------------------------------------
 
@@ -82,12 +42,12 @@ export function ArtifactExplorer({
   const { t } = useTranslation();
 
   const {
-    selectedFolderId,
     selectedFileId,
-    expandedConversations,
-    selectFolder,
+    selectedIds,
     selectFile,
-    toggleConversation,
+    toggleSelection,
+    selectAll,
+    clearSelection,
   } = useArtifactExplorer();
 
   // ── Build normalized item list ──────────────────────────────────────────
@@ -102,6 +62,7 @@ export function ArtifactExplorer({
           contentType: a.contentType,
           size: a.size,
           conversationId: conversationId ?? undefined,
+          filePath: a.filePath || a.name,
         }),
       );
     }
@@ -118,6 +79,7 @@ export function ArtifactExplorer({
           conversationId: group.conversation_id,
           conversationTitle: group.title ?? "Conversation",
           createdAt: artifact.created_at,
+          filePath: artifact.file_path || artifact.name,
         }),
       ),
     );
@@ -125,22 +87,10 @@ export function ArtifactExplorer({
 
   // ── Build folder structure ───────────────────────────────────────────────
 
-  const typeFolders = useMemo(
-    (): readonly FolderNode[] => groupArtifactsByType(allItems),
-    [allItems],
-  );
-
   const conversationNodes = useMemo(
     (): readonly ConversationNode[] =>
       mode === "page" ? groupByConversation(groups ?? []) : [],
     [mode, groups],
-  );
-
-  // ── Filter items for selected folder ────────────────────────────────────
-
-  const visibleItems = useMemo(
-    () => filterItemsForFolder(allItems, selectedFolderId, mode),
-    [allItems, selectedFolderId, mode],
   );
 
   // ── Derive selected item + URL ───────────────────────────────────────────
@@ -184,6 +134,36 @@ export function ArtifactExplorer({
     [selectFile],
   );
 
+  const handleDeleteSelected = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+
+    // Group selected IDs by conversation
+    const selectedItems = allItems.filter(item => selectedIds.has(item.id));
+    const byConversation = new Map<string, string[]>();
+
+    for (const item of selectedItems) {
+      const cId = item.conversationId || conversationId;
+      if (!cId) continue;
+      if (!byConversation.has(cId)) byConversation.set(cId, []);
+      byConversation.get(cId)!.push(item.id);
+    }
+
+    try {
+      await Promise.all(
+        Array.from(byConversation.entries()).map(([cId, ids]) =>
+          fetch(`/api/conversations/${cId}/artifacts/bulk`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ artifact_ids: ids }),
+          })
+        )
+      );
+      clearSelection();
+    } catch (error) {
+      console.error("Failed to bulk delete artifacts", error);
+    }
+  }, [selectedIds, allItems, conversationId, clearSelection]);
+
   // ── Empty state ──────────────────────────────────────────────────────────
 
   if (allItems.length === 0) {
@@ -191,88 +171,47 @@ export function ArtifactExplorer({
       <div className="flex h-full items-center justify-center">
         <EmptyState
           icon={FolderOpen}
-          title={t("library.noArtifacts")}
-          description={t("library.noArtifactsHint")}
+          title={t("library.noArtifacts", { defaultValue: "No artifacts found" })}
+          description={t("library.noArtifactsHint", { defaultValue: "Artifacts will appear here when generated." })}
         />
       </div>
     );
   }
 
-  // ── Panel mode layout ────────────────────────────────────────────────────
+  // ── Main Layout ──────────────────────────────────────────────────────────
 
-  if (mode === "panel") {
-    // Panel mode: sidebar + file list + dialog (no inline preview pane)
-    const dialogArtifact = selectedItem
-      ? {
-          id: selectedItem.id,
-          name: selectedItem.name,
-          contentType: selectedItem.contentType,
-          size: selectedItem.size,
-        }
-      : null;
-
-    return (
-      <div className="flex h-full divide-x divide-border">
-        <div className="w-[120px] shrink-0 overflow-y-auto">
-          <ExplorerSidebar
-            mode="panel"
-            folders={typeFolders}
-            expandedConversations={expandedConversations}
-            selectedFolderId={selectedFolderId}
-            onSelectFolder={selectFolder}
-            onToggleConversation={toggleConversation}
-          />
-        </div>
-        <div className="flex-1 min-w-0">
-          <ExplorerFileList
-            items={visibleItems}
-            selectedFileId={selectedFileId}
-            conversationId={conversationId ?? undefined}
-            onSelectFile={selectFile}
-            onPreview={handlePreview}
-            onDownload={handleDownload}
-            mode="panel"
-          />
-        </div>
-        <ArtifactPreviewDialog
-          artifact={dialogArtifact}
-          artifactUrl={selectedUrl}
-          open={selectedFileId !== null}
-          onOpenChange={handleDialogOpenChange}
-        />
-      </div>
-    );
-  }
-
-  // ── Page mode layout ─────────────────────────────────────────────────────
+  const dialogArtifact = selectedItem
+    ? {
+        id: selectedItem.id,
+        name: selectedItem.name,
+        contentType: selectedItem.contentType,
+        size: selectedItem.size,
+      }
+    : null;
 
   return (
-    <div className="flex h-full divide-x divide-border">
-      <div className="w-[200px] shrink-0 overflow-y-auto">
-        <ExplorerSidebar
-          mode="page"
-          conversations={conversationNodes}
-          expandedConversations={expandedConversations}
-          selectedFolderId={selectedFolderId}
-          onSelectFolder={selectFolder}
-          onToggleConversation={toggleConversation}
-        />
-      </div>
+    <div className="flex h-full flex-col overflow-y-auto bg-background">
       <div className="flex-1 min-w-0">
         <ExplorerFileList
-          items={visibleItems}
+          items={allItems}
+          groups={mode === "page" ? conversationNodes : undefined}
           selectedFileId={selectedFileId}
+          selectedIds={selectedIds}
+          conversationId={conversationId ?? undefined}
           onSelectFile={selectFile}
           onPreview={handlePreview}
           onDownload={handleDownload}
-          mode="page"
+          onToggleSelection={toggleSelection}
+          onSelectAll={selectAll}
+          onDeleteSelected={handleDeleteSelected}
+          mode={mode}
         />
       </div>
-      <ExplorerPreviewPane
-        item={selectedItem}
+      <ArtifactPreviewDialog
+        artifact={dialogArtifact}
         artifactUrl={selectedUrl}
-        onDownload={handleDownload}
-        className="w-[340px] shrink-0 border-l border-border overflow-y-auto"
+        open={selectedFileId !== null}
+        onOpenChange={handleDialogOpenChange}
       />
     </div>
   );

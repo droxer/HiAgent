@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import os
 import shlex
+import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Request
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
+from pydantic import BaseModel
+
 from agent.artifacts.storage import LocalStorageBackend
 from api.dependencies import AppState, get_app_state, get_db_session
 from api.auth import common_dependencies
@@ -18,7 +21,25 @@ _UUID_PATTERN = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
 # Default port for sandbox preview proxy
 _DEFAULT_PREVIEW_PORT = 8080
 
+
+class BulkDeleteRequest(BaseModel):
+    artifact_ids: list[str]
+
+
 router = APIRouter(dependencies=common_dependencies)
+
+
+@router.delete("/conversations/{conversation_id}/artifacts/bulk")
+async def bulk_delete_artifacts(
+    request: BulkDeleteRequest,
+    conversation_id: str = Path(..., pattern=_UUID_PATTERN),
+    session: Any = Depends(get_db_session),
+    state: AppState = Depends(get_app_state),
+) -> dict:
+    deleted_count = await state.db_repo.delete_artifacts(
+        session, uuid.UUID(conversation_id), request.artifact_ids
+    )
+    return {"deleted": deleted_count}
 
 
 @router.get(
@@ -64,7 +85,7 @@ async def get_artifact(
         return FileResponse(
             path=file_path,
             media_type=record.content_type,
-            **({"filename": record.original_name} if not inline else {}),
+            filename=None if inline else record.original_name,
         )
 
     # Remote storage (R2): redirect to presigned URL
@@ -79,9 +100,9 @@ async def get_artifact(
     methods=["GET", "POST", "PUT", "DELETE"],
 )
 async def proxy_preview(
+    request: Request,
     conversation_id: str = Path(..., pattern=_UUID_PATTERN),
     path: str = "",
-    request: Request = ...,
     state: AppState = Depends(get_app_state),
 ) -> StreamingResponse:
     """Proxy requests to a preview server running in the conversation's sandbox."""

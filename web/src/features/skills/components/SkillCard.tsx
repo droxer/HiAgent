@@ -21,7 +21,7 @@ export function SkillCard({ skill, onDelete, onToggle }: SkillCardProps) {
   const config = SOURCE_STYLE[skill.source_type] ?? SOURCE_STYLE.bundled;
   const Icon = config.icon;
   const labelKey = SOURCE_LABEL_KEY[skill.source_type] ?? SOURCE_LABEL_KEY.bundled;
-  const showDelete = skill.source_type === "user" && onDelete;
+  const showDelete = skill.source_type !== "bundled" && onDelete;
   const isDisabled = skill.enabled === false;
 
   return (

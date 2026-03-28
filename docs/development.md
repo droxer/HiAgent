@@ -1,6 +1,6 @@
-**English** | [简体中文](zh-CN/development.md)
-
 # Development Guide
+
+**English** | [简体中文](zh-CN/development.md)
 
 ## Commands
 
@@ -14,13 +14,11 @@ make install-web      # cd web && npm install
 make build-web        # cd web && npm run build
 make build-sandbox    # Build Boxlite sandbox Docker images
 make clean            # Remove .venv, node_modules, .next
-make test             # Run backend tests: cd backend && uv run pytest
-make lint             # Lint backend: cd backend && uv run ruff check .
-make format           # Format backend: cd backend && uv run ruff format .
-make evals            # Run agent evals (mock backend by default)
 make pre-commit       # Install pre-commit hooks
 make pre-commit-all   # Run pre-commit on all files
 make lint-web         # Lint frontend: cd web && npx eslint src/
+make desktop          # Start Tauri desktop app in dev mode
+make build-desktop    # Build Tauri desktop app (.app bundle)
 ```
 
 ### Backend Testing & Linting
@@ -28,8 +26,8 @@ make lint-web         # Lint frontend: cd web && npx eslint src/
 Run from `backend/`:
 
 ```bash
-uv run pytest                          # All tests
-uv run pytest path/to/test.py::test_fn # Single test
+uv run pytest                          # Run all tests
+uv run pytest path/to/test.py::test_fn # IMPORTANT: Run single test function
 uv run pytest --cov                    # With coverage
 uv run ruff check .                    # Lint
 uv run ruff format .                   # Format
@@ -62,6 +60,26 @@ Run from `backend/`:
 uv run alembic upgrade head                              # Apply migrations
 uv run alembic revision --autogenerate -m "description"  # Create migration
 ```
+
+---
+
+## Code Style & Conventions
+
+**Python (Backend)**
+- **Imports**: Standard library first, third-party second, local last. Verify with `ruff check . --fix`.
+- **Formatting**: `ruff format` (88-char line limit).
+- **Types**: Strict Python 3.12+ type hinting. Use `pydantic` for models/DTOs and `dataclasses(frozen=True)` for internal state to ensure immutability.
+- **Naming Conventions**: `snake_case` for files, functions, and variables. `PascalCase` for classes.
+- **Error Handling**: Use `try/except`. Raise FastAPI `HTTPException` in API routes. Log errors via `loguru` (`from loguru import logger`).
+
+**TypeScript (Frontend)**
+- **Imports**: Group related imports. Prefer absolute aliases (e.g. `@/features/...`, `@/shared/...`).
+- **Formatting/Linting**: Handled by `npx eslint src/` with standard Next.js rules.
+- **Types**: Strict typing (`tsc --noEmit`). Avoid `any`. Centralize shared types in `src/shared/types/`.
+- **Naming Conventions**:
+  - **Files**: `PascalCase.tsx` for React components. `kebab-case.ts` for hooks, utils, and APIs.
+  - **Entities**: `camelCase` for variables/functions. `PascalCase` for Components, Types, and Interfaces.
+- **Error Handling**: Use async/await with `try/catch`. React components should implement loading/error states.
 
 ---
 
@@ -128,7 +146,6 @@ HiAgent/
 │   │   │   │   ├── package_install.py  # pip/npm package installation
 │   │   │   │   └── preview.py          # HTML/image preview
 │   │   │   └── meta/        # Agent coordination tools
-│   │   │       ├── plan_create.py         # Declare plan steps (plan mode)
 │   │   │       ├── plan_create.py         # Declare plan steps (plan mode)
 │   │   │       ├── spawn_task_agent.py    # Spawn sub-agents (with agent names)
 │   │   │       ├── wait_for_agents.py     # Wait for sub-agent completion
@@ -256,7 +273,7 @@ ReAct Loop (backend)
   │
   ▼
 task_complete event ──────────────────► Frontend renders final result
-                                        Artifacts available for download
+                                         Artifacts available for download
 ```
 
 ---

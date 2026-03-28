@@ -1,37 +1,71 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { FolderOpen } from "lucide-react";
 import { ErrorBanner } from "@/shared/components/ErrorBanner";
 import { SearchInput } from "@/shared/components/SearchInput";
 import { Button } from "@/shared/components/ui/button";
 import { ArtifactExplorer } from "@/shared/components/ArtifactExplorer";
+import { GRID_COLS_CLASS } from "@/shared/components/ArtifactExplorer/ExplorerFileList";
 import { useTranslation } from "@/i18n";
 import { useLibrary } from "../hooks/use-library";
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / Math.pow(1024, i);
+  return `${i === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[i]}`;
+}
+
+// ---------------------------------------------------------------------------
+// Skeleton
+// ---------------------------------------------------------------------------
+
 function GroupSkeleton() {
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2 px-2 py-1.5">
-        <div className="h-4 w-4 skeleton-shimmer rounded" />
+    <div className="mb-8">
+      <div className="flex items-center gap-3 pb-3 border-b border-border/40 mb-4">
         <div className="h-4 w-48 skeleton-shimmer rounded" />
         <div className="flex-1" />
-        <div className="h-4 w-20 skeleton-shimmer rounded" />
+        <div className="h-4 w-14 skeleton-shimmer rounded" />
+        <div className="h-4 w-16 skeleton-shimmer rounded" />
       </div>
-      <div className="ml-6 space-y-1.5">
-        <div className="h-[58px] rounded-lg skeleton-shimmer" />
-        <div className="h-[58px] rounded-lg skeleton-shimmer" />
+      <div className={GRID_COLS_CLASS}>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-[172px] rounded-xl skeleton-shimmer" />
+        ))}
       </div>
     </div>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
 export function LibraryPage() {
   const { t } = useTranslation();
-  const { groups, isLoading, error, filter, setFilter, loadMore, hasMore } =
-    useLibrary();
+  const { groups, isLoading, error, filter, setFilter, loadMore, hasMore } = useLibrary();
   const [dismissedError, setDismissedError] = useState<string | null>(null);
+
+  const stats = useMemo(() => {
+    const totalFiles = groups.reduce((sum, g) => sum + g.artifacts.length, 0);
+    const totalSize = groups.reduce(
+      (sum, g) => sum + g.artifacts.reduce((s, a) => s + a.size, 0),
+      0,
+    );
+    return { totalFiles, totalSize, totalConversations: groups.length };
+  }, [groups]);
+
+  const statsLine =
+    stats.totalFiles > 0
+      ? `${stats.totalFiles} ${stats.totalFiles === 1 ? "file" : "files"} · ${formatBytes(stats.totalSize)} · ${stats.totalConversations} ${stats.totalConversations === 1 ? "conversation" : "conversations"}`
+      : null;
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -42,26 +76,23 @@ export function LibraryPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.12, ease: "easeOut" }}
       >
-        <div className="mx-auto flex max-w-5xl items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary">
-              <FolderOpen className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold tracking-tight text-foreground">
-                {t("library.title")}
-              </h1>
-              <p className="text-xs text-muted-foreground">
-                {t("library.subtitle")}
-              </p>
-            </div>
+        <div className="mx-auto flex max-w-5xl items-end justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              {t("library.title")}
+            </h1>
+            {isLoading && !statsLine ? (
+              <div className="h-3.5 w-48 skeleton-shimmer rounded mt-1.5" />
+            ) : statsLine ? (
+              <p className="text-xs text-muted-foreground mt-0.5">{statsLine}</p>
+            ) : null}
           </div>
         </div>
       </motion.div>
 
       {/* Content */}
       <div className="flex flex-1 flex-col overflow-hidden px-4 py-6 sm:px-6">
-        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 overflow-hidden">
+        <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-5 overflow-hidden">
           {/* Error */}
           {error && error !== dismissedError && (
             <ErrorBanner message={error} onDismiss={() => setDismissedError(error)} />
@@ -70,9 +101,9 @@ export function LibraryPage() {
           {/* Filter bar */}
           {groups.length > 0 || filter ? (
             <div className="flex shrink-0 items-center gap-3">
-              <h2 className="text-base font-medium text-muted-foreground">
-                {t("library.title")}
-              </h2>
+              {statsLine && (
+                <span className="text-xs text-muted-foreground">{statsLine}</span>
+              )}
               <div className="flex-1" />
               <SearchInput
                 value={filter}

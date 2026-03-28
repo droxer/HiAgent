@@ -6,6 +6,7 @@ export interface LibraryArtifact {
   readonly content_type: string;
   readonly size: number;
   readonly created_at: string;
+  readonly file_path?: string | null;
 }
 
 export interface LibraryGroup {

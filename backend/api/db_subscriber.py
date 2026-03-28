@@ -301,6 +301,7 @@ def create_db_subscriber(
                             clean.get("content_type", "application/octet-stream")
                         ),
                         size=int(clean.get("size", 0)),
+                        file_path=clean.get("file_path"),
                     )
                     # Also persist as a regular event so historical views
                     # can reconstruct the artifact list from the events table.

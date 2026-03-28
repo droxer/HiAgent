@@ -203,6 +203,7 @@ class ToolExecutor:
                         "name": artifact.original_name,
                         "content_type": artifact.content_type,
                         "size": artifact.size,
+                        "file_path": artifact.file_path,
                     },
                 )
 

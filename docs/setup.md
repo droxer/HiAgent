@@ -189,6 +189,22 @@ This builds three images:
 
 ---
 
+## 7. Desktop App (Optional)
+
+HiAgent also ships as a native desktop app built with Tauri v2. It wraps the same web UI in a native window.
+
+```bash
+# Dev mode — opens Tauri window with hot reload
+make desktop
+
+# Production build — creates .app bundle
+make build-desktop
+```
+
+See [Desktop App Guide](../desktop-app.md) for details.
+
+---
+
 ## Project Structure
 
 ```
@@ -224,9 +240,8 @@ HiAgent/
 | `make build-web` | Production build of frontend |
 | `make build-sandbox` | Build sandbox Docker images |
 | `make migrate` | Run database migrations |
-| `make test` | Run backend tests |
-| `make lint` | Lint backend code |
-| `make evals` | Run agent evals (mock backend) |
+| `make desktop` | Start Tauri desktop app (dev mode) |
+| `make build-desktop` | Build Tauri desktop app (.app bundle) |
 | `make pre-commit` | Install pre-commit hooks |
 | `make pre-commit-all` | Run pre-commit on all files |
 | `make lint-web` | Lint frontend code |
@@ -238,7 +253,7 @@ Run from the `backend/` directory:
 
 ```bash
 uv run pytest                          # Run all tests
-uv run pytest path/to/test.py::test_fn # Run a single test
+uv run pytest path/to/test.py::test_fn # IMPORTANT: Run single test function
 uv run pytest --cov                    # With coverage report
 uv run ruff check .                    # Lint
 uv run ruff format .                   # Auto-format

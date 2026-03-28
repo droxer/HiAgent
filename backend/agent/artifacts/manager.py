@@ -37,6 +37,7 @@ class Artifact:
     content_type: str
     size: int
     source_agent_id: str | None = None
+    file_path: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -161,6 +162,7 @@ class ArtifactManager:
             content_type=content_type,
             size=len(data),
             source_agent_id=agent_id,
+            file_path=filename,
         )
         async with self._lock:
             self._artifacts[artifact_id] = artifact
@@ -250,6 +252,7 @@ class ArtifactManager:
             content_type=content_type,
             size=size,
             source_agent_id=agent_id,
+            file_path=remote_path,
         )
         async with self._lock:
             self._artifacts[artifact_id] = artifact

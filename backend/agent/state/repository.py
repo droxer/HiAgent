@@ -89,6 +89,7 @@ def _to_artifact(model: ArtifactModel) -> ArtifactRecord:
         content_type=model.content_type,
         size=model.size,
         created_at=model.created_at,
+        file_path=model.file_path,
     )
 
 
@@ -262,6 +263,7 @@ class ConversationRepository:
         original_name: str,
         content_type: str,
         size: int,
+        file_path: str | None = None,
     ) -> ArtifactRecord:
         model = ArtifactModel(
             id=artifact_id,
@@ -270,12 +272,29 @@ class ConversationRepository:
             original_name=original_name,
             content_type=content_type,
             size=size,
+            file_path=file_path,
         )
         session.add(model)
         await session.flush()
         await session.refresh(model)  # need generated timestamps before returning
         await session.commit()
         return _to_artifact(model)
+
+    async def delete_artifacts(
+        self,
+        session: AsyncSession,
+        conversation_id: uuid.UUID,
+        artifact_ids: list[str],
+    ) -> int:
+        from sqlalchemy import delete
+
+        stmt = delete(ArtifactModel).where(
+            ArtifactModel.conversation_id == conversation_id,
+            ArtifactModel.id.in_(artifact_ids),
+        )
+        result = await session.execute(stmt)
+        await session.commit()
+        return getattr(result, "rowcount", 0)
 
     async def get_artifact(
         self,

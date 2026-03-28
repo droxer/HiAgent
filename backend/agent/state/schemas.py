@@ -74,6 +74,7 @@ class ArtifactRecord:
     content_type: str
     size: int
     created_at: datetime
+    file_path: str | None = None
 
 
 @dataclass(frozen=True)

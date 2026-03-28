@@ -541,5 +541,12 @@
   "explorer.emptyFolder": "此分类中没有文件",
   "explorer.selectFile": "选择文件以预览",
   "explorer.noPreview": "无法预览",
-  "explorer.downloadFile": "下载"
+  "explorer.downloadFile": "下载",
+  "explorer.selectedCount": "已选择 {count} 个",
+  "explorer.downloadAll": "全部下载",
+  "explorer.delete": "删除",
+  "explorer.cancel": "取消",
+  "explorer.deleteConfirmTitle": "删除文件？",
+  "explorer.deleteConfirmDesc": "将永久删除 {count} 个文件，此操作无法撤销。",
+  "explorer.deleteConfirm": "删除"
 }

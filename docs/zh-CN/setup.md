@@ -189,6 +189,22 @@ make build-sandbox
 
 ---
 
+## 7. 桌面应用（可选）
+
+HiAgent 还提供基于 Tauri v2 的原生桌面应用。它将 Web UI 封装在原生窗口中。
+
+```bash
+# 开发模式 — 打开 Tauri 窗口并支持热重载
+make desktop
+
+# 生产构建 — 创建 .app 应用包
+make build-desktop
+```
+
+详见 [桌面应用指南](../desktop-app.md)。
+
+---
+
 ## 项目结构
 
 ```
@@ -224,9 +240,8 @@ HiAgent/
 | `make build-web` | 生产环境构建前端 |
 | `make build-sandbox` | 构建沙盒 Docker 镜像 |
 | `make migrate` | 执行数据库迁移 |
-| `make test` | 运行后端测试 |
-| `make lint` | 后端代码检查 |
-| `make evals` | 运行智能体评测（mock 后端） |
+| `make desktop` | 启动 Tauri 桌面应用（开发模式） |
+| `make build-desktop` | 构建 Tauri 桌面应用（生产包） |
 | `make pre-commit` | 安装 pre-commit 钩子 |
 | `make pre-commit-all` | 对所有文件运行 pre-commit |
 | `make lint-web` | 前端代码检查 |
@@ -238,7 +253,7 @@ HiAgent/
 
 ```bash
 uv run pytest                          # 运行所有测试
-uv run pytest path/to/test.py::test_fn # 运行单个测试
+uv run pytest path/to/test.py::test_fn # 重要：运行单个测试函数
 uv run pytest --cov                    # 带覆盖率报告
 uv run ruff check .                    # 代码检查
 uv run ruff format .                   # 自动格式化

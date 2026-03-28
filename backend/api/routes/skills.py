@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import shutil
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
@@ -398,11 +400,23 @@ async def uninstall_skill(
     auth_user: AuthUser | None = Depends(get_current_user),
 ) -> dict[str, str]:
     """DELETE /skills/{name} — uninstall a user-installed skill."""
+    from agent.skills.installer import _sanitize_name
+
     registry = _get_skill_registry(state)
     installer = _get_skill_installer(state)
 
-    # Check if skill exists
+    # Check if skill exists by exact name match first
     skill = registry.find_by_name(name)
+
+    if skill is None:
+        # Try to find by sanitized directory name match
+        # (directory name may differ from metadata name due to sanitization)
+        sanitized_input = _sanitize_name(name)
+        for s in registry.all_skills():
+            if _sanitize_name(s.metadata.name) == sanitized_input:
+                skill = s
+                break
+
     if skill is None:
         raise HTTPException(status_code=404, detail=f"Skill '{name}' not found")
 
@@ -410,18 +424,36 @@ async def uninstall_skill(
     if skill.source_type == "bundled":
         raise HTTPException(status_code=403, detail="Cannot uninstall bundled skills")
 
-    removed = installer.uninstall(name)
-    if not removed:
-        raise HTTPException(status_code=404, detail=f"Skill '{name}' not installed")
+    # Use the actual skill name from metadata for removal
+    skill_name = skill.metadata.name
+
+    # Handle project skills differently - they are in the project directory
+    if skill.source_type == "project":
+        skill_dir = str(skill.directory_path)
+        dir_exists = os.path.isdir(skill_dir)
+        if dir_exists:
+            shutil.rmtree(skill_dir)
+            removed = True
+        else:
+            # Directory already gone, but we should still clean up registry/DB
+            removed = True
+    else:
+        removed = installer.uninstall(skill_name)
+        # If directory doesn't exist but skill is in registry, still clean up
+        if not removed:
+            removed = True
+
+    # removed should always be True at this point since we found the skill in registry
+    # and either removed the directory or it was already gone
 
     async with _registry_lock:
         registry = _get_skill_registry(state)
-        state.skill_registry = registry.remove_skill(name)
+        state.skill_registry = registry.remove_skill(skill_name)
 
     # Remove from database
-    await _remove_skill_from_db(state, session, auth_user, name)
+    await _remove_skill_from_db(state, session, auth_user, skill_name)
 
-    return {"detail": f"Skill '{name}' uninstalled"}
+    return {"detail": f"Skill '{skill_name}' uninstalled"}
 
 
 class SkillToggleRequest(BaseModel):

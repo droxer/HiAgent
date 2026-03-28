@@ -88,6 +88,7 @@ export interface ArtifactInfo {
   readonly name: string;
   readonly contentType: string;
   readonly size: number;
+  readonly filePath?: string;
 }
 
 export interface PlanStep {

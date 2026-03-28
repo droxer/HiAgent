@@ -14,13 +14,11 @@ make install-web      # cd web && npm install
 make build-web        # cd web && npm run build
 make build-sandbox    # 构建 Boxlite 沙箱 Docker 镜像
 make clean            # 清除 .venv、node_modules、.next
-make test             # 运行后端测试: cd backend && uv run pytest
-make lint             # 后端代码检查: cd backend && uv run ruff check .
-make format           # 后端代码格式化: cd backend && uv run ruff format .
-make evals            # 运行智能体评测（默认使用 mock 后端）
 make pre-commit       # 安装 pre-commit 钩子
 make pre-commit-all   # 对所有文件运行 pre-commit
 make lint-web         # 前端代码检查: cd web && npx eslint src/
+make desktop          # 启动 Tauri 桌面应用（开发模式）
+make build-desktop    # 构建 Tauri 桌面应用（生产包）
 ```
 
 ### 后端测试与代码检查
@@ -29,7 +27,7 @@ make lint-web         # 前端代码检查: cd web && npx eslint src/
 
 ```bash
 uv run pytest                          # 运行所有测试
-uv run pytest path/to/test.py::test_fn # 运行单个测试
+uv run pytest path/to/test.py::test_fn # 重要：运行单个测试函数
 uv run pytest --cov                    # 附带覆盖率
 uv run ruff check .                    # 代码检查
 uv run ruff format .                   # 代码格式化
@@ -65,6 +63,26 @@ uv run alembic revision --autogenerate -m "description"  # 创建迁移
 
 ---
 
+## 代码规范与约定
+
+**Python（后端）**
+- **导入顺序**：标准库优先，第三方次之，本地导入最后。使用 `ruff check . --fix` 验证。
+- **格式化**：使用 `ruff format`（默认 88 字符行宽限制）。
+- **类型注解**：严格的 Python 3.12+ 类型注解。模型/DTO 使用 `pydantic`，内部状态使用 `dataclasses(frozen=True)` 确保不可变性。
+- **命名规范**：文件、函数、变量使用 `snake_case`；类名使用 `PascalCase`。
+- **错误处理**：使用 `try/except`。在 API 路由中抛出 FastAPI `HTTPException`。使用 `loguru` 记录错误（`from loguru import logger`）。
+
+**TypeScript（前端）**
+- **导入**：对相关的导入进行分组。优先使用绝对路径别名（如 `@/features/...`、`@/shared/...`）。
+- **格式化/代码检查**：通过 `npx eslint src/` 配合标准 Next.js 规则执行。
+- **类型**：严格类型（`tsc --noEmit`）。避免使用 `any`。共享类型集中放在 `src/shared/types/`。
+- **命名规范**：
+  - **文件**：React 组件使用 `PascalCase.tsx`；hooks、工具函数、API 使用 `kebab-case.ts`。
+  - **实体**：变量/函数使用 `camelCase`；组件、类型、接口使用 `PascalCase`。
+- **错误处理**：使用 async/await 配合 `try/catch`。React 组件应实现加载/错误状态。
+
+---
+
 ## 架构
 
 ```
@@ -96,7 +114,7 @@ HiAgent/
 │   │   │   ├── sub_agent_manager.py # SubAgentManager — 并发智能体协调
 │   │   │   ├── task_runner.py       # TaskAgentRunner — 专注子任务执行
 │   │   │   ├── helpers.py           # apply_response_to_state、process_tool_calls
-│   │   │   └── observer.py          # 长对话的上下文压缩
+│   │   │   └── observer.py          # 分层的上下文压缩
 │   │   ├── llm/
 │   │   │   └── client.py    # ClaudeClient — 异步 Anthropic SDK 封装
 │   │   ├── tools/
