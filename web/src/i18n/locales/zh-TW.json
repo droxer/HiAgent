@@ -109,8 +109,6 @@
   "computer.statusIdle": "閒置",
   "computer.desktopAction": "桌面：{action}",
   "computer.takingScreenshot": "正在截取桌面截圖",
-  "computer.thinkingReadMore": "展開",
-  "computer.thinkingCollapse": "收起",
 
   "artifacts.noFiles": "尚未產生檔案",
   "artifacts.fileCount": "已產生 {count} 個檔案",
@@ -529,5 +527,18 @@
   "preferences.memory.global": "全域",
   "preferences.memory.page": "第 {current} 頁，共 {total} 頁",
   "preferences.memory.previous": "上一頁",
-  "preferences.memory.next": "下一頁"
+  "preferences.memory.next": "下一頁",
+
+  "explorer.sidebarLabel": "檔案分類",
+  "explorer.fileListLabel": "檔案列表",
+  "explorer.allFiles": "所有檔案",
+  "explorer.images": "圖片",
+  "explorer.documents": "文件",
+  "explorer.code": "程式碼",
+  "explorer.spreadsheets": "試算表",
+  "explorer.other": "其他",
+  "explorer.emptyFolder": "此分類中沒有檔案",
+  "explorer.selectFile": "選擇檔案以預覽",
+  "explorer.noPreview": "無法預覽",
+  "explorer.downloadFile": "下載"
 }

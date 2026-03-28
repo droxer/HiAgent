@@ -1,17 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { FolderOpen, Search } from "lucide-react";
-import { EmptyState } from "@/shared/components/EmptyState";
+import { FolderOpen } from "lucide-react";
 import { ErrorBanner } from "@/shared/components/ErrorBanner";
 import { SearchInput } from "@/shared/components/SearchInput";
 import { Button } from "@/shared/components/ui/button";
-import { listContainer, listItem } from "@/shared/lib/animations";
+import { ArtifactExplorer } from "@/shared/components/ArtifactExplorer";
 import { useTranslation } from "@/i18n";
 import { useLibrary } from "../hooks/use-library";
-import { useViewMode } from "../hooks/use-view-mode";
-import { ConversationGroup } from "./ConversationGroup";
-import { ViewModeToggle } from "./ViewModeToggle";
 
 function GroupSkeleton() {
   return (
@@ -34,7 +31,7 @@ export function LibraryPage() {
   const { t } = useTranslation();
   const { groups, isLoading, error, filter, setFilter, loadMore, hasMore } =
     useLibrary();
-  const { viewMode, setViewMode } = useViewMode();
+  const [dismissedError, setDismissedError] = useState<string | null>(null);
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -63,16 +60,16 @@ export function LibraryPage() {
       </motion.div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
-        <div className="mx-auto max-w-5xl space-y-5">
+      <div className="flex flex-1 flex-col overflow-hidden px-4 py-6 sm:px-6">
+        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 overflow-hidden">
           {/* Error */}
-          {error && (
-            <ErrorBanner message={error} onDismiss={() => {}} />
+          {error && error !== dismissedError && (
+            <ErrorBanner message={error} onDismiss={() => setDismissedError(error)} />
           )}
 
           {/* Filter bar */}
           {groups.length > 0 || filter ? (
-            <div className="flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-3">
               <h2 className="text-base font-medium text-muted-foreground">
                 {t("library.title")}
               </h2>
@@ -83,7 +80,6 @@ export function LibraryPage() {
                 placeholder={t("library.filterPlaceholder")}
                 clearLabel={t("library.clearFilter")}
               />
-              <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
             </div>
           ) : null}
 
@@ -94,49 +90,15 @@ export function LibraryPage() {
               <GroupSkeleton />
               <GroupSkeleton />
             </div>
-          ) : groups.length === 0 && filter ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.15 }}
-            >
-              <EmptyState
-                icon={Search}
-                description={t("library.noMatching")}
-                dashed
-              />
-            </motion.div>
-          ) : groups.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.12, delay: 0.05 }}
-            >
-              <EmptyState
-                icon={FolderOpen}
-                title={t("library.noArtifacts")}
-                description={t("library.noArtifactsHint")}
-                dashed
-              />
-            </motion.div>
           ) : (
-            <motion.div
-              className="space-y-4"
-              variants={listContainer}
-              initial="hidden"
-              animate="show"
-            >
-              {groups.map((group) => (
-                <motion.div key={group.conversation_id} variants={listItem}>
-                  <ConversationGroup group={group} viewMode={viewMode} />
-                </motion.div>
-              ))}
-            </motion.div>
+            <div className="flex-1 overflow-hidden">
+              <ArtifactExplorer mode="page" groups={groups} />
+            </div>
           )}
 
           {/* Load more */}
           {hasMore && !isLoading && (
-            <div className="flex justify-center pt-2">
+            <div className="flex shrink-0 justify-center pt-2">
               <Button variant="outline" size="sm" onClick={loadMore}>
                 {t("library.loadMore")}
               </Button>

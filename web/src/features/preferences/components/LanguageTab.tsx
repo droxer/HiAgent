@@ -31,7 +31,7 @@ export function LanguageTab() {
         </p>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2 max-w-xl">
         {LOCALES.map((loc) => {
           const isActive = loc === locale;
           const label = LOCALE_LABELS[loc];

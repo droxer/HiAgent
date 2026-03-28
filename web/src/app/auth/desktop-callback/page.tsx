@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Suspense } from "react";
 import { Logo } from "@/shared/components/Logo";
-import { Loader2 } from "lucide-react";
 
 /**
  * Desktop OAuth callback page.
@@ -63,10 +62,10 @@ function CallbackContent() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
-      <Logo size={48} className="rounded-xl" />
+      <Logo size={48} className="rounded-lg" />
       {status === "loading" && (
         <>
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <div className="h-5 w-5 rounded skeleton-shimmer bg-muted" />
           <p className="text-sm text-muted-foreground">Verifying session...</p>
         </>
       )}
@@ -93,7 +92,7 @@ export default function DesktopCallbackPage() {
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center bg-background">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <div className="h-6 w-6 rounded skeleton-shimmer bg-muted" />
         </div>
       }
     >

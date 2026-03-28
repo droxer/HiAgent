@@ -109,8 +109,6 @@
   "computer.statusIdle": "空闲",
   "computer.desktopAction": "桌面：{action}",
   "computer.takingScreenshot": "正在截取桌面截图",
-  "computer.thinkingReadMore": "展开",
-  "computer.thinkingCollapse": "收起",
 
   "artifacts.noFiles": "尚未生成文件",
   "artifacts.fileCount": "已生成 {count} 个文件",
@@ -530,5 +528,18 @@
   "preferences.memory.global": "全局",
   "preferences.memory.page": "第 {current} 页，共 {total} 页",
   "preferences.memory.previous": "上一页",
-  "preferences.memory.next": "下一页"
+  "preferences.memory.next": "下一页",
+
+  "explorer.sidebarLabel": "文件分类",
+  "explorer.fileListLabel": "文件列表",
+  "explorer.allFiles": "所有文件",
+  "explorer.images": "图片",
+  "explorer.documents": "文档",
+  "explorer.code": "代码",
+  "explorer.spreadsheets": "表格",
+  "explorer.other": "其他",
+  "explorer.emptyFolder": "此分类中没有文件",
+  "explorer.selectFile": "选择文件以预览",
+  "explorer.noPreview": "无法预览",
+  "explorer.downloadFile": "下载"
 }

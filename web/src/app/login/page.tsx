@@ -3,7 +3,7 @@
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { Logo } from "@/shared/components/Logo";
 import { isTauri, openInSystemBrowser, getFrontendUrl } from "@/lib/tauri";
 
@@ -185,7 +185,7 @@ function LoginForm() {
                 >
                   {isLoading ? (
                     <span role="status">
-                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <div className="h-5 w-5 rounded skeleton-shimmer bg-primary-foreground/20" />
                       <span className="sr-only">Signing in...</span>
                     </span>
                   ) : (
@@ -222,7 +222,7 @@ function LoginForm() {
             {waitingForBrowser && (
               <div className="flex w-full flex-col items-center gap-2 text-center animate-[fadeIn_0.3s_ease-out]">
                 <span role="status">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  <div className="h-5 w-5 rounded skeleton-shimmer bg-muted" />
                   <span className="sr-only">Waiting for browser authentication...</span>
                 </span>
                 <p className="text-sm text-muted-foreground">
@@ -250,7 +250,7 @@ export default function LoginPage() {
     <Suspense
       fallback={
         <div className="welcome-radial-bg flex min-h-screen items-center justify-center" role="status">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+          <div className="h-8 w-full max-w-sm rounded skeleton-shimmer bg-muted" />
           <span className="sr-only">Loading...</span>
         </div>
       }

@@ -109,8 +109,6 @@
   "computer.statusIdle": "Idle",
   "computer.desktopAction": "Desktop: {action}",
   "computer.takingScreenshot": "Taking desktop screenshot",
-  "computer.thinkingReadMore": "read more",
-  "computer.thinkingCollapse": "collapse",
 
   "artifacts.noFiles": "No files generated yet",
   "artifacts.fileCount": "{count} file generated",
@@ -530,5 +528,18 @@
   "preferences.memory.global": "Global",
   "preferences.memory.page": "Page {current} of {total}",
   "preferences.memory.previous": "Previous",
-  "preferences.memory.next": "Next"
+  "preferences.memory.next": "Next",
+
+  "explorer.sidebarLabel": "File categories",
+  "explorer.fileListLabel": "Files",
+  "explorer.allFiles": "All Files",
+  "explorer.images": "Images",
+  "explorer.documents": "Documents",
+  "explorer.code": "Code",
+  "explorer.spreadsheets": "Spreadsheets",
+  "explorer.other": "Other",
+  "explorer.emptyFolder": "No files in this category",
+  "explorer.selectFile": "Select a file to preview",
+  "explorer.noPreview": "Preview unavailable",
+  "explorer.downloadFile": "Download"
 }

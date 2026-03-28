@@ -112,7 +112,7 @@ export function TokenUsageTab() {
 
         <div className="rounded-lg border border-border overflow-hidden">
           {/* Header */}
-          <div className="grid grid-cols-[1fr_80px_80px_56px_80px] gap-2 bg-secondary/50 px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <div className="grid grid-cols-[1fr_120px_120px_80px_120px] gap-3 bg-secondary/50 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
             <span>{t("preferences.usage.conversationId")}</span>
             <span className="text-right">{t("profile.inputTokens")}</span>
             <span className="text-right">{t("profile.outputTokens")}</span>
@@ -140,7 +140,7 @@ export function TokenUsageTab() {
                   key={item.conversation_id}
                   variants={listItem}
                   className={cn(
-                    "grid grid-cols-[1fr_80px_80px_56px_80px] gap-2 px-3 py-2 text-sm",
+                    "grid grid-cols-[1fr_120px_120px_80px_120px] items-center gap-3 px-4 py-3 text-sm",
                     "border-t border-border first:border-t-0",
                     "hover:bg-secondary/30 transition-colors duration-100",
                   )}

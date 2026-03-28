@@ -47,17 +47,17 @@ export function PreferencesDialog({ open, onOpenChange }: PreferencesDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl max-h-[80vh] overflow-hidden p-0">
+      <DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-hidden p-0">
         {/* Screen-reader-only title */}
         <DialogTitle className="sr-only">{t("preferences.title")}</DialogTitle>
 
-        <div className="flex h-[min(70vh,560px)]">
+        <div className="flex h-[min(80vh,700px)]">
           {/* Side menu */}
           <nav
-            className="flex w-48 shrink-0 flex-col border-r border-border bg-secondary/30 p-2"
+            className="flex w-64 shrink-0 flex-col border-r border-border bg-secondary/30 p-3"
             aria-label={t("preferences.title")}
           >
-            <p className="px-2.5 pb-2 pt-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="px-3 pb-3 pt-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/80">
               {t("preferences.title")}
             </p>
             {MENU_ITEMS.map(({ id, labelKey, icon: Icon }) => {
@@ -68,15 +68,18 @@ export function PreferencesDialog({ open, onOpenChange }: PreferencesDialogProps
                   type="button"
                   onClick={() => setActiveId(id)}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors duration-100",
+                    "relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-all duration-150 overflow-hidden mb-1",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
                     isActive
-                      ? "bg-background text-foreground font-medium shadow-sm"
-                      : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
+                      ? "bg-accent-purple/10 text-accent-purple font-semibold"
+                      : "text-muted-foreground hover:bg-background/80 hover:text-foreground",
                   )}
                   aria-current={isActive ? "page" : undefined}
                 >
-                  <Icon className="h-4 w-4 shrink-0" />
+                  {isActive && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-purple rounded-r-full" />
+                  )}
+                  <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-accent-purple" : "text-muted-foreground")} />
                   {t(labelKey)}
                 </button>
               );
@@ -84,7 +87,7 @@ export function PreferencesDialog({ open, onOpenChange }: PreferencesDialogProps
           </nav>
 
           {/* Content panel */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-8">
             <ActivePanel />
           </div>
         </div>
